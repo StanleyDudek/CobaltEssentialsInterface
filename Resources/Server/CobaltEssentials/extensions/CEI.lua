@@ -807,7 +807,7 @@ end
 
 function CEIToggleLock(senderID, data)
 	CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect that player!")
