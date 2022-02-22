@@ -1,0 +1,2 @@
+load("CEI")
+registerCoreModule("CEI")
