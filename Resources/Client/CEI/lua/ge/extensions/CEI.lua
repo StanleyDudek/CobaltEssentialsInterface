@@ -27,8 +27,9 @@ local stats = {}
 
 local environment = {}
 
-local envReportRate = 5
+local envReportRate = 2
 local lastEnvReport = 0
+local firstReport = false
 local envObjectIdCache = {}
 
 local worldReadyState = 0
@@ -1409,6 +1410,9 @@ local function drawCEOI()
 							end
 						elseif timePlay == "true" then
 							if im.SmallButton("Stop") then
+								local timeOfDay = core_environment.getTimeOfDay()
+								TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+								log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(timeOfDay.time))
 								TriggerServerEvent("CEISetEnv", "timePlay|false")
 								log('W', logTag, "CEISetEnv Called: timePlay|false")
 							end
@@ -4851,19 +4855,26 @@ local function onUpdate(dt)
 		drawCESI()
 	end
 	checkVehicleState()
+	
+	M.onTimePlay(environment.timePlay)
+	
 	if environment.timePlay == "false" then
 		M.onTime(environment.ToD)
-		M.onTimePlay(environment.timePlay)
-	else
-		M.onTimePlay(environment.timePlay)
-		if lastEnvReport + dt > envReportRate then
-			lastEnvReport = 0
-			local timeOfDay = core_environment.getTimeOfDay()
-			TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
-		else
-			lastEnvReport = lastEnvReport + dt
-		end
+	elseif firstReport == false then
+		M.onTime(environment.ToD)
+		firstReport = true
 	end
+	
+	if lastEnvReport + dt > envReportRate then
+		lastEnvReport = 0
+		local timeOfDay = core_environment.getTimeOfDay()
+		if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+			TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+		end
+	else
+		lastEnvReport = lastEnvReport + dt
+	end
+	
 	M.onDayScale(environment.dayScale)
 	M.onNightScale(environment.nightScale)
 	M.onAzimuthOverride(environment.azimuthOverride)
