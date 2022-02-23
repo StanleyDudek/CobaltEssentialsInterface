@@ -3095,6 +3095,9 @@ local function drawCEAI()
 							end
 						elseif timePlay == "true" then
 							if im.SmallButton("Stop") then
+								local timeOfDay = core_environment.getTimeOfDay()
+								TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+								log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(timeOfDay.time))
 								TriggerServerEvent("CEISetEnv", "timePlay|false")
 								log('W', logTag, "CEISetEnv Called: timePlay|false")
 							end
