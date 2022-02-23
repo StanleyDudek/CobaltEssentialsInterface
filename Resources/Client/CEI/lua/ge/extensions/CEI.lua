@@ -27,7 +27,7 @@ local stats = {}
 
 local environment = {}
 
-local envReportRate = 1
+local envReportRate = 5
 local lastEnvReport = 0
 local envObjectIdCache = {}
 
@@ -5200,29 +5200,6 @@ local function onExtensionLoaded()
 	AddEventHandler("CEIRaceCountdown", CEIRaceCountdown)
 	AddEventHandler("CEIRaceCountSound", CEIRaceCountSound)
 	AddEventHandler("CEIRaceStart", CEIRaceStart)
-	
-	--AddEventHandler("time", onTime)
-	--AddEventHandler("timePlay", onTimePlay)
-	--AddEventHandler("dayScale", onDayScale)
-	--AddEventHandler("nightScale", onNightScale)
-	--AddEventHandler("azimuthOverride", onAzimuthOverride)
-	--AddEventHandler("sunSize", onSunSize)
-	--AddEventHandler("skyBrightness", onSkyBrightness)
-	--AddEventHandler("sunLightBrightness", onSunLightBrightness)
-	--AddEventHandler("exposure", onExposure)
-	--AddEventHandler("shadowDistance", onShadowDistance)
-	--AddEventHandler("shadowSoftness", onShadowSoftness)
-	--AddEventHandler("shadowSplits", onShadowSplits)
-	--AddEventHandler("fogDensity", onFogDensity)
-	--AddEventHandler("fogDensityOffset", onFogDensityOffset)
-	--AddEventHandler("cloudCover", onCloudCover)
-	--AddEventHandler("cloudSpeed", onCloudSpeed)
-	--AddEventHandler("rainDrops", onRainDrops)
-	--AddEventHandler("dropSize", onDropSize)
-	--AddEventHandler("dropMinSpeed", onDropMinSpeed)
-	--AddEventHandler("dropMaxSpeed", onDropMaxSpeed)
-	--AddEventHandler("simSpeed", onSimSpeed)
-	--AddEventHandler("gravity", onGravity)
 	
 	gui_module.initialize(gui)
 	gui.registerWindow("CEI", im.ImVec2(512, 256))
