@@ -564,9 +564,9 @@ local function drawCEOI()
 					im.Text("		joinTime: " .. players[k].player.joinTime)
 					im.SameLine()
 					im.Text(": connectedTime: " .. players[k].player.connectedTime)
-					im.Separator()
 
 					if vehiclesCounter > 0 then
+						im.Separator()
 
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
@@ -2245,9 +2245,9 @@ local function drawCEAI()
 					im.Text("		joinTime: " .. players[k].player.joinTime)
 					im.SameLine()
 					im.Text(": connectedTime: " .. players[k].player.connectedTime)
-					im.Separator()
 
 					if vehiclesCounter > 0 then
+						im.Separator()
 
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
@@ -3898,9 +3898,9 @@ local function drawCEMI()
 					im.Text("		joinTime: " .. players[k].player.joinTime)
 					im.SameLine()
 					im.Text(": connectedTime: " .. players[k].player.connectedTime)
-					im.Separator()
 
 					if vehiclesCounter > 0 then
+						im.Separator()
 
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
