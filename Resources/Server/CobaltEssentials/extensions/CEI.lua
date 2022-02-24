@@ -542,191 +542,7 @@ function CEISetEnv(senderID, data)
 		local key = tempData[1]
 		local value = tempData[2]
 		
-		if key ~= "all" then
-			if key == "ToD" then
-				if value == "default" then
-					ToD = defaultToD
-					value = defaultToD
-				else
-					ToD = tonumber(value)
-				end
-			elseif key == "timePlay" then
-				timePlay = value
-			elseif key == "dayScale" then
-				if value == "default" then
-					dayScale = defaultDayScale
-					value = defaultDayScale
-				else
-					dayScale = tonumber(value)
-				end
-			elseif key == "nightScale" then
-				if value == "default" then
-					nightScale = defaultNightScale
-					value = defaultNightScale
-				else
-					nightScale = tonumber(value)
-				end
-			elseif key == "azimuthOverride" then
-				if value == "default" then
-					azimuthOverride = defaultAzimuthOverride
-					value = defaultAzimuthOverride
-				else
-					azimuthOverride = tonumber(value)
-				end
-			elseif key == "sunSize" then
-				if value == "default" then
-					sunSize = defaultSunSize
-					value = defaultSunSize
-				else
-					sunSize = tonumber(value)
-				end
-			elseif key == "skyBrightness" then
-				if value == "default" then
-					skyBrightness = defaultSkyBrightness
-					value = defaultSkyBrightness
-				else
-					skyBrightness = tonumber(value)
-				end
-			elseif key == "sunLightBrightness" then
-				if value == "default" then
-					sunLightBrightness = defaultSunLightBrightness
-					value = defaultSunLightBrightness
-				else
-					sunLightBrightness = tonumber(value)
-				end
-			elseif key == "exposure" then
-				if value == "default" then
-					exposure = defaultExposure
-					value = defaultExposure
-				else
-					exposure = tonumber(value)
-				end
-			elseif key == "shadowDistance" then
-				if value == "default" then
-					shadowDistance = defaultShadowDistance
-					value = defaultShadowDistance
-				else
-					shadowDistance = tonumber(value)
-				end
-			elseif key == "shadowSoftness" then
-				if value == "default" then
-					shadowSoftness = defaultShadowSoftness
-					value = defaultShadowSoftness
-				else
-					shadowSoftness = tonumber(value)
-				end
-			elseif key == "shadowSplits" then
-				if value == "default" then
-					shadowSplits = defaultShadowSplits
-					value = defaultShadowSplits
-				else
-					shadowSplits = tonumber(value)
-				end
-			elseif key == "fogDensity" then
-				if value == "default" then
-					fogDensity = defaultFogDensity
-					value = defaultFogDensity
-				else
-					fogDensity = tonumber(value)
-				end
-			elseif key == "fogDensityOffset" then
-				if value == "default" then
-					fogDensityOffset = defaultFogDensityOffset
-					value = defaultFogDensityOffset
-				else
-					fogDensityOffset = tonumber(value)
-				end
-			elseif key == "cloudCover" then
-				if value == "default" then
-					cloudCover = defaultCloudCover
-					value = defaultCloudCover
-				else
-					cloudCover = tonumber(value)
-				end
-			elseif key == "cloudSpeed" then
-				if value == "default" then
-					cloudSpeed = defaultCloudSpeed
-					value = defaultCloudSpeed
-				else
-					cloudSpeed = tonumber(value)
-				end
-			elseif key == "rainDrops" then
-				if value == "default" then
-					rainDrops = defaultRainDrops
-					value = defaultRainDrops
-				else
-					rainDrops = tonumber(value)
-				end
-			elseif key == "dropSize" then
-				if value == "default" then
-					dropSize = defaultDayScale
-					value = defaultDayScale
-				else
-					dropSize = tonumber(value)
-				end
-			elseif key == "dropMinSpeed" then
-				if value == "default" then
-					dropMinSpeed = defaultDropMinSpeed
-					value = defaultDropMinSpeed
-				else
-					dropMinSpeed = tonumber(value)
-				end
-			elseif key == "dropMaxSpeed" then
-				if value == "default" then
-					dropMaxSpeed = defaultDropMaxSpeed
-					value = defaultDropMaxSpeed
-				else
-					dropMaxSpeed = tonumber(value)
-				end
-			elseif key == "precipType" then
-				precipType = value
-			elseif key == "simSpeed" then
-				if value == "default" then
-					simSpeed = defaultSimSpeed
-					value = defaultSimSpeed
-				else
-					simSpeed = tonumber(value)
-				end
-			elseif key == "gravity" then
-				if value == "default" then
-					gravity = defaultGravity
-					value = defaultGravity
-				else
-					gravity = tonumber(value)
-				end
-			end
-			
-			if tonumber(value) then
-				value = tonumber(value)
-			end
-
-			CobaltDB.set("environment", key, "value", value)
-		
-		elseif key == "all" then
-			CobaltDB.set("environment", "ToD", "value", defaultToD)
-			ToD = defaultToD
-			CobaltDB.set("environment", "timePlay", "value", defaultTimePlay)
-			timePlay = defaultTimePlay
-			CobaltDB.set("environment", "dayScale", "value", defaultDayScale)
-			dayScale = defaultDayScale
-			CobaltDB.set("environment", "nightScale", "value", defaultNightScale)
-			nightScale = defaultNightScale
-			CobaltDB.set("environment", "azimuthOverride", "value", defaultAzimuthOverride)
-			azimuthOverride = defaultAzimuthOverride
-			CobaltDB.set("environment", "sunSize", "value", defaultSunSize)
-			sunSize = defaultSunSize
-			CobaltDB.set("environment", "skyBrightness", "value", defaultSkyBrightness)
-			skyBrightness = defaultSkyBrightness
-			CobaltDB.set("environment", "sunLightBrightness", "value", defaultSunLightBrightness)
-			sunLightBrightness = defaultSunLightBrightness
-			CobaltDB.set("environment", "exposure", "value", defaultExposure)
-			environment = defaultEnvironment
-			CobaltDB.set("environment", "shadowDistance", "value", defaultShadowDistance)
-			shadowDistance = defaultShadowDistance
-			CobaltDB.set("environment", "shadowSoftness", "value", defaultShadowSoftness)
-			shadowSoftness = defaultShadowSoftness
-			CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
-			shadowSplits = defaultShadowSplits
+		if key == "allWeather" then
 			CobaltDB.set("environment", "fogDensity", "value", defaultFogDensity)
 			fogDensity = defaultFogDensity
 			CobaltDB.set("environment", "fogDensityOffset", "value", defaultFogDensityOffset)
@@ -770,7 +586,31 @@ function CEISetEnv(senderID, data)
 			shadowSoftness = defaultShadowSoftness
 			CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
 			shadowSplits = defaultShadowSplits
-		elseif key == "allWeather" then
+		elseif key == "all" then
+			CobaltDB.set("environment", "ToD", "value", defaultToD)
+			ToD = defaultToD
+			CobaltDB.set("environment", "timePlay", "value", defaultTimePlay)
+			timePlay = defaultTimePlay
+			CobaltDB.set("environment", "dayScale", "value", defaultDayScale)
+			dayScale = defaultDayScale
+			CobaltDB.set("environment", "nightScale", "value", defaultNightScale)
+			nightScale = defaultNightScale
+			CobaltDB.set("environment", "azimuthOverride", "value", defaultAzimuthOverride)
+			azimuthOverride = defaultAzimuthOverride
+			CobaltDB.set("environment", "sunSize", "value", defaultSunSize)
+			sunSize = defaultSunSize
+			CobaltDB.set("environment", "skyBrightness", "value", defaultSkyBrightness)
+			skyBrightness = defaultSkyBrightness
+			CobaltDB.set("environment", "sunLightBrightness", "value", defaultSunLightBrightness)
+			sunLightBrightness = defaultSunLightBrightness
+			CobaltDB.set("environment", "exposure", "value", defaultExposure)
+			environment = defaultEnvironment
+			CobaltDB.set("environment", "shadowDistance", "value", defaultShadowDistance)
+			shadowDistance = defaultShadowDistance
+			CobaltDB.set("environment", "shadowSoftness", "value", defaultShadowSoftness)
+			shadowSoftness = defaultShadowSoftness
+			CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
+			shadowSplits = defaultShadowSplits
 			CobaltDB.set("environment", "fogDensity", "value", defaultFogDensity)
 			fogDensity = defaultFogDensity
 			CobaltDB.set("environment", "fogDensityOffset", "value", defaultFogDensityOffset)
@@ -789,6 +629,200 @@ function CEISetEnv(senderID, data)
 			dropMaxSpeed = defaultDropMaxSpeed
 			CobaltDB.set("environment", "precipType", "value", defaultPrecipType)
 			precipType = defaultPrecipType
+		
+		elseif key == "ToD" then
+			if value == "default" then
+				ToD = defaultToD
+				value = defaultToD
+				CobaltDB.set("environment", "ToD", "value", defaultToD)
+			else
+				ToD = tonumber(value)
+				CobaltDB.set("environment", "ToD", "value", ToD)
+			end
+		elseif key == "timePlay" then
+			timePlay = value
+		elseif key == "dayScale" then
+			if value == "default" then
+				dayScale = defaultDayScale
+				value = defaultDayScale
+				CobaltDB.set("environment", "dayScale", "value", defaultDayScale)
+			else
+				dayScale = tonumber(value)
+				CobaltDB.set("environment", "dayScale", "value", dayScale)
+			end
+		elseif key == "nightScale" then
+			if value == "default" then
+				nightScale = defaultNightScale
+				value = defaultNightScale
+				CobaltDB.set("environment", "nightScale", "value", defaultNightScale)
+			else
+				nightScale = tonumber(value)
+				CobaltDB.set("environment", "nightScale", "value", nightScale)
+			end
+		elseif key == "azimuthOverride" then
+			if value == "default" then
+				azimuthOverride = defaultAzimuthOverride
+				value = defaultAzimuthOverride
+				CobaltDB.set("environment", "azimuthOverride", "value", defaultAzimuthOverride)
+			else
+				azimuthOverride = tonumber(value)
+				CobaltDB.set("environment", "azimuthOverride", "value", azimuthOverride)
+			end
+		elseif key == "sunSize" then
+			if value == "default" then
+				sunSize = defaultSunSize
+				value = defaultSunSize
+				CobaltDB.set("environment", "sunSize", "value", defaultSunSize)
+			else
+				sunSize = tonumber(value)
+				CobaltDB.set("environment", "sunSize", "value", sunSize)
+			end
+		elseif key == "skyBrightness" then
+			if value == "default" then
+				skyBrightness = defaultSkyBrightness
+				value = defaultSkyBrightness
+				CobaltDB.set("environment", "skyBrightness", "value", defaultSkyBrightness)
+			else
+				skyBrightness = tonumber(value)
+				CobaltDB.set("environment", "skyBrightness", "value", skyBrightness)
+			end
+		elseif key == "sunLightBrightness" then
+			if value == "default" then
+				sunLightBrightness = defaultSunLightBrightness
+				value = defaultSunLightBrightness
+				CobaltDB.set("environment", "sunLightBrightness", "value", defaultSunLightBrightness)
+			else
+				sunLightBrightness = tonumber(value)
+				CobaltDB.set("environment", "sunLightBrightness", "value", sunLightBrightness)
+			end
+		elseif key == "exposure" then
+			if value == "default" then
+				exposure = defaultExposure
+				value = defaultExposure
+				CobaltDB.set("environment", "exposure", "value", defaultExposure)
+			else
+				exposure = tonumber(value)
+				CobaltDB.set("environment", "exposure", "value", exposure)
+			end
+		elseif key == "shadowDistance" then
+			if value == "default" then
+				shadowDistance = defaultShadowDistance
+				value = defaultShadowDistance
+				CobaltDB.set("environment", "shadowDistance", "value", defaultShadowDistance)
+			else
+				shadowDistance = tonumber(value)
+				CobaltDB.set("environment", "shadowDistance", "value", shadowDistance)
+			end
+		elseif key == "shadowSoftness" then
+			if value == "default" then
+				shadowSoftness = defaultShadowSoftness
+				value = defaultShadowSoftness
+				CobaltDB.set("environment", "shadowSoftness", "value", defaultShadowSoftness)
+			else
+				shadowSoftness = tonumber(value)
+				CobaltDB.set("environment", "shadowSoftness", "value", shadowSoftness)
+			end
+		elseif key == "shadowSplits" then
+			if value == "default" then
+				shadowSplits = defaultShadowSplits
+				value = defaultShadowSplits
+				CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
+			else
+				shadowSplits = tonumber(value)
+				CobaltDB.set("environment", "shadowSplits", "value", shadowSplits)
+			end
+		elseif key == "fogDensity" then
+			if value == "default" then
+				fogDensity = defaultFogDensity
+				value = defaultFogDensity
+				CobaltDB.set("environment", "fogDensity", "value", defaultFogDensity)
+			else
+				fogDensity = tonumber(value)
+				CobaltDB.set("environment", "fogDensity", "value", fogDensity)
+			end
+		elseif key == "fogDensityOffset" then
+			if value == "default" then
+				fogDensityOffset = defaultFogDensityOffset
+				value = defaultFogDensityOffset
+				CobaltDB.set("environment", "fogDensityOffset", "value", defaultFogDensityOffset)
+			else
+				fogDensityOffset = tonumber(value)
+				CobaltDB.set("environment", "fogDensityOffset", "value", fogDensityOffset)
+			end
+		elseif key == "cloudCover" then
+			if value == "default" then
+				cloudCover = defaultCloudCover
+				value = defaultCloudCover
+				CobaltDB.set("environment", "cloudCover", "value", defaultCloudCover)
+			else
+				cloudCover = tonumber(value)
+				CobaltDB.set("environment", "cloudCover", "value", cloudCover)
+			end
+		elseif key == "cloudSpeed" then
+			if value == "default" then
+				cloudSpeed = defaultCloudSpeed
+				value = defaultCloudSpeed
+				CobaltDB.set("environment", "cloudSpeed", "value", defaultCloudSpeed)
+			else
+				cloudSpeed = tonumber(value)
+				CobaltDB.set("environment", "cloudSpeed", "value", cloudSpeed)
+			end
+		elseif key == "rainDrops" then
+			if value == "default" then
+				rainDrops = defaultRainDrops
+				value = defaultRainDrops
+				CobaltDB.set("environment", "rainDrops", "value", defaultRainDrops)
+			else
+				rainDrops = tonumber(value)
+				CobaltDB.set("environment", "rainDrops", "value", rainDrops)
+			end
+		elseif key == "dropSize" then
+			if value == "default" then
+				dropSize = defaultDayScale
+				value = defaultDayScale
+				CobaltDB.set("environment", "dropSize", "value", defaultDropSize)
+			else
+				dropSize = tonumber(value)
+				CobaltDB.set("environment", "dropSize", "value", dropSize)
+			end
+		elseif key == "dropMinSpeed" then
+			if value == "default" then
+				dropMinSpeed = defaultDropMinSpeed
+				value = defaultDropMinSpeed
+				CobaltDB.set("environment", "dropMinSpeed", "value", defaultDropMinSpeed)
+			else
+				dropMinSpeed = tonumber(value)
+				CobaltDB.set("environment", "dropMinSpeed", "value", dropMinSpeed)
+			end
+		elseif key == "dropMaxSpeed" then
+			if value == "default" then
+				dropMaxSpeed = defaultDropMaxSpeed
+				value = defaultDropMaxSpeed
+				CobaltDB.set("environment", "dropMaxSpeed", "value", defaultDropMaxSpeed)
+			else
+				dropMaxSpeed = tonumber(value)
+				CobaltDB.set("environment", "dropMaxSpeed", "value", dropMaxSpeed)
+			end
+		elseif key == "precipType" then
+			precipType = value
+		elseif key == "simSpeed" then
+			if value == "default" then
+				simSpeed = defaultSimSpeed
+				value = defaultSimSpeed
+				CobaltDB.set("environment", "simSpeed", "value", simSpeed)
+			else
+				simSpeed = tonumber(value)
+				CobaltDB.set("environment", "simSpeed", "value", simSpeed)
+			end
+		elseif key == "gravity" then
+			if value == "default" then
+				gravity = defaultGravity
+				value = defaultGravity
+				CobaltDB.set("environment", "gravity", "value", gravity)
+			else
+				gravity = tonumber(value)
+				CobaltDB.set("environment", "gravity", "value", gravity)
+			end
 		end
 	end
 end
