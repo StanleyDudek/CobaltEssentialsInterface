@@ -20,7 +20,7 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
 **UNTIL FURTHER NOTICE, THIS COMES WITH PATCHED FILES FOR CE 1.6.0 [BETA5] TO MAKE INSTALLATION EASIER**
 
-1. Grab Cobalt_Essentials_Interface.zip from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
+1. Grab the latest release from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
 2. Unpack it somewhere.
 3. Drag the folder `Resources` into the directory where your server is installed.
 4. Edit LoadExtensions.cfg in `...\Resources\Server\CobaltEssentials\` to add the following line: `CEI = "CEI"`.
