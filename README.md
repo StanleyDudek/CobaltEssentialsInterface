@@ -22,7 +22,7 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
 1. Grab the latest release from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
 2. Unpack it somewhere.
-3. Drag the folder `Resources` into the directory where your server is installed.
+3. Drag the folder `Resources` into the directory where your server is installed, accept the overwrites.
 4. Edit LoadExtensions.cfg in `...\Resources\Server\CobaltEssentials\` to add the following line: `CEI = "CEI"`.
 5. Start the server, and join.
 6. Once joined, the interface should be active by default. In the chat, enter the command /CEI to toggle the interface
