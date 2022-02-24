@@ -46,6 +46,7 @@ local defaultDropSize = 1
 local defaultDropMinSpeed = 0.1
 local defaultDropMaxSpeed = 0.2
 local defaultPrecipType = "rain_medium"
+local defaultTeleportTimeout = 5
 local defaultSimSpeed = 1
 local defaultGravity = -9.81
 local ToD
@@ -69,6 +70,7 @@ local dropSize
 local dropMinSpeed
 local dropMaxSpeed
 local precipType
+local teleportTimeout
 local simSpeed
 local gravity
 
@@ -94,6 +96,7 @@ local defaultEnvironment = {
 	dropMinSpeed = {value = defaultDropMinSpeed, description = "What is the minimum speed of precipitation?"},
 	dropMaxSpeed = {value = defaultDropMaxSpeed, description = "What is the maximum speed of precipitation?"},
 	precipType = {value = defaultPrecipType, description = "What type of precipitation do we use?"},
+	teleportTimeout = {value = defaultTeleportTimeout, description = "How long between telports?"},
 	simSpeed = {value = defaultSimSpeed, description = "At what rate does the simulation run?"},
 	gravity = {value = defaultGravity, description = "At what rate do objects fall towards the ground?"},
 }
@@ -170,6 +173,7 @@ local function onInit()
 	dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
 	dropMaxSpeed = CobaltDB.query("environment", "dropMaxSpeed", "value")
 	precipType = CobaltDB.query("environment", "precipType", "value")
+	teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
 	simSpeed = CobaltDB.query("environment", "simSpeed", "value")
 	gravity = CobaltDB.query("environment", "gravity", "value")
 	
@@ -278,6 +282,7 @@ local function txEnvironment(player)
 				.. "$" .. dropMinSpeed
 				.. "$" .. dropMaxSpeed
 				.. "$" .. precipType
+				.. "$" .. teleportTimeout
 				.. "$" .. simSpeed
 				.. "$" .. gravity
 				
@@ -805,6 +810,15 @@ function CEISetEnv(senderID, data)
 			end
 		elseif key == "precipType" then
 			precipType = value
+		elseif key == "teleportTimeout" then
+			if value == "default" then
+				teleportTimeout = defaultTeleportTimeout
+				value = defaultTeleportTimeout
+				CobaltDB.set("environment", "teleportTimeout", "value", defaultTeleportTimeout)
+			else
+				teleportTimeout = tonumber(value)
+				CobaltDB.set("environment", "teleportTimeout", "value", teleportTimeout)
+			end
 		elseif key == "simSpeed" then
 			if value == "default" then
 				simSpeed = defaultSimSpeed
