@@ -27,7 +27,7 @@ local stats = {}
 
 local environment = {}
 
-local envReportRate = 2
+local envReportRate = 4
 local lastEnvReport = 0
 local firstReport = false
 local envObjectIdCache = {}
