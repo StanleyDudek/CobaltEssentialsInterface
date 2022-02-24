@@ -32,6 +32,8 @@ local lastEnvReport = 0
 local firstReport = false
 local envObjectIdCache = {}
 
+local lastTeleport = 0
+
 local worldReadyState = 0
 
 local gui_module = require("ge/extensions/editor/api/gui")
@@ -97,9 +99,11 @@ local function rxEnvironment(data)
 	environment.dropMaxSpeed = envData[20]
 	environment.dropMaxSpeedVal = im.FloatPtr(tonumber(environment.dropMaxSpeed))
 	environment.precipType = envData[21]
-	environment.simSpeed = envData[22]
+	environment.teleportTimeout = envData[22]
+	environment.teleportTimeoutInt = im.IntPtr(tonumber(environment.teleportTimeout))
+	environment.simSpeed = envData[23]
 	environment.simSpeedVal = im.FloatPtr(tonumber(environment.simSpeed))
-	environment.gravity = envData[23]
+	environment.gravity = envData[24]
 	environment.gravityVal = im.FloatPtr(tonumber(environment.gravity))
 end
 
@@ -332,7 +336,7 @@ local function rxPlayersData(data)
 	end
 end
 
-local function drawCEOI()
+local function drawCEOI(dt)
 	if not gui.isWindowVisible("CEI") then
 		return
 	end
@@ -396,7 +400,11 @@ local function drawCEOI()
 				
 			end
 			im.PopStyleColor(3)
-
+			
+			im.Separator()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
 			if im.SmallButton("Remote Stop All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -405,16 +413,11 @@ local function drawCEOI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
 			im.SameLine()
-			if im.SmallButton("Remote Start All") then
-				for k,v in pairs(players) do
-					for x,y in pairs(players[k].player.vehicles) do
-						TriggerServerEvent("CEIToggleIgnition", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-						log('W', logTag, "CEIToggleIgnition Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-					end
-				end
-			end
-			im.SameLine()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 			if im.SmallButton("Freeze All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -423,7 +426,24 @@ local function drawCEOI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
+			
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.1, 1.0, 0.1, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
+			if im.SmallButton("Remote Start All") then
+				for k,v in pairs(players) do
+					for x,y in pairs(players[k].player.vehicles) do
+						TriggerServerEvent("CEIToggleIgnition", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+						log('W', logTag, "CEIToggleIgnition Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+					end
+				end
+			end
+			im.PopStyleColor(3)
 			im.SameLine()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 			if im.SmallButton("Unfreeze All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -432,6 +452,8 @@ local function drawCEOI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
+			im.Separator()
 			
 			for k,v in pairs(players) do
 ----------------------------------------------------------------------------------PLAYER HEADER
@@ -1871,7 +1893,26 @@ local function drawCEOI()
 				
 				if im.TreeNode1("Simulation") then
 					im.Indent()
-				
+					
+					im.Text("Teleport Timeout: ")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
+						if environment.teleportTimeoutInt[0] < 0 then
+							environment.teleportTimeoutInt = im.IntPtr(0)
+						elseif environment.teleportTimeoutInt[0] > 60 then
+							environment.teleportTimeoutInt = im.IntPtr(60)
+						end
+						TriggerServerEvent("CEISetEnv", "teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+						log('W', logTag, "CEISetEnv Called: teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##TLPT") then
+						TriggerServerEvent("CEISetEnv", "teleportTimeout|default")
+						log('W', logTag, "CEISetEnv Called: teleportTimeout|default")
+					end
+					
 					im.Text("Simulation Speed: ")
 					im.SameLine()
 					im.PushItemWidth(100)
@@ -2015,7 +2056,7 @@ local function drawCEOI()
 	im.End()
 end
 
-local function drawCEAI()
+local function drawCEAI(dt)
 	if not gui.isWindowVisible("CEI") then
 		return
 	end
@@ -2081,6 +2122,10 @@ local function drawCEAI()
 			end
 			im.PopStyleColor(3)
 
+			im.Separator()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
 			if im.SmallButton("Remote Stop All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -2089,16 +2134,11 @@ local function drawCEAI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
 			im.SameLine()
-			if im.SmallButton("Remote Start All") then
-				for k,v in pairs(players) do
-					for x,y in pairs(players[k].player.vehicles) do
-						TriggerServerEvent("CEIToggleIgnition", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-						log('W', logTag, "CEIToggleIgnition Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-					end
-				end
-			end
-			im.SameLine()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 			if im.SmallButton("Freeze All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -2107,7 +2147,24 @@ local function drawCEAI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
+			
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.1, 1.0, 0.1, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
+			if im.SmallButton("Remote Start All") then
+				for k,v in pairs(players) do
+					for x,y in pairs(players[k].player.vehicles) do
+						TriggerServerEvent("CEIToggleIgnition", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+						log('W', logTag, "CEIToggleIgnition Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+					end
+				end
+			end
+			im.PopStyleColor(3)
 			im.SameLine()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 			if im.SmallButton("Unfreeze All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -2116,6 +2173,8 @@ local function drawCEAI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
+			im.Separator()
 			
 			for k,v in pairs(players) do
 ----------------------------------------------------------------------------------PLAYER HEADER
@@ -3556,7 +3615,26 @@ local function drawCEAI()
 				
 				if im.TreeNode1("Simulation") then
 					im.Indent()
-				
+					
+					im.Text("Teleport Timeout: ")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
+						if environment.teleportTimeoutInt[0] < 0 then
+							environment.teleportTimeoutInt = im.IntPtr(0)
+						elseif environment.teleportTimeoutInt[0] > 60 then
+							environment.teleportTimeoutInt = im.IntPtr(60)
+						end
+						TriggerServerEvent("CEISetEnv", "teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+						log('W', logTag, "CEISetEnv Called: teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##TLPT") then
+						TriggerServerEvent("CEISetEnv", "teleportTimeout|default")
+						log('W', logTag, "CEISetEnv Called: teleportTimeout|default")
+					end
+					
 					im.Text("Simulation Speed: ")
 					im.SameLine()
 					im.PushItemWidth(100)
@@ -3700,7 +3778,7 @@ local function drawCEAI()
 	im.End()
 end
 
-local function drawCEMI()
+local function drawCEMI(dt)
 	if not gui.isWindowVisible("CEI") then
 		return
 	end
@@ -3766,6 +3844,10 @@ local function drawCEMI()
 			end
 			im.PopStyleColor(3)
 
+			im.Separator()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
 			if im.SmallButton("Remote Stop All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -3774,16 +3856,11 @@ local function drawCEMI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
 			im.SameLine()
-			if im.SmallButton("Remote Start All") then
-				for k,v in pairs(players) do
-					for x,y in pairs(players[k].player.vehicles) do
-						TriggerServerEvent("CEIToggleIgnition", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-						log('W', logTag, "CEIToggleIgnition Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-					end
-				end
-			end
-			im.SameLine()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 			if im.SmallButton("Freeze All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -3792,7 +3869,24 @@ local function drawCEMI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
+			
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.1, 1.0, 0.1, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
+			if im.SmallButton("Remote Start All") then
+				for k,v in pairs(players) do
+					for x,y in pairs(players[k].player.vehicles) do
+						TriggerServerEvent("CEIToggleIgnition", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+						log('W', logTag, "CEIToggleIgnition Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+					end
+				end
+			end
+			im.PopStyleColor(3)
 			im.SameLine()
+			im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 			if im.SmallButton("Unfreeze All") then
 				for k,v in pairs(players) do
 					for x,y in pairs(players[k].player.vehicles) do
@@ -3801,6 +3895,8 @@ local function drawCEMI()
 					end
 				end
 			end
+			im.PopStyleColor(3)
+			im.Separator()
 			
 			for k,v in pairs(players) do
 ----------------------------------------------------------------------------------PLAYER HEADER
@@ -3885,7 +3981,12 @@ local function drawCEMI()
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							if lastTeleport + dt >= environment.teleportTimeout then
+								lastTeleport = 0
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							else
+								lastTeleport = lastTeleport + dt
+							end
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
@@ -4076,7 +4177,12 @@ local function drawCEMI()
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							if lastTeleport + dt >= environment.teleportTimeout then
+								lastTeleport = 0
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							else
+								lastTeleport = lastTeleport + dt
+							end
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
@@ -4371,7 +4477,7 @@ local function drawCEMI()
 	im.End()
 end
 
-local function drawCEPI()
+local function drawCEPI(dt)
 	if not gui.isWindowVisible("CEI") then
 		return
 	end
@@ -4465,7 +4571,12 @@ local function drawCEPI()
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							if lastTeleport + dt >= environment.teleportTimeout then
+								lastTeleport = 0
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							else
+								lastTeleport = lastTeleport + dt
+							end
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
@@ -4507,7 +4618,12 @@ local function drawCEPI()
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							if lastTeleport + dt >= environment.teleportTimeout then
+								lastTeleport = 0
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							else
+								lastTeleport = lastTeleport + dt
+							end
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
@@ -4523,7 +4639,7 @@ local function drawCEPI()
 	im.End()
 end
 
-local function drawCEGI()
+local function drawCEGI(dt)
 	if not gui.isWindowVisible("CEI") then
 		return
 	end
@@ -4645,7 +4761,7 @@ local function drawCEGI()
 	im.End()
 end
 
-local function drawCESI()
+local function drawCESI(dt)
 	if not gui.isWindowVisible("CEI") then
 		return
 	end
@@ -4840,22 +4956,22 @@ end
 local function onUpdate(dt)
 	if currentRole == "owner" then
 		if windowOpen[0] ~= true then return end
-		drawCEOI()
+		drawCEOI(dt)
 	elseif currentRole == "admin" then
 		if windowOpen[0] ~= true then return end
-		drawCEAI()
+		drawCEAI(dt)
 	elseif currentRole == "mod" then
 		if windowOpen[0] ~= true then return end
-		drawCEMI()
+		drawCEMI(dt)
 	elseif currentRole == "player" then
 		if windowOpen[0] ~= true then return end
-		drawCEPI()
+		drawCEPI(dt)
 	elseif currentRole == "guest" then
 		if windowOpen[0] ~= true then return end
-		drawCEGI()
+		drawCEGI(dt)
 	elseif currentRole == "spectator" then
 		if windowOpen[0] ~= true then return end
-		drawCESI()
+		drawCESI(dt)
 	end
 	checkVehicleState()
 	
