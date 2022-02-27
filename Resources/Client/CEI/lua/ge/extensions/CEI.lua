@@ -26,8 +26,12 @@ local config = {}
 local stats = {}
 
 local environment = {}
+environment.useTempCurveSent = false
 
-local envReportRate = 4
+local defaultTempCurve
+local defaultTempCurveSet = false
+
+local envReportRate = 3
 local lastEnvReport = 0
 local firstReport = false
 local envObjectIdCache = {}
@@ -105,6 +109,20 @@ local function rxEnvironment(data)
 	environment.simSpeedVal = im.FloatPtr(tonumber(environment.simSpeed))
 	environment.gravity = envData[24]
 	environment.gravityVal = im.FloatPtr(tonumber(environment.gravity))
+	environment.tempCurveNoon = envData[25]
+	environment.tempCurveNoonInt = im.IntPtr(tonumber(environment.tempCurveNoon))
+	environment.tempCurveDusk = envData[26]
+	environment.tempCurveDuskInt = im.IntPtr(tonumber(environment.tempCurveDusk))
+	environment.tempCurveMidnight = envData[27]
+	environment.tempCurveMidnightInt = im.IntPtr(tonumber(environment.tempCurveMidnight))
+	environment.tempCurveDawn = envData[28]
+	environment.tempCurveDawnInt = im.IntPtr(tonumber(environment.tempCurveDawn))
+	environment.useTempCurve = envData[29]
+	if environment.useTempCurve == "true" then
+		environment.useTempCurveVal = true
+	elseif environment.useTempCurve == "false" then
+		environment.useTempCurveVal = false
+	end
 end
 
 local function rxPreferences(data)
@@ -539,7 +557,7 @@ local function drawCEOI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-					
+						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Focus##" .. tostring(k)) then
 							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
@@ -553,7 +571,6 @@ local function drawCEOI(dt)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 					end
 					
 					im.Text("		")
@@ -562,10 +579,10 @@ local function drawCEOI(dt)
 					im.SameLine()
 					if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", players[k].player.kickBanMuteReason, 128) then
 					end
+					
 					im.Text("		")
 					im.SameLine()
-					im.Text("tempBan Length:")
-
+					im.Text("tempBan:")
 					im.SameLine()
 					im.PushItemWidth(120)
 					if im.InputFloat("##tempBanLength"..tostring(k), players[k].player.tempBanLength, 0.001, 1) then
@@ -581,13 +598,6 @@ local function drawCEOI(dt)
 					im.Text("days = " .. tostring(M.round(players[k].player.tempBanLength[0] * 1440,2)) .. " minutes")
 					im.PopItemWidth()
 					
-					im.Text("		playerID: " .. players[k].player.playerID)
-					im.Text("		connectStage: " .. players[k].player.connectStage)
-					im.Text("		guest: " .. players[k].player.guest)
-					im.Text("		joinTime: " .. players[k].player.joinTime)
-					im.SameLine()
-					im.Text(": connectedTime: " .. players[k].player.connectedTime)
-
 					if vehiclesCounter > 0 then
 						im.Separator()
 
@@ -595,15 +605,11 @@ local function drawCEOI(dt)
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
 							
-							if vehiclesCounter > 0 then
-							
-								im.Text("		")
-								im.SameLine()
-								im.Text("Reason:")
-								im.SameLine()
-								if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", players[k].player.vehDeleteReason, 128) then
-								end
-								
+							im.Text("		")
+							im.SameLine()
+							im.Text("Reason:")
+							im.SameLine()
+							if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", players[k].player.vehDeleteReason, 128) then
 							end
 							
 							for x,y in pairs(players[k].player.vehicles) do
@@ -617,7 +623,6 @@ local function drawCEOI(dt)
 								im.Text(players[k].player.vehicles[x].vehicleID .. ":")
 								im.SameLine()
 								im.Text(players[k].player.vehicles[x].genericName)
-								
 								
 								for i,j in pairs(ignitionEnabled) do
 									if i == MPVehicleGE.getGameVehicleID(k .. "-" .. players[k].player.vehicles[x].vehicleID) then
@@ -668,75 +673,85 @@ local function drawCEOI(dt)
 						end
 					end
 					im.Separator()
-					if im.TreeNode1("permissions##"..tostring(k)) then
-						if im.TreeNode1("level:") then
-							im.SameLine()
-							im.Text(players[k].player.permissions.level)
-							im.Text("		")
-							im.SameLine()
-							im.PushItemWidth(100)
-							if im.InputInt("", players[k].player.permissions.levelInt, 1) then
-								TriggerServerEvent("CEISetTempPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
-								log('W', logTag, "CEISetTempPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+					if im.TreeNode1("info##"..tostring(k)) then
+						im.Text("		playerID: " .. players[k].player.playerID)
+						im.Text("		connectStage: " .. players[k].player.connectStage)
+						im.Text("		guest: " .. players[k].player.guest)
+						im.Text("		joinTime: " .. players[k].player.joinTime)
+						im.SameLine()
+						im.Text(": connectedTime: " .. players[k].player.connectedTime)
+						im.Separator()
+						if im.TreeNode1("permissions##"..tostring(k)) then
+							if im.TreeNode1("level:") then
+								im.SameLine()
+								im.Text(players[k].player.permissions.level)
+								im.Text("		")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputInt("", players[k].player.permissions.levelInt, 1) then
+									TriggerServerEvent("CEISetTempPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+									log('W', logTag, "CEISetTempPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+								end
+								im.PopItemWidth()
+								im.SameLine()
+								if im.Button("Apply##level"..tostring(x)) then
+									TriggerServerEvent("CEISetPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+									log('W', logTag, "CEISetPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+								end
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(players[k].player.permissions.level)
 							end
-							im.PopItemWidth()
-							im.SameLine()
-							if im.Button("Apply##level"..tostring(x)) then
-								TriggerServerEvent("CEISetPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
-								log('W', logTag, "CEISetPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+							im.Text("		whitelisted: " .. players[k].player.permissions.whitelisted)
+							im.Text("		muted: " .. players[k].player.permissions.muted)
+							im.Text("		muteReason: " .. players[k].player.permissions.muteReason)
+							im.Text("		banned: " .. players[k].player.permissions.banned)
+							if im.TreeNode1("group:##"..tostring(k)) then
+								im.SameLine()
+								im.Text(players[k].player.permissions.group)
+								im.Text("		")
+								im.SameLine()
+								if im.InputTextWithHint("##newGroup", "Group Name", players[k].player.permissions.groupInput, 128) then
+								end
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##"..tostring(k)) then
+									TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
+									log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
+								end
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+								if im.SmallButton("Remove##"..tostring(k)) then
+									TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|none")
+									log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|none")
+								end
+								im.PopStyleColor(3)
+								im.SameLine()
+								im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(players[k].player.permissions.group)
 							end
 							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(players[k].player.permissions.level)
 						end
-						im.Text("		whitelisted: " .. players[k].player.permissions.whitelisted)
-						im.Text("		muted: " .. players[k].player.permissions.muted)
-						im.Text("		muteReason: " .. players[k].player.permissions.muteReason)
-						im.Text("		banned: " .. players[k].player.permissions.banned)
-						if im.TreeNode1("group:##"..tostring(k)) then
-							im.SameLine()
-							im.Text(players[k].player.permissions.group)
-							im.Text("		")
-							im.SameLine()
-							if im.InputTextWithHint("##newGroup", "Group Name", players[k].player.permissions.groupInput, 128) then
-							end
-							im.Text("		")
-							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
-								TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
-								log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
-							end
-							im.SameLine()
-							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-							if im.SmallButton("Remove##"..tostring(k)) then
-								TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|none")
-								log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|none")
-							end
-							im.PopStyleColor(3)
-							im.SameLine()
-							im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
+						im.Separator()
+						if im.TreeNode1("gamemode##"..tostring(k)) then
+							im.Text("		mode: " .. players[k].player.gamemode.mode)
+							im.Text("		source: " .. players[k].player.gamemode.source)
+							im.Text("		queue: " .. players[k].player.gamemode.queue)
+							im.Text("		locked: " .. players[k].player.gamemode.locked)
 							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(players[k].player.permissions.group)
 						end
-						im.TreePop()
-					end
-					im.Separator()
-					if im.TreeNode1("gamemode##"..tostring(k)) then
-						im.Text("		mode: " .. players[k].player.gamemode.mode)
-						im.Text("		source: " .. players[k].player.gamemode.source)
-						im.Text("		queue: " .. players[k].player.gamemode.queue)
-						im.Text("		locked: " .. players[k].player.gamemode.locked)
 						im.TreePop()
 					end
 					im.Unindent()
 				else
-				im.Indent()
 					im.PopStyleColor(3)
+					im.Indent()
 					im.Text("		")
 					im.SameLine()
 					if im.SmallButton("Kick##"..tostring(k)) then
@@ -779,7 +794,7 @@ local function drawCEOI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-					
+						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Focus##" .. tostring(k)) then
 							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
@@ -793,33 +808,8 @@ local function drawCEOI(dt)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 					end
 					
-					
-					im.Text("		")
-					im.SameLine()
-					im.Text("Reason:")
-					im.SameLine()
-					if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", players[k].player.kickBanMuteReason, 128) then
-					end
-					im.Text("		")
-					im.SameLine()
-					im.Text("tempBan Length:")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputFloat("##tempBanLength"..tostring(k), players[k].player.tempBanLength, 0.001, 1) then
-						if players[k].player.tempBanLength[0] < 0.001 then
-							players[k].player.tempBanLength = im.FloatPtr(0.001)
-						elseif players[k].player.tempBanLength[0] > 3650 then
-							players[k].player.tempBanLength = im.FloatPtr(3650)
-						end
-						TriggerServerEvent("CEISetTempBan", tostring(k) .. "|" .. tostring(players[k].player.tempBanLength[0]))
-						log('W', logTag, "CEISetTempBan Called: " .. tostring(k) .. "|" .. tostring(players[k].player.tempBanLength[0]))
-					end
-					im.SameLine()
-					im.Text("days = " .. tostring(M.round(players[k].player.tempBanLength[0] * 1440,2)) .. " minutes")
-					im.PopItemWidth()
 					im.Unindent()
 					
 				end
@@ -1130,7 +1120,7 @@ local function drawCEOI(dt)
 						im.SameLine()
 						im.Text(config.cobalt.whitelistedPlayers[x].name)
 						im.SameLine()
-						if im.SmallButton("Remove##whitelistName") then
+						if im.SmallButton("Remove##"..tostring(x)) then
 							TriggerServerEvent("CEIWhitelist", "remove|" .. config.cobalt.whitelistedPlayers[x].name)
 							log('W', logTag, "CEIWhitelist Called: remove|" .. config.cobalt.whitelistedPlayers[x].name)
 						end
@@ -1166,7 +1156,7 @@ local function drawCEOI(dt)
 						log('W', logTag, "CEIWhitelist Called: disable")
 					end
 				end
-				im.Separator()
+				--[[im.Separator()
 				if im.TreeNode1("miscellaneous") then
 					im.Separator()
 					im.Indent()
@@ -1258,7 +1248,7 @@ local function drawCEOI(dt)
 					im.Text("		")
 					im.Unindent()
 					im.TreePop()
-				end
+				end]]
 				im.Unindent()
 			end
 ----------------------------------------------------------------------------------SERVER HEADER
@@ -1403,652 +1393,778 @@ local function drawCEOI(dt)
 				im.SameLine()
 				im.ShowHelpMarker("Good-bye!")
 				im.Unindent()
+				
+			end
+			im.EndTabItem()
+		end
+----------------------------------------------------------------------------------ENVIRONMENT TAB
+		if im.BeginTabItem("Environment") then
+					
+			im.Indent()
+
+			if im.SmallButton("Reset All##ENV") then
+				TriggerServerEvent("CEISetEnv", "all|default")
+				log('W', logTag, "CEISetEnv Called: all|default")
 			end
 			
-			if im.CollapsingHeader1("Client") then
+			if im.TreeNode1("Sun") then
+				im.SameLine()
+				if im.SmallButton("Reset##SUN") then
+					TriggerServerEvent("CEISetEnv", "allSun|default")
+					log('W', logTag, "CEISetEnv Called: allSun|default")
+				end
 				im.Indent()
-				if im.TreeNode1("Environment") then
-					im.SameLine()
-					if im.SmallButton("Reset##ENV") then
-						TriggerServerEvent("CEISetEnv", "all|default")
-						log('W', logTag, "CEISetEnv Called: all|default")
+					
+				im.Text("Time Play: ")
+				im.SameLine()
+				local timePlay = environment.timePlay
+				if timePlay == "false" then
+					if im.SmallButton("Play") then
+						TriggerServerEvent("CEISetEnv", "timePlay|true")
+						log('W', logTag, "CEISetEnv Called: timePlay|true")
 					end
-					im.Indent()
-					if im.TreeNode1("Sun") then
-						im.SameLine()
-						if im.SmallButton("Reset##SUN") then
-							TriggerServerEvent("CEISetEnv", "allSun|default")
-							log('W', logTag, "CEISetEnv Called: allSun|default")
-						end
-						im.Indent()
-							
-						im.Text("Time Play: ")
-						im.SameLine()
-						local timePlay = environment.timePlay
-						if timePlay == "false" then
-							if im.SmallButton("Play") then
-								TriggerServerEvent("CEISetEnv", "timePlay|true")
-								log('W', logTag, "CEISetEnv Called: timePlay|true")
-							end
-						elseif timePlay == "true" then
-							if im.SmallButton("Stop") then
-								local timeOfDay = core_environment.getTimeOfDay()
-								TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
-								log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(timeOfDay.time))
-								TriggerServerEvent("CEISetEnv", "timePlay|false")
-								log('W', logTag, "CEISetEnv Called: timePlay|false")
-							end
-						end
-						
-						im.Text("Time of Day: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##ToD", environment.todVal, 0.001, 0.01) then
-							if environment.todVal[0] < 0 then
-								environment.todVal = im.FloatPtr(1)
-							elseif environment.todVal[0] > 1 then
-								environment.todVal = im.FloatPtr(0)
-							end
-							environment.todVal = im.FloatPtr(environment.todVal)
-							TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(environment.todVal[0]))
-							log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(environment.todVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##ToD") then
-							TriggerServerEvent("CEISetEnv", "ToD|default")
-							log('W', logTag, "CEISetEnv Called: ToD|default")
-						end
-						
-						im.Text("Day Scale: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##dayScale", environment.dayScaleVal, 0.01, 0.1) then
-							if environment.dayScaleVal[0] < 0.01 then
-								environment.dayScaleVal = im.FloatPtr(0.01)
-							elseif environment.dayScaleVal[0] > 100 then
-								environment.dayScaleVal = im.FloatPtr(100)
-							end
-							environment.dayScaleVal = im.FloatPtr(environment.dayScaleVal)
-							TriggerServerEvent("CEISetEnv", "dayScale|" .. tostring(environment.dayScaleVal[0]))
-							log('W', logTag, "CEISetEnv Called: dayScale|" .. tostring(environment.dayScaleVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Realtime##DS") then
-							TriggerServerEvent("CEISetEnv", "dayScale|0.0115740")
-							log('W', logTag, "CEISetEnv Called: dayScale|0.0115740")
-						end
-						im.SameLine()
-						if im.SmallButton("Reset##DS") then
-							TriggerServerEvent("CEISetEnv", "dayScale|default")
-							log('W', logTag, "CEISetEnv Called: dayScale|default")
-						end
-						
-						im.Text("Night Scale: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##nightScale", environment.nightScaleVal, 0.01, 0.1) then
-							if environment.nightScaleVal[0] < 0.01 then
-								environment.nightScaleVal = im.FloatPtr(0.01)
-							elseif environment.nightScaleVal[0] > 100 then
-								environment.nightScaleVal = im.FloatPtr(100)
-							end
-							environment.nightScaleVal = im.FloatPtr(environment.nightScaleVal)
-							TriggerServerEvent("CEISetEnv", "nightScale|" .. tostring(environment.nightScaleVal[0]))
-							log('W', logTag, "CEISetEnv Called: nightScale|" .. tostring(environment.nightScaleVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Realtime##NS") then
-							TriggerServerEvent("CEISetEnv", "nightScale|0.0115740")
-							log('W', logTag, "CEISetEnv Called: nightScale|0.0115740")
-						end
-						im.SameLine()
-						if im.SmallButton("Reset##NS") then
-							TriggerServerEvent("CEISetEnv", "nightScale|default")
-							log('W', logTag, "CEISetEnv Called: nightScale|default")
-						end
-						
-						im.Text("Azimuth Override: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##azimuthOverride", environment.azimuthOverrideVal, 0.001, 0.01) then
-							if environment.azimuthOverrideVal[0] < 0 then
-								environment.azimuthOverrideVal = im.FloatPtr(6.25)
-							elseif environment.azimuthOverrideVal[0] > 6.25 then
-								environment.azimuthOverrideVal = im.FloatPtr(0)
-							end
-							environment.azimuthOverrideVal = im.FloatPtr(environment.azimuthOverrideVal)
-							TriggerServerEvent("CEISetEnv", "azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
-							log('W', logTag, "CEISetEnv Called: azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##AO") then
-							TriggerServerEvent("CEISetEnv", "azimuthOverride|default")
-							log('W', logTag, "CEISetEnv Called: azimuthOverride|default")
-						end
-						
-						im.Text("Sun Size: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##sunSize", environment.sunSizeVal, 0.01, 0.1) then
-							if environment.sunSizeVal[0] < 0 then
-								environment.sunSizeVal = im.FloatPtr(0)
-							elseif environment.sunSizeVal[0] > 100 then
-								environment.sunSizeVal = im.FloatPtr(100)
-							end
-							environment.sunSizeVal = im.FloatPtr(environment.sunSizeVal)
-							TriggerServerEvent("CEISetEnv", "sunSize|" .. tostring(environment.sunSizeVal[0]))
-							log('W', logTag, "CEISetEnv Called: sunSize|" .. tostring(environment.sunSizeVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SS") then
-							TriggerServerEvent("CEISetEnv", "sunSize|default")
-							log('W', logTag, "CEISetEnv Called: sunSize|default")
-						end
-						
-						im.Text("Sky Brightness: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##skyBrightness", environment.skyBrightnessVal, 0.1, 1.0) then
-							if environment.skyBrightnessVal[0] < 0 then
-								environment.skyBrightnessVal = im.FloatPtr(0)
-							elseif environment.skyBrightnessVal[0] > 200 then
-								environment.skyBrightnessVal = im.FloatPtr(200)
-							end
-							environment.skyBrightnessVal = im.FloatPtr(environment.skyBrightnessVal)
-							TriggerServerEvent("CEISetEnv", "skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
-							log('W', logTag, "CEISetEnv Called: skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SB") then
-							TriggerServerEvent("CEISetEnv", "skyBrightness|default")
-							log('W', logTag, "CEISetEnv Called: skyBrightness|default")
-						end
-						
-						im.Text("Sunlight Brightness: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##sunLightBrightness", environment.sunLightBrightnessVal, 0.01, 0.1) then
-							if environment.sunLightBrightnessVal[0] < 0 then
-								environment.sunLightBrightnessVal = im.FloatPtr(0)
-							elseif environment.sunLightBrightnessVal[0] > 10 then
-								environment.sunLightBrightnessVal = im.FloatPtr(10)
-							end
-							environment.sunLightBrightnessVal = im.FloatPtr(environment.sunLightBrightnessVal)
-							TriggerServerEvent("CEISetEnv", "sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
-							log('W', logTag, "CEISetEnv Called: sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##GB") then
-							TriggerServerEvent("CEISetEnv", "sunLightBrightness|default")
-							log('W', logTag, "CEISetEnv Called: sunLightBrightness|default")
-						end
-						
-						im.Text("Exposure: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##exposure", environment.exposureVal, 0.01, 0.1) then
-							if environment.exposureVal[0] < 0 then
-								environment.exposureVal = im.FloatPtr(0)
-							elseif environment.exposureVal[0] > 3 then
-								environment.exposureVal = im.FloatPtr(3)
-							end
-							environment.exposureVal = im.FloatPtr(environment.exposureVal)
-							TriggerServerEvent("CEISetEnv", "exposure|" .. tostring(environment.exposureVal[0]))
-							log('W', logTag, "CEISetEnv Called: exposure|" .. tostring(environment.exposureVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##EX") then
-							TriggerServerEvent("CEISetEnv", "exposure|default")
-							log('W', logTag, "CEISetEnv Called: exposure|default")
-						end
-						
-						im.Text("Shadow Distance: ")
-						im.SameLine()
-						im.PushItemWidth(120)
-						if im.InputFloat("##shadowDistance", environment.shadowDistanceVal, 0.001, 0.01) then
-							if environment.shadowDistanceVal[0] < 0 then
-								environment.shadowDistanceVal = im.FloatPtr(0)
-							elseif environment.shadowDistanceVal[0] > 12800 then
-								environment.shadowDistanceVal = im.FloatPtr(12800)
-							end
-							environment.shadowDistanceVal = im.FloatPtr(environment.shadowDistanceVal)
-							TriggerServerEvent("CEISetEnv", "shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
-							log('W', logTag, "CEISetEnv Called: shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SD") then
-							TriggerServerEvent("CEISetEnv", "shadowDistance|default")
-							log('W', logTag, "CEISetEnv Called: shadowDistance|default")
-						end
-						
-						im.Text("Shadow Softness: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##shadowSoftness", environment.shadowSoftnessVal, 0.001, 0.01) then
-							if environment.shadowSoftnessVal[0] < -10 then
-								environment.shadowSoftnessVal = im.FloatPtr(-10)
-							elseif environment.shadowSoftnessVal[0] > 10 then
-								environment.shadowSoftnessVal = im.FloatPtr(10)
-							end
-							environment.shadowSoftnessVal = im.FloatPtr(environment.shadowSoftnessVal)
-							TriggerServerEvent("CEISetEnv", "shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
-							log('W', logTag, "CEISetEnv Called: shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SSFT") then
-							TriggerServerEvent("CEISetEnv", "shadowSoftness|default")
-							log('W', logTag, "CEISetEnv Called: shadowSoftness|default")
-						end
-						
-						im.Text("Shadow Splits: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##shadowSplits", environment.shadowSplitsInt, 1) then
-							if environment.shadowSplitsInt[0] < 0 then
-								environment.shadowSplitsInt = im.IntPtr(0)
-							elseif environment.shadowSplitsInt[0] > 4 then
-								environment.shadowSplitsInt = im.IntPtr(4)
-							end
-							TriggerServerEvent("CEISetEnv", "shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
-							log('W', logTag, "CEISetEnv Called: shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SSPL") then
-							TriggerServerEvent("CEISetEnv", "shadowSplits|default")
-							log('W', logTag, "CEISetEnv Called: shadowSplits|default")
-						end
-						
-						
-						
-						
-						
-						im.TreePop()
-						im.Unindent()
-					else
-						im.SameLine()
-						if im.SmallButton("Reset##SUN") then
-							TriggerServerEvent("CEISetEnv", "allSun|default")
-							log('W', logTag, "CEISetEnv Called: allSun|default")
-						end
-					end
-					
-					
-					
-					if im.TreeNode1("Weather") then
-						im.SameLine()
-						if im.SmallButton("Reset##WET") then
-							TriggerServerEvent("CEISetEnv", "allWeather|default")
-							log('W', logTag, "CEISetEnv Called: allWeather|default")
-						end
-						
-						im.Indent()
-						
-						im.Text("Fog Density: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##fogDensity", environment.fogDensityVal, 0.00001, 0.0001) then
-							if environment.fogDensityVal[0] < 0.00001 then
-								environment.fogDensityVal = im.FloatPtr(0.00001)
-							elseif environment.fogDensityVal[0] > 0.01 then
-								environment.fogDensityVal = im.FloatPtr(0.01)
-							end
-							TriggerServerEvent("CEISetEnv", "fogDensity|" .. tostring(environment.fogDensityVal[0]))
-							log('W', logTag, "CEISetEnv Called: fogDensity|" .. tostring(environment.fogDensityVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##FD") then
-							TriggerServerEvent("CEISetEnv", "fogDensity|default")
-							log('W', logTag, "CEISetEnv Called: fogDensity|default")
-						end
-						
-						im.Text("Fog Distance: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##fogDensityOffset", environment.fogDensityOffsetVal, 0.001, 0.01) then
-							if environment.fogDensityOffsetVal[0] < 0 then
-								environment.fogDensityOffsetVal = im.FloatPtr(0)
-							elseif environment.fogDensityOffsetVal[0] > 100 then
-								environment.fogDensityOffsetVal = im.FloatPtr(100)
-							end
-							TriggerServerEvent("CEISetEnv", "fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
-							log('W', logTag, "CEISetEnv Called: fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##FDO") then
-							TriggerServerEvent("CEISetEnv", "fogDensityOffset|default")
-							log('W', logTag, "CEISetEnv Called: fogDensityOffset|default")
-						end
-						
-						im.Text("Cloud Cover: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##cloudCover", environment.cloudCoverVal, 0.01, 0.1) then
-							if environment.cloudCoverVal[0] < 0 then
-								environment.cloudCoverVal = im.FloatPtr(0)
-							elseif environment.cloudCoverVal[0] > 5 then
-								environment.cloudCoverVal = im.FloatPtr(5)
-							end
-							TriggerServerEvent("CEISetEnv", "cloudCover|" .. tostring(environment.cloudCoverVal[0]))
-							log('W', logTag, "CEISetEnv Called: cloudCover|" .. tostring(environment.cloudCoverVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##CC") then
-							TriggerServerEvent("CEISetEnv", "cloudCover|default")
-							log('W', logTag, "CEISetEnv Called: cloudCover|default")
-						end
-						
-						im.Text("Cloud Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##cloudSpeed", environment.cloudSpeedVal, 0.01, 0.1) then
-							if environment.cloudSpeedVal[0] < 0 then
-								environment.cloudSpeedVal = im.FloatPtr(0)
-							elseif environment.cloudSpeedVal[0] > 10 then
-								environment.cloudSpeedVal = im.FloatPtr(10)
-							end
-							TriggerServerEvent("CEISetEnv", "cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
-							log('W', logTag, "CEISetEnv Called: cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##CS") then
-							TriggerServerEvent("CEISetEnv", "cloudSpeed|default")
-							log('W', logTag, "CEISetEnv Called: cloudSpeed|default")
-						end
-						
-						im.Text("Rain Drops: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##rainDrops", environment.rainDropsInt, 1, 10) then
-							if environment.rainDropsInt[0] < 0 then
-								environment.rainDropsInt = im.IntPtr(0)
-							elseif environment.rainDropsInt[0] > 20000 then
-								environment.rainDropsInt = im.IntPtr(20000)
-							end
-							TriggerServerEvent("CEISetEnv", "rainDrops|" .. tostring(environment.rainDropsInt[0]))
-							log('W', logTag, "CEISetEnv Called: rainDrops|" .. tostring(environment.rainDropsInt[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##RD") then
-							TriggerServerEvent("CEISetEnv", "rainDrops|default")
-							log('W', logTag, "CEISetEnv Called: rainDrops|default")
-						end
-						
-						im.Text("Drop Size: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropSize", environment.dropSizeVal, 0.001, 0.01) then
-							if environment.dropSizeVal[0] < 0 then
-								environment.dropSizeVal = im.FloatPtr(0)
-							elseif environment.dropSizeVal[0] > 2 then
-								environment.dropSizeVal = im.FloatPtr(2)
-							end
-							environment.dropSizeVal = im.FloatPtr(environment.dropSizeVal)
-							TriggerServerEvent("CEISetEnv", "dropSize|" .. tostring(environment.dropSizeVal[0]))
-							log('W', logTag, "CEISetEnv Called: dropSize|" .. tostring(environment.dropSizeVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DSZ") then
-							TriggerServerEvent("CEISetEnv", "dropSize|default")
-							log('W', logTag, "CEISetEnv Called: dropSize|default")
-						end
-						
-						im.Text("Drop Min Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropMinSpeed", environment.dropMinSpeedVal, 0.001, 0.01) then
-							if environment.dropMinSpeedVal[0] < 0 then
-								environment.dropMinSpeedVal = im.FloatPtr(0)
-							elseif environment.dropMinSpeedVal[0] > 2 then
-								environment.dropMinSpeedVal = im.FloatPtr(2)
-							end
-							environment.dropMinSpeedVal = im.FloatPtr(environment.dropMinSpeedVal)
-							TriggerServerEvent("CEISetEnv", "dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
-							log('W', logTag, "CEISetEnv Called: dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DMNS") then
-							TriggerServerEvent("CEISetEnv", "dropMinSpeed|default")
-							log('W', logTag, "CEISetEnv Called: dropMinSpeed|default")
-						end
-						
-						im.Text("Drop Max Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropMaxSpeed", environment.dropMaxSpeedVal, 0.001, 0.01) then
-							if environment.dropMaxSpeedVal[0] < 0 then
-								environment.dropMaxSpeedVal = im.FloatPtr(0)
-							elseif environment.dropMaxSpeedVal[0] > 2 then
-								environment.dropMaxSpeedVal = im.FloatPtr(2)
-							end
-							environment.dropMaxSpeedVal = im.FloatPtr(environment.dropMaxSpeedVal)
-							TriggerServerEvent("CEISetEnv", "dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
-							log('W', logTag, "CEISetEnv Called: dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DMXS") then
-							TriggerServerEvent("CEISetEnv", "dropMaxSpeed|default")
-							log('W', logTag, "CEISetEnv Called: dropMaxSpeed|default")
-						end
-						
-						im.Text("Precipitation Type: ")
-						im.SameLine()
-						local precipType = environment.precipType
-						if precipType == "rain_medium" then
-							if im.SmallButton("Medium Rain") then
-								TriggerServerEvent("CEISetEnv", "precipType|rain_drop")
-								log('W', logTag, "CEISetEnv Called: precipType|rain_drop")
-							end
-						elseif precipType == "rain_drop" then
-							if im.SmallButton("Light Rain") then
-								TriggerServerEvent("CEISetEnv", "precipType|Snow_menu")
-								log('W', logTag, "CEISetEnv Called: precipType|Snow_menu")
-							end
-						elseif precipType == "Snow_menu" then
-							if im.SmallButton("Snow") then
-								TriggerServerEvent("CEISetEnv", "precipType|rain_medium")
-								log('W', logTag, "CEISetEnv Called: precipType|rain_medium")
-							end
-						end
-						
-						im.TreePop()
-						im.Unindent()
-					else
-						im.SameLine()
-						if im.SmallButton("Reset##WET") then
-							TriggerServerEvent("CEISetEnv", "allWeather|default")
-							log('W', logTag, "CEISetEnv Called: allWeather|default")
-						end
-					end
-					
-					
-					
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##ENV") then
-						TriggerServerEvent("CEISetEnv", "all|default")
-						log('W', logTag, "CEISetEnv Called: all|default")
+				elseif timePlay == "true" then
+					if im.SmallButton("Stop") then
+						local timeOfDay = core_environment.getTimeOfDay()
+						TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+						log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(timeOfDay.time))
+						TriggerServerEvent("CEISetEnv", "timePlay|false")
+						log('W', logTag, "CEISetEnv Called: timePlay|false")
 					end
 				end
 				
-				if im.TreeNode1("Simulation") then
-					im.Indent()
-					
-					im.Text("Teleport Timeout: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
-						if environment.teleportTimeoutInt[0] < 0 then
-							environment.teleportTimeoutInt = im.IntPtr(0)
-						elseif environment.teleportTimeoutInt[0] > 60 then
-							environment.teleportTimeoutInt = im.IntPtr(60)
-						end
-						TriggerServerEvent("CEISetEnv", "teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
-						log('W', logTag, "CEISetEnv Called: teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+				im.Text("Time of Day: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##ToD", environment.todVal, 0.001, 0.01) then
+					if environment.todVal[0] < 0 then
+						environment.todVal = im.FloatPtr(1)
+					elseif environment.todVal[0] > 1 then
+						environment.todVal = im.FloatPtr(0)
 					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##TLPT") then
-						TriggerServerEvent("CEISetEnv", "teleportTimeout|default")
-						log('W', logTag, "CEISetEnv Called: teleportTimeout|default")
+					environment.todVal = im.FloatPtr(environment.todVal)
+					TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(environment.todVal[0]))
+					log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(environment.todVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##ToD") then
+					TriggerServerEvent("CEISetEnv", "ToD|default")
+					log('W', logTag, "CEISetEnv Called: ToD|default")
+				end
+				
+				im.Text("Day Scale: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##dayScale", environment.dayScaleVal, 0.01, 0.1) then
+					if environment.dayScaleVal[0] < 0.01 then
+						environment.dayScaleVal = im.FloatPtr(0.01)
+					elseif environment.dayScaleVal[0] > 100 then
+						environment.dayScaleVal = im.FloatPtr(100)
 					end
-					
-					im.Text("Simulation Speed: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##simSpeed", environment.simSpeedVal, 0.001, 0.1) then
-						if environment.simSpeedVal[0] < 0.01 then
-							environment.simSpeedVal = im.FloatPtr(0.01)
-						elseif environment.simSpeedVal[0] > 5 then
-							environment.simSpeedVal = im.FloatPtr(5)
-						end
-						environment.simSpeedVal = im.FloatPtr(environment.simSpeedVal)
-						TriggerServerEvent("CEISetEnv", "simSpeed|" .. tostring(environment.simSpeedVal[0]))
-						log('W', logTag, "CEISetEnv Called: simSpeed|" .. tostring(environment.simSpeedVal[0]))
+					environment.dayScaleVal = im.FloatPtr(environment.dayScaleVal)
+					TriggerServerEvent("CEISetEnv", "dayScale|" .. tostring(environment.dayScaleVal[0]))
+					log('W', logTag, "CEISetEnv Called: dayScale|" .. tostring(environment.dayScaleVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Realtime##DS") then
+					TriggerServerEvent("CEISetEnv", "dayScale|0.0115740")
+					log('W', logTag, "CEISetEnv Called: dayScale|0.0115740")
+				end
+				im.SameLine()
+				if im.SmallButton("Reset##DS") then
+					TriggerServerEvent("CEISetEnv", "dayScale|default")
+					log('W', logTag, "CEISetEnv Called: dayScale|default")
+				end
+				
+				im.Text("Night Scale: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##nightScale", environment.nightScaleVal, 0.01, 0.1) then
+					if environment.nightScaleVal[0] < 0.01 then
+						environment.nightScaleVal = im.FloatPtr(0.01)
+					elseif environment.nightScaleVal[0] > 100 then
+						environment.nightScaleVal = im.FloatPtr(100)
 					end
-					im.PopItemWidth()
+					environment.nightScaleVal = im.FloatPtr(environment.nightScaleVal)
+					TriggerServerEvent("CEISetEnv", "nightScale|" .. tostring(environment.nightScaleVal[0]))
+					log('W', logTag, "CEISetEnv Called: nightScale|" .. tostring(environment.nightScaleVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Realtime##NS") then
+					TriggerServerEvent("CEISetEnv", "nightScale|0.0115740")
+					log('W', logTag, "CEISetEnv Called: nightScale|0.0115740")
+				end
+				im.SameLine()
+				if im.SmallButton("Reset##NS") then
+					TriggerServerEvent("CEISetEnv", "nightScale|default")
+					log('W', logTag, "CEISetEnv Called: nightScale|default")
+				end
+				
+				im.Text("Azimuth Override: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##azimuthOverride", environment.azimuthOverrideVal, 0.001, 0.01) then
+					if environment.azimuthOverrideVal[0] < 0 then
+						environment.azimuthOverrideVal = im.FloatPtr(6.25)
+					elseif environment.azimuthOverrideVal[0] > 6.25 then
+						environment.azimuthOverrideVal = im.FloatPtr(0)
+					end
+					environment.azimuthOverrideVal = im.FloatPtr(environment.azimuthOverrideVal)
+					TriggerServerEvent("CEISetEnv", "azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
+					log('W', logTag, "CEISetEnv Called: azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##AO") then
+					TriggerServerEvent("CEISetEnv", "azimuthOverride|default")
+					log('W', logTag, "CEISetEnv Called: azimuthOverride|default")
+				end
+				
+				im.Text("Sun Size: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##sunSize", environment.sunSizeVal, 0.01, 0.1) then
+					if environment.sunSizeVal[0] < 0 then
+						environment.sunSizeVal = im.FloatPtr(0)
+					elseif environment.sunSizeVal[0] > 100 then
+						environment.sunSizeVal = im.FloatPtr(100)
+					end
+					environment.sunSizeVal = im.FloatPtr(environment.sunSizeVal)
+					TriggerServerEvent("CEISetEnv", "sunSize|" .. tostring(environment.sunSizeVal[0]))
+					log('W', logTag, "CEISetEnv Called: sunSize|" .. tostring(environment.sunSizeVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SS") then
+					TriggerServerEvent("CEISetEnv", "sunSize|default")
+					log('W', logTag, "CEISetEnv Called: sunSize|default")
+				end
+				
+				im.Text("Sky Brightness: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##skyBrightness", environment.skyBrightnessVal, 0.1, 1.0) then
+					if environment.skyBrightnessVal[0] < 0 then
+						environment.skyBrightnessVal = im.FloatPtr(0)
+					elseif environment.skyBrightnessVal[0] > 200 then
+						environment.skyBrightnessVal = im.FloatPtr(200)
+					end
+					environment.skyBrightnessVal = im.FloatPtr(environment.skyBrightnessVal)
+					TriggerServerEvent("CEISetEnv", "skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
+					log('W', logTag, "CEISetEnv Called: skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SB") then
+					TriggerServerEvent("CEISetEnv", "skyBrightness|default")
+					log('W', logTag, "CEISetEnv Called: skyBrightness|default")
+				end
+				
+				im.Text("Sunlight Brightness: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##sunLightBrightness", environment.sunLightBrightnessVal, 0.01, 0.1) then
+					if environment.sunLightBrightnessVal[0] < 0 then
+						environment.sunLightBrightnessVal = im.FloatPtr(0)
+					elseif environment.sunLightBrightnessVal[0] > 10 then
+						environment.sunLightBrightnessVal = im.FloatPtr(10)
+					end
+					environment.sunLightBrightnessVal = im.FloatPtr(environment.sunLightBrightnessVal)
+					TriggerServerEvent("CEISetEnv", "sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
+					log('W', logTag, "CEISetEnv Called: sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##GB") then
+					TriggerServerEvent("CEISetEnv", "sunLightBrightness|default")
+					log('W', logTag, "CEISetEnv Called: sunLightBrightness|default")
+				end
+				
+				im.Text("Exposure: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##exposure", environment.exposureVal, 0.01, 0.1) then
+					if environment.exposureVal[0] < 0 then
+						environment.exposureVal = im.FloatPtr(0)
+					elseif environment.exposureVal[0] > 3 then
+						environment.exposureVal = im.FloatPtr(3)
+					end
+					environment.exposureVal = im.FloatPtr(environment.exposureVal)
+					TriggerServerEvent("CEISetEnv", "exposure|" .. tostring(environment.exposureVal[0]))
+					log('W', logTag, "CEISetEnv Called: exposure|" .. tostring(environment.exposureVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##EX") then
+					TriggerServerEvent("CEISetEnv", "exposure|default")
+					log('W', logTag, "CEISetEnv Called: exposure|default")
+				end
+				
+				im.Text("Shadow Distance: ")
+				im.SameLine()
+				im.PushItemWidth(120)
+				if im.InputFloat("##shadowDistance", environment.shadowDistanceVal, 0.001, 0.01) then
+					if environment.shadowDistanceVal[0] < 0 then
+						environment.shadowDistanceVal = im.FloatPtr(0)
+					elseif environment.shadowDistanceVal[0] > 12800 then
+						environment.shadowDistanceVal = im.FloatPtr(12800)
+					end
+					environment.shadowDistanceVal = im.FloatPtr(environment.shadowDistanceVal)
+					TriggerServerEvent("CEISetEnv", "shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
+					log('W', logTag, "CEISetEnv Called: shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SD") then
+					TriggerServerEvent("CEISetEnv", "shadowDistance|default")
+					log('W', logTag, "CEISetEnv Called: shadowDistance|default")
+				end
+				
+				im.Text("Shadow Softness: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##shadowSoftness", environment.shadowSoftnessVal, 0.001, 0.01) then
+					if environment.shadowSoftnessVal[0] < -10 then
+						environment.shadowSoftnessVal = im.FloatPtr(-10)
+					elseif environment.shadowSoftnessVal[0] > 10 then
+						environment.shadowSoftnessVal = im.FloatPtr(10)
+					end
+					environment.shadowSoftnessVal = im.FloatPtr(environment.shadowSoftnessVal)
+					TriggerServerEvent("CEISetEnv", "shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
+					log('W', logTag, "CEISetEnv Called: shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SSFT") then
+					TriggerServerEvent("CEISetEnv", "shadowSoftness|default")
+					log('W', logTag, "CEISetEnv Called: shadowSoftness|default")
+				end
+				
+				im.Text("Shadow Splits: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputInt("##shadowSplits", environment.shadowSplitsInt, 1) then
+					if environment.shadowSplitsInt[0] < 0 then
+						environment.shadowSplitsInt = im.IntPtr(0)
+					elseif environment.shadowSplitsInt[0] > 4 then
+						environment.shadowSplitsInt = im.IntPtr(4)
+					end
+					TriggerServerEvent("CEISetEnv", "shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
+					log('W', logTag, "CEISetEnv Called: shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SSPL") then
+					TriggerServerEvent("CEISetEnv", "shadowSplits|default")
+					log('W', logTag, "CEISetEnv Called: shadowSplits|default")
+				end
+				
+				
+				
+				
+				
+				im.TreePop()
+				im.Unindent()
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##SUN") then
+					TriggerServerEvent("CEISetEnv", "allSun|default")
+					log('W', logTag, "CEISetEnv Called: allSun|default")
+				end
+			end
+			
+			if im.TreeNode1("Weather") then
+				im.SameLine()
+				if im.SmallButton("Reset##WET") then
+					TriggerServerEvent("CEISetEnv", "allWeather|default")
+					log('W', logTag, "CEISetEnv Called: allWeather|default")
+				end
+				
+				im.Indent()
+				
+				im.Text("Fog Density: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##fogDensity", environment.fogDensityVal, 0.00001, 0.0001) then
+					if environment.fogDensityVal[0] < 0.00001 then
+						environment.fogDensityVal = im.FloatPtr(0.00001)
+					elseif environment.fogDensityVal[0] > 0.01 then
+						environment.fogDensityVal = im.FloatPtr(0.01)
+					end
+					TriggerServerEvent("CEISetEnv", "fogDensity|" .. tostring(environment.fogDensityVal[0]))
+					log('W', logTag, "CEISetEnv Called: fogDensity|" .. tostring(environment.fogDensityVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##FD") then
+					TriggerServerEvent("CEISetEnv", "fogDensity|default")
+					log('W', logTag, "CEISetEnv Called: fogDensity|default")
+				end
+				
+				im.Text("Fog Distance: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##fogDensityOffset", environment.fogDensityOffsetVal, 0.001, 0.01) then
+					if environment.fogDensityOffsetVal[0] < 0 then
+						environment.fogDensityOffsetVal = im.FloatPtr(0)
+					elseif environment.fogDensityOffsetVal[0] > 100 then
+						environment.fogDensityOffsetVal = im.FloatPtr(100)
+					end
+					TriggerServerEvent("CEISetEnv", "fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
+					log('W', logTag, "CEISetEnv Called: fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##FDO") then
+					TriggerServerEvent("CEISetEnv", "fogDensityOffset|default")
+					log('W', logTag, "CEISetEnv Called: fogDensityOffset|default")
+				end
+				
+				im.Text("Cloud Cover: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##cloudCover", environment.cloudCoverVal, 0.01, 0.1) then
+					if environment.cloudCoverVal[0] < 0 then
+						environment.cloudCoverVal = im.FloatPtr(0)
+					elseif environment.cloudCoverVal[0] > 5 then
+						environment.cloudCoverVal = im.FloatPtr(5)
+					end
+					TriggerServerEvent("CEISetEnv", "cloudCover|" .. tostring(environment.cloudCoverVal[0]))
+					log('W', logTag, "CEISetEnv Called: cloudCover|" .. tostring(environment.cloudCoverVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##CC") then
+					TriggerServerEvent("CEISetEnv", "cloudCover|default")
+					log('W', logTag, "CEISetEnv Called: cloudCover|default")
+				end
+				
+				im.Text("Cloud Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##cloudSpeed", environment.cloudSpeedVal, 0.01, 0.1) then
+					if environment.cloudSpeedVal[0] < 0 then
+						environment.cloudSpeedVal = im.FloatPtr(0)
+					elseif environment.cloudSpeedVal[0] > 10 then
+						environment.cloudSpeedVal = im.FloatPtr(10)
+					end
+					TriggerServerEvent("CEISetEnv", "cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##CS") then
+					TriggerServerEvent("CEISetEnv", "cloudSpeed|default")
+					log('W', logTag, "CEISetEnv Called: cloudSpeed|default")
+				end
+				
+				im.Text("Rain Drops: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputInt("##rainDrops", environment.rainDropsInt, 1, 10) then
+					if environment.rainDropsInt[0] < 0 then
+						environment.rainDropsInt = im.IntPtr(0)
+					elseif environment.rainDropsInt[0] > 20000 then
+						environment.rainDropsInt = im.IntPtr(20000)
+					end
+					TriggerServerEvent("CEISetEnv", "rainDrops|" .. tostring(environment.rainDropsInt[0]))
+					log('W', logTag, "CEISetEnv Called: rainDrops|" .. tostring(environment.rainDropsInt[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##RD") then
+					TriggerServerEvent("CEISetEnv", "rainDrops|default")
+					log('W', logTag, "CEISetEnv Called: rainDrops|default")
+				end
+				
+				im.Text("Drop Size: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##dropSize", environment.dropSizeVal, 0.001, 0.01) then
+					if environment.dropSizeVal[0] < 0 then
+						environment.dropSizeVal = im.FloatPtr(0)
+					elseif environment.dropSizeVal[0] > 2 then
+						environment.dropSizeVal = im.FloatPtr(2)
+					end
+					environment.dropSizeVal = im.FloatPtr(environment.dropSizeVal)
+					TriggerServerEvent("CEISetEnv", "dropSize|" .. tostring(environment.dropSizeVal[0]))
+					log('W', logTag, "CEISetEnv Called: dropSize|" .. tostring(environment.dropSizeVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##DSZ") then
+					TriggerServerEvent("CEISetEnv", "dropSize|default")
+					log('W', logTag, "CEISetEnv Called: dropSize|default")
+				end
+				
+				im.Text("Drop Min Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##dropMinSpeed", environment.dropMinSpeedVal, 0.001, 0.01) then
+					if environment.dropMinSpeedVal[0] < 0 then
+						environment.dropMinSpeedVal = im.FloatPtr(0)
+					elseif environment.dropMinSpeedVal[0] > 2 then
+						environment.dropMinSpeedVal = im.FloatPtr(2)
+					end
+					environment.dropMinSpeedVal = im.FloatPtr(environment.dropMinSpeedVal)
+					TriggerServerEvent("CEISetEnv", "dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##DMNS") then
+					TriggerServerEvent("CEISetEnv", "dropMinSpeed|default")
+					log('W', logTag, "CEISetEnv Called: dropMinSpeed|default")
+				end
+				
+				im.Text("Drop Max Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##dropMaxSpeed", environment.dropMaxSpeedVal, 0.001, 0.01) then
+					if environment.dropMaxSpeedVal[0] < 0 then
+						environment.dropMaxSpeedVal = im.FloatPtr(0)
+					elseif environment.dropMaxSpeedVal[0] > 2 then
+						environment.dropMaxSpeedVal = im.FloatPtr(2)
+					end
+					environment.dropMaxSpeedVal = im.FloatPtr(environment.dropMaxSpeedVal)
+					TriggerServerEvent("CEISetEnv", "dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##DMXS") then
+					TriggerServerEvent("CEISetEnv", "dropMaxSpeed|default")
+					log('W', logTag, "CEISetEnv Called: dropMaxSpeed|default")
+				end
+				
+				im.Text("Precipitation Type: ")
+				im.SameLine()
+				local precipType = environment.precipType
+				if precipType == "rain_medium" then
+					if im.SmallButton("Medium Rain") then
+						TriggerServerEvent("CEISetEnv", "precipType|rain_drop")
+						log('W', logTag, "CEISetEnv Called: precipType|rain_drop")
+					end
+				elseif precipType == "rain_drop" then
+					if im.SmallButton("Light Rain") then
+						TriggerServerEvent("CEISetEnv", "precipType|Snow_menu")
+						log('W', logTag, "CEISetEnv Called: precipType|Snow_menu")
+					end
+				elseif precipType == "Snow_menu" then
+					if im.SmallButton("Snow") then
+						TriggerServerEvent("CEISetEnv", "precipType|rain_medium")
+						log('W', logTag, "CEISetEnv Called: precipType|rain_medium")
+					end
+				end
+				
+				im.TreePop()
+				im.Unindent()
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##WET") then
+					TriggerServerEvent("CEISetEnv", "allWeather|default")
+					log('W', logTag, "CEISetEnv Called: allWeather|default")
+				end
+			end
+			
+			if im.TreeNode1("Simulation") then
+				im.SameLine()
+				if im.SmallButton("Reset##SIM") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|default")
+					log('W', logTag, "CEISetEnv Called: simSpeed|default")
+				end
+			
+				im.Indent()
+				
+				im.Text("Teleport Timeout: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
+					if environment.teleportTimeoutInt[0] < 0 then
+						environment.teleportTimeoutInt = im.IntPtr(0)
+					elseif environment.teleportTimeoutInt[0] > 60 then
+						environment.teleportTimeoutInt = im.IntPtr(60)
+					end
+					TriggerServerEvent("CEISetEnv", "teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+					log('W', logTag, "CEISetEnv Called: teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##TLPT") then
+					TriggerServerEvent("CEISetEnv", "teleportTimeout|default")
+					log('W', logTag, "CEISetEnv Called: teleportTimeout|default")
+				end
+				
+				im.Text("Simulation Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##simSpeed", environment.simSpeedVal, 0.001, 0.1) then
+					if environment.simSpeedVal[0] < 0.01 then
+						environment.simSpeedVal = im.FloatPtr(0.01)
+					elseif environment.simSpeedVal[0] > 5 then
+						environment.simSpeedVal = im.FloatPtr(5)
+					end
+					environment.simSpeedVal = im.FloatPtr(environment.simSpeedVal)
+					TriggerServerEvent("CEISetEnv", "simSpeed|" .. tostring(environment.simSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: simSpeed|" .. tostring(environment.simSpeedVal[0]))
+				end
+				im.PopItemWidth()
 
-					if im.SmallButton("0.5X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|2")
-						log('W', logTag, "CEISetEnv Called: simSpeed|2")
-					end
-					im.SameLine()
-					if im.SmallButton("Real") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|default")
-						log('W', logTag, "CEISetEnv Called: simSpeed|default")
-					end
-					im.SameLine()
-					if im.SmallButton("2X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.5")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.5")
-					end
-					im.SameLine()
-					if im.SmallButton("4X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.25")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.25")
-					end
-					im.SameLine()
-					if im.SmallButton("10X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.1")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.1")
-					end
-					im.SameLine()
-					if im.SmallButton("100X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.01")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.01")
-					end
-					
-					im.TreePop()
-					im.Unindent()
+				if im.SmallButton("0.5X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|2")
+					log('W', logTag, "CEISetEnv Called: simSpeed|2")
+				end
+				im.SameLine()
+				if im.SmallButton("Real") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|default")
+					log('W', logTag, "CEISetEnv Called: simSpeed|default")
+				end
+				im.SameLine()
+				if im.SmallButton("2X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.5")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.5")
+				end
+				im.SameLine()
+				if im.SmallButton("4X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.25")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.25")
+				end
+				im.SameLine()
+				if im.SmallButton("10X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.1")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.1")
+				end
+				im.SameLine()
+				if im.SmallButton("100X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.01")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.01")
 				end
 				
-				if im.TreeNode1("Gravity") then
-					im.Indent()
+				im.TreePop()
+				im.Unindent()
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##SIM") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|default")
+					log('W', logTag, "CEISetEnv Called: simSpeed|default")
+				end
+			end
+		
+			if im.TreeNode1("Gravity") then
+				im.SameLine()
+				if im.SmallButton("Reset##GRV") then
+					TriggerServerEvent("CEISetEnv", "gravity|default")
+					log('W', logTag, "CEISetEnv Called: gravity|default")
+				end
+				im.Indent()
+				
+				im.Text("		")
+				im.SameLine()
+				im.PushItemWidth(130)
+				if im.InputFloat("##gravity", environment.gravityVal, 0.001, 0.1) then
+					if environment.gravityVal[0] < -280 then
+						environment.gravityVal = im.FloatPtr(-280)
+					elseif environment.gravityVal[0] > 10 then
+						environment.gravityVal = im.FloatPtr(10)
+					end
+					environment.gravityVal = im.FloatPtr(environment.gravityVal)
+					TriggerServerEvent("CEISetEnv", "gravity|" .. tostring(environment.gravityVal[0]))
+					log('W', logTag, "CEISetEnv Called: gravity|" .. tostring(environment.gravityVal[0]))
+				end
+				im.PopItemWidth()
+
+				if im.SmallButton("Zero") then
+					TriggerServerEvent("CEISetEnv", "gravity|0")
+					log('W', logTag, "CEISetEnv Called: gravity|0")
+				end
+				im.SameLine()
+				if im.SmallButton("Earth") then
+					TriggerServerEvent("CEISetEnv", "gravity|default")
+					log('W', logTag, "CEISetEnv Called: gravity|default")
+				end
+				im.SameLine()
+				if im.SmallButton("Moon") then
+					TriggerServerEvent("CEISetEnv", "gravity|-1.62")
+					log('W', logTag, "CEISetEnv Called: gravity|-1.62")
+				end
+
+				if im.SmallButton("Mars") then
+					TriggerServerEvent("CEISetEnv", "gravity|-3.71")
+					log('W', logTag, "CEISetEnv Called: gravity|-3.71")
+				end
+				im.SameLine()
+				if im.SmallButton("Sun") then
+					TriggerServerEvent("CEISetEnv", "gravity|-274")
+					log('W', logTag, "CEISetEnv Called: gravity|-274")
+				end
+				im.SameLine()
+				if im.SmallButton("Jupiter") then
+					TriggerServerEvent("CEISetEnv", "gravity|-24.92")
+					log('W', logTag, "CEISetEnv Called: gravity|-24.92")
+				end
+				
+
+				if im.SmallButton("Neptune") then
+					TriggerServerEvent("CEISetEnv", "gravity|-11.15")
+					log('W', logTag, "CEISetEnv Called: gravity|-11.15")
+				end
+				im.SameLine()
+				if im.SmallButton("Saturn") then
+					TriggerServerEvent("CEISetEnv", "gravity|-10.44")
+					log('W', logTag, "CEISetEnv Called: gravity|-10.44")
+				end
+				im.SameLine()
+				if im.SmallButton("Uranus") then
+					TriggerServerEvent("CEISetEnv", "gravity|-8.87")
+					log('W', logTag, "CEISetEnv Called: gravity|-8.87")
+				end
+				
+				if im.SmallButton("Venus") then
+					TriggerServerEvent("CEISetEnv", "gravity|-8.87")
+					log('W', logTag, "CEISetEnv Called: gravity|-8.87")
+				end
+				im.SameLine()
+				if im.SmallButton("Mercury") then
+					TriggerServerEvent("CEISetEnv", "gravity|-3.7")
+					log('W', logTag, "CEISetEnv Called: gravity|-3.7")
+				end
+				im.SameLine()
+				if im.SmallButton("Pluto") then
+					TriggerServerEvent("CEISetEnv", "gravity|-0.58")
+					log('W', logTag, "CEISetEnv Called: gravity|-0.58")
+				end
+				
+				im.TreePop()
+				im.Unindent()
+				
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##GRV") then
+					TriggerServerEvent("CEISetEnv", "gravity|default")
+					log('W', logTag, "CEISetEnv Called: gravity|default")
+				end
+			end
+		
+			if im.TreeNode1("Temperature") then
+				im.SameLine()
+				if im.SmallButton("Reset##TMP") then
+					TriggerServerEvent("CEISetEnv", "useTempCurve|false")
+					log('W', logTag, "CEISetEnv Called: useTempCurve|false")
+					environment.useTempCurveSent = false
+				end
+				im.Indent()
+				
+				local useTempCurve = im.BoolPtr(environment.useTempCurveVal)
+				
+				if im.Checkbox("Use Custom Temperature Curve", useTempCurve) then
+					if useTempCurve[0] then
+						if environment.useTempCurveSent == false then
+							TriggerServerEvent("CEISetEnv", "useTempCurve|true")
+							log('W', logTag, "CEISetEnv Called: useTempCurve|true")
+							environment.useTempCurveSent = true
+						end
+					else
+						if environment.useTempCurveSent == true then
+							log('W', logTag, "CEISetEnv Called: useTempCurve|false")
+							TriggerServerEvent("CEISetEnv", "useTempCurve|false")
+							environment.useTempCurveSent = false
+						end
+					end
+				end
+				environment.useTempCurveVal = useTempCurve[0]
+				
+				if environment.useTempCurveVal == true then
+					im.Text("Custom Temperature Curve:")
+					im.SameLine()
+					if im.SmallButton("Reset##TCV") then
+						TriggerServerEvent("CEISetEnv", "tempCurveNoon|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveNoon|default")
+						TriggerServerEvent("CEISetEnv", "tempCurveDusk|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveDusk|default")
+						TriggerServerEvent("CEISetEnv", "tempCurveMidnight|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveMidnight|default")
+						TriggerServerEvent("CEISetEnv", "tempCurveDawn|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveDawn|default")
+					end
 					
 					im.Text("		")
 					im.SameLine()
-					im.PushItemWidth(130)
-					if im.InputFloat("##gravity", environment.gravityVal, 0.001, 0.1) then
-						if environment.gravityVal[0] < -280 then
-							environment.gravityVal = im.FloatPtr(-280)
-						elseif environment.gravityVal[0] > 10 then
-							environment.gravityVal = im.FloatPtr(10)
+					im.Text("Noon")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveNoon", environment.tempCurveNoonInt, 1, 2) then
+						if environment.tempCurveNoonInt[0] < -50 then
+							environment.tempCurveNoonInt = im.IntPtr(-50)
+						elseif environment.tempCurveNoonInt[0] > 50 then
+							environment.tempCurveNoonInt = im.IntPtr(50)
 						end
-						environment.gravityVal = im.FloatPtr(environment.gravityVal)
-						TriggerServerEvent("CEISetEnv", "gravity|" .. tostring(environment.gravityVal[0]))
-						log('W', logTag, "CEISetEnv Called: gravity|" .. tostring(environment.gravityVal[0]))
+						TriggerServerEvent("CEISetEnv", "tempCurveNoon|" .. tostring(environment.tempCurveNoonInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveNoon|" .. tostring(environment.tempCurveNoonInt[0]))
 					end
 					im.PopItemWidth()
-
-					if im.SmallButton("Zero") then
-						TriggerServerEvent("CEISetEnv", "gravity|0")
-						log('W', logTag, "CEISetEnv Called: gravity|0")
-					end
+					im.Text("		")
 					im.SameLine()
-					if im.SmallButton("Earth") then
-						TriggerServerEvent("CEISetEnv", "gravity|default")
-						log('W', logTag, "CEISetEnv Called: gravity|default")
-					end
+					im.Text("Dusk")
 					im.SameLine()
-					if im.SmallButton("Moon") then
-						TriggerServerEvent("CEISetEnv", "gravity|-1.62")
-						log('W', logTag, "CEISetEnv Called: gravity|-1.62")
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveDusk", environment.tempCurveDuskInt, 1, 2) then
+						if environment.tempCurveDuskInt[0] < -50 then
+							environment.tempCurveDuskInt = im.IntPtr(-50)
+						elseif environment.tempCurveDuskInt[0] > 50 then
+							environment.tempCurveDuskInt = im.IntPtr(50)
+						end
+						TriggerServerEvent("CEISetEnv", "tempCurveDusk|" .. tostring(environment.tempCurveDuskInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveDusk|" .. tostring(environment.tempCurveDuskInt[0]))
 					end
-
-					if im.SmallButton("Mars") then
-						TriggerServerEvent("CEISetEnv", "gravity|-3.71")
-						log('W', logTag, "CEISetEnv Called: gravity|-3.71")
-					end
+					im.PopItemWidth()
+					im.Text("		")
 					im.SameLine()
-					if im.SmallButton("Sun") then
-						TriggerServerEvent("CEISetEnv", "gravity|-274")
-						log('W', logTag, "CEISetEnv Called: gravity|-274")
-					end
+					im.Text("Midnight")
 					im.SameLine()
-					if im.SmallButton("Jupiter") then
-						TriggerServerEvent("CEISetEnv", "gravity|-24.92")
-						log('W', logTag, "CEISetEnv Called: gravity|-24.92")
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveMidnight", environment.tempCurveMidnightInt, 1, 2) then
+						if environment.tempCurveMidnightInt[0] < -50 then
+							environment.tempCurveMidnightInt = im.IntPtr(-50)
+						elseif environment.tempCurveMidnightInt[0] > 50 then
+							environment.tempCurveMidnightInt = im.IntPtr(50)
+						end
+						TriggerServerEvent("CEISetEnv", "tempCurveMidnight|" .. tostring(environment.tempCurveMidnightInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveMidnight|" .. tostring(environment.tempCurveMidnightInt[0]))
 					end
-					
-
-					if im.SmallButton("Neptune") then
-						TriggerServerEvent("CEISetEnv", "gravity|-11.15")
-						log('W', logTag, "CEISetEnv Called: gravity|-11.15")
-					end
+					im.PopItemWidth()
+					im.Text("		")
 					im.SameLine()
-					if im.SmallButton("Saturn") then
-						TriggerServerEvent("CEISetEnv", "gravity|-10.44")
-						log('W', logTag, "CEISetEnv Called: gravity|-10.44")
-					end
+					im.Text("Dawn")
 					im.SameLine()
-					if im.SmallButton("Uranus") then
-						TriggerServerEvent("CEISetEnv", "gravity|-8.87")
-						log('W', logTag, "CEISetEnv Called: gravity|-8.87")
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveDawn", environment.tempCurveDawnInt, 1, 2) then
+						if environment.tempCurveDawnInt[0] < -50 then
+							environment.tempCurveDawnInt = im.IntPtr(-50)
+						elseif environment.tempCurveDawnInt[0] > 50 then
+							environment.tempCurveDawnInt = im.IntPtr(50)
+						end
+						TriggerServerEvent("CEISetEnv", "tempCurveDawn|" .. tostring(environment.tempCurveDawnInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveDawn|" .. tostring(environment.tempCurveDawnInt[0]))
 					end
-					
-					if im.SmallButton("Venus") then
-						TriggerServerEvent("CEISetEnv", "gravity|-8.87")
-						log('W', logTag, "CEISetEnv Called: gravity|-8.87")
-					end
-					im.SameLine()
-					if im.SmallButton("Mercury") then
-						TriggerServerEvent("CEISetEnv", "gravity|-3.7")
-						log('W', logTag, "CEISetEnv Called: gravity|-3.7")
-					end
-					im.SameLine()
-					if im.SmallButton("Pluto") then
-						TriggerServerEvent("CEISetEnv", "gravity|-0.58")
-						log('W', logTag, "CEISetEnv Called: gravity|-0.58")
-					end
-					
-					im.TreePop()
-					im.Unindent()
-					
+					im.PopItemWidth()
 				end
 				
+				im.TreePop()
+				im.Unindent()
+				
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##TMP") then
+					TriggerServerEvent("CEISetEnv", "useTempCurve|false")
+					log('W', logTag, "CEISetEnv Called: useTempCurve|false")
+					environment.useTempCurveSent = false
+				end
 			end
 			
-			im.EndTabItem()
+		im.EndTabItem()
 		end
 		im.EndTabBar()
 	end
@@ -2098,7 +2214,6 @@ local function drawCEAI(dt)
 			playersCounter = playersCounter + 1
 		end
 		
-  
 		if im.BeginTabItem("Players") then
 			im.Text("Current Players:")
 			im.SameLine()
@@ -2121,7 +2236,7 @@ local function drawCEAI(dt)
 				
 			end
 			im.PopStyleColor(3)
-
+			
 			im.Separator()
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
@@ -2260,7 +2375,7 @@ local function drawCEAI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-					
+						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Focus##" .. tostring(k)) then
 							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
@@ -2274,7 +2389,6 @@ local function drawCEAI(dt)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 					end
 					
 					im.Text("		")
@@ -2283,10 +2397,10 @@ local function drawCEAI(dt)
 					im.SameLine()
 					if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", players[k].player.kickBanMuteReason, 128) then
 					end
+					
 					im.Text("		")
 					im.SameLine()
-					im.Text("tempBan Length:")
-
+					im.Text("tempBan:")
 					im.SameLine()
 					im.PushItemWidth(120)
 					if im.InputFloat("##tempBanLength"..tostring(k), players[k].player.tempBanLength, 0.001, 1) then
@@ -2302,13 +2416,6 @@ local function drawCEAI(dt)
 					im.Text("days = " .. tostring(M.round(players[k].player.tempBanLength[0] * 1440,2)) .. " minutes")
 					im.PopItemWidth()
 					
-					im.Text("		playerID: " .. players[k].player.playerID)
-					im.Text("		connectStage: " .. players[k].player.connectStage)
-					im.Text("		guest: " .. players[k].player.guest)
-					im.Text("		joinTime: " .. players[k].player.joinTime)
-					im.SameLine()
-					im.Text(": connectedTime: " .. players[k].player.connectedTime)
-
 					if vehiclesCounter > 0 then
 						im.Separator()
 
@@ -2316,15 +2423,11 @@ local function drawCEAI(dt)
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
 							
-							if vehiclesCounter > 0 then
-							
-								im.Text("		")
-								im.SameLine()
-								im.Text("Reason:")
-								im.SameLine()
-								if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", players[k].player.vehDeleteReason, 128) then
-								end
-								
+							im.Text("		")
+							im.SameLine()
+							im.Text("Reason:")
+							im.SameLine()
+							if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", players[k].player.vehDeleteReason, 128) then
 							end
 							
 							for x,y in pairs(players[k].player.vehicles) do
@@ -2338,7 +2441,6 @@ local function drawCEAI(dt)
 								im.Text(players[k].player.vehicles[x].vehicleID .. ":")
 								im.SameLine()
 								im.Text(players[k].player.vehicles[x].genericName)
-								
 								
 								for i,j in pairs(ignitionEnabled) do
 									if i == MPVehicleGE.getGameVehicleID(k .. "-" .. players[k].player.vehicles[x].vehicleID) then
@@ -2389,76 +2491,85 @@ local function drawCEAI(dt)
 						end
 					end
 					im.Separator()
-					if im.TreeNode1("permissions##"..tostring(k)) then
-						if im.TreeNode1("level:") then
-							im.SameLine()
-							im.Text(players[k].player.permissions.level)
-							im.Text("		")
-							im.SameLine()
-							im.PushItemWidth(100)
-							if im.InputInt("", players[k].player.permissions.levelInt, 1) then
-								TriggerServerEvent("CEISetTempPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
-								log('W', logTag, "CEISetTempPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+					if im.TreeNode1("info##"..tostring(k)) then
+						im.Text("		playerID: " .. players[k].player.playerID)
+						im.Text("		connectStage: " .. players[k].player.connectStage)
+						im.Text("		guest: " .. players[k].player.guest)
+						im.Text("		joinTime: " .. players[k].player.joinTime)
+						im.SameLine()
+						im.Text(": connectedTime: " .. players[k].player.connectedTime)
+						im.Separator()
+						if im.TreeNode1("permissions##"..tostring(k)) then
+							if im.TreeNode1("level:") then
+								im.SameLine()
+								im.Text(players[k].player.permissions.level)
+								im.Text("		")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputInt("", players[k].player.permissions.levelInt, 1) then
+									TriggerServerEvent("CEISetTempPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+									log('W', logTag, "CEISetTempPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+								end
+								im.PopItemWidth()
+								im.SameLine()
+								if im.Button("Apply##level"..tostring(x)) then
+									TriggerServerEvent("CEISetPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+									log('W', logTag, "CEISetPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+								end
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(players[k].player.permissions.level)
 							end
-							im.PopItemWidth()
-							im.SameLine()
-							if im.Button("Apply##level"..tostring(x)) then
-								TriggerServerEvent("CEISetPerm", tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
-								log('W', logTag, "CEISetPerm Called: " .. tostring(k) .. "|" ..tostring(players[k].player.permissions.levelInt[0]))
+							im.Text("		whitelisted: " .. players[k].player.permissions.whitelisted)
+							im.Text("		muted: " .. players[k].player.permissions.muted)
+							im.Text("		muteReason: " .. players[k].player.permissions.muteReason)
+							im.Text("		banned: " .. players[k].player.permissions.banned)
+							if im.TreeNode1("group:##"..tostring(k)) then
+								im.SameLine()
+								im.Text(players[k].player.permissions.group)
+								im.Text("		")
+								im.SameLine()
+								if im.InputTextWithHint("##newGroup", "Group Name", players[k].player.permissions.groupInput, 128) then
+								end
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##"..tostring(k)) then
+									TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
+									log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
+								end
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+								if im.SmallButton("Remove##"..tostring(k)) then
+									TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|none")
+									log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|none")
+								end
+								im.PopStyleColor(3)
+								im.SameLine()
+								im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(players[k].player.permissions.group)
 							end
-						
 							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(players[k].player.permissions.level)
 						end
-						im.Text("		whitelisted: " .. players[k].player.permissions.whitelisted)
-						im.Text("		muted: " .. players[k].player.permissions.muted)
-						im.Text("		muteReason: " .. players[k].player.permissions.muteReason)
-						im.Text("		banned: " .. players[k].player.permissions.banned)
-						if im.TreeNode1("group:##"..tostring(k)) then
-							im.SameLine()
-							im.Text(players[k].player.permissions.group)
-							im.Text("		")
-							im.SameLine()
-							if im.InputTextWithHint("##newGroup", "Group Name", players[k].player.permissions.groupInput, 128) then
-							end
-							im.Text("		")
-							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
-								TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
-								log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
-							end
-							im.SameLine()
-							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-							if im.SmallButton("Remove##"..tostring(k)) then
-								TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|none")
-								log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|none")
-							end
-							im.PopStyleColor(3)
-							im.SameLine()
-							im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
+						im.Separator()
+						if im.TreeNode1("gamemode##"..tostring(k)) then
+							im.Text("		mode: " .. players[k].player.gamemode.mode)
+							im.Text("		source: " .. players[k].player.gamemode.source)
+							im.Text("		queue: " .. players[k].player.gamemode.queue)
+							im.Text("		locked: " .. players[k].player.gamemode.locked)
 							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(players[k].player.permissions.group)
 						end
-						im.TreePop()
-					end
-					im.Separator()
-					if im.TreeNode1("gamemode##"..tostring(k)) then
-						im.Text("		mode: " .. players[k].player.gamemode.mode)
-						im.Text("		source: " .. players[k].player.gamemode.source)
-						im.Text("		queue: " .. players[k].player.gamemode.queue)
-						im.Text("		locked: " .. players[k].player.gamemode.locked)
 						im.TreePop()
 					end
 					im.Unindent()
 				else
-				im.Indent()
 					im.PopStyleColor(3)
+					im.Indent()
 					im.Text("		")
 					im.SameLine()
 					if im.SmallButton("Kick##"..tostring(k)) then
@@ -2501,7 +2612,7 @@ local function drawCEAI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-					
+						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Focus##" .. tostring(k)) then
 							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
@@ -2515,33 +2626,8 @@ local function drawCEAI(dt)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 					end
 					
-					
-					im.Text("		")
-					im.SameLine()
-					im.Text("Reason:")
-					im.SameLine()
-					if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", players[k].player.kickBanMuteReason, 128) then
-					end
-					im.Text("		")
-					im.SameLine()
-					im.Text("tempBan Length:")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputFloat("##tempBanLength"..tostring(k), players[k].player.tempBanLength, 0.001, 1) then
-						if players[k].player.tempBanLength[0] < 0.001 then
-							players[k].player.tempBanLength = im.FloatPtr(0.001)
-						elseif players[k].player.tempBanLength[0] > 3650 then
-							players[k].player.tempBanLength = im.FloatPtr(3650)
-						end
-						TriggerServerEvent("CEISetTempBan", tostring(k) .. "|" .. tostring(players[k].player.tempBanLength[0]))
-						log('W', logTag, "CEISetTempBan Called: " .. tostring(k) .. "|" .. tostring(players[k].player.tempBanLength[0]))
-					end
-					im.SameLine()
-					im.Text("days = " .. tostring(M.round(players[k].player.tempBanLength[0] * 1440,2)) .. " minutes")
-					im.PopItemWidth()
 					im.Unindent()
 					
 				end
@@ -2852,7 +2938,7 @@ local function drawCEAI(dt)
 						im.SameLine()
 						im.Text(config.cobalt.whitelistedPlayers[x].name)
 						im.SameLine()
-						if im.SmallButton("Remove##whitelistName") then
+						if im.SmallButton("Remove##"..tostring(x)) then
 							TriggerServerEvent("CEIWhitelist", "remove|" .. config.cobalt.whitelistedPlayers[x].name)
 							log('W', logTag, "CEIWhitelist Called: remove|" .. config.cobalt.whitelistedPlayers[x].name)
 						end
@@ -2888,7 +2974,7 @@ local function drawCEAI(dt)
 						log('W', logTag, "CEIWhitelist Called: disable")
 					end
 				end
-				im.Separator()
+				--[[im.Separator()
 				if im.TreeNode1("miscellaneous") then
 					im.Separator()
 					im.Indent()
@@ -2980,7 +3066,7 @@ local function drawCEAI(dt)
 					im.Text("		")
 					im.Unindent()
 					im.TreePop()
-				end
+				end]]
 				im.Unindent()
 			end
 ----------------------------------------------------------------------------------SERVER HEADER
@@ -3125,652 +3211,778 @@ local function drawCEAI(dt)
 				im.SameLine()
 				im.ShowHelpMarker("Good-bye!")
 				im.Unindent()
+				
+			end
+			im.EndTabItem()
+		end
+----------------------------------------------------------------------------------ENVIRONMENT TAB
+		if im.BeginTabItem("Environment") then
+					
+			im.Indent()
+
+			if im.SmallButton("Reset All##ENV") then
+				TriggerServerEvent("CEISetEnv", "all|default")
+				log('W', logTag, "CEISetEnv Called: all|default")
 			end
 			
-			if im.CollapsingHeader1("Client") then
+			if im.TreeNode1("Sun") then
+				im.SameLine()
+				if im.SmallButton("Reset##SUN") then
+					TriggerServerEvent("CEISetEnv", "allSun|default")
+					log('W', logTag, "CEISetEnv Called: allSun|default")
+				end
 				im.Indent()
-				if im.TreeNode1("Environment") then
-					im.SameLine()
-					if im.SmallButton("Reset##ENV") then
-						TriggerServerEvent("CEISetEnv", "all|default")
-						log('W', logTag, "CEISetEnv Called: all|default")
+					
+				im.Text("Time Play: ")
+				im.SameLine()
+				local timePlay = environment.timePlay
+				if timePlay == "false" then
+					if im.SmallButton("Play") then
+						TriggerServerEvent("CEISetEnv", "timePlay|true")
+						log('W', logTag, "CEISetEnv Called: timePlay|true")
 					end
-					im.Indent()
-					if im.TreeNode1("Sun") then
-						im.SameLine()
-						if im.SmallButton("Reset##SUN") then
-							TriggerServerEvent("CEISetEnv", "allSun|default")
-							log('W', logTag, "CEISetEnv Called: allSun|default")
-						end
-						im.Indent()
-							
-						im.Text("Time Play: ")
-						im.SameLine()
-						local timePlay = environment.timePlay
-						if timePlay == "false" then
-							if im.SmallButton("Play") then
-								TriggerServerEvent("CEISetEnv", "timePlay|true")
-								log('W', logTag, "CEISetEnv Called: timePlay|true")
-							end
-						elseif timePlay == "true" then
-							if im.SmallButton("Stop") then
-								local timeOfDay = core_environment.getTimeOfDay()
-								TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
-								log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(timeOfDay.time))
-								TriggerServerEvent("CEISetEnv", "timePlay|false")
-								log('W', logTag, "CEISetEnv Called: timePlay|false")
-							end
-						end
-						
-						im.Text("Time of Day: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##ToD", environment.todVal, 0.001, 0.01) then
-							if environment.todVal[0] < 0 then
-								environment.todVal = im.FloatPtr(1)
-							elseif environment.todVal[0] > 1 then
-								environment.todVal = im.FloatPtr(0)
-							end
-							environment.todVal = im.FloatPtr(environment.todVal)
-							TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(environment.todVal[0]))
-							log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(environment.todVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##ToD") then
-							TriggerServerEvent("CEISetEnv", "ToD|default")
-							log('W', logTag, "CEISetEnv Called: ToD|default")
-						end
-						
-						im.Text("Day Scale: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##dayScale", environment.dayScaleVal, 0.01, 0.1) then
-							if environment.dayScaleVal[0] < 0.01 then
-								environment.dayScaleVal = im.FloatPtr(0.01)
-							elseif environment.dayScaleVal[0] > 100 then
-								environment.dayScaleVal = im.FloatPtr(100)
-							end
-							environment.dayScaleVal = im.FloatPtr(environment.dayScaleVal)
-							TriggerServerEvent("CEISetEnv", "dayScale|" .. tostring(environment.dayScaleVal[0]))
-							log('W', logTag, "CEISetEnv Called: dayScale|" .. tostring(environment.dayScaleVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Realtime##DS") then
-							TriggerServerEvent("CEISetEnv", "dayScale|0.0115740")
-							log('W', logTag, "CEISetEnv Called: dayScale|0.0115740")
-						end
-						im.SameLine()
-						if im.SmallButton("Reset##DS") then
-							TriggerServerEvent("CEISetEnv", "dayScale|default")
-							log('W', logTag, "CEISetEnv Called: dayScale|default")
-						end
-						
-						im.Text("Night Scale: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##nightScale", environment.nightScaleVal, 0.01, 0.1) then
-							if environment.nightScaleVal[0] < 0.01 then
-								environment.nightScaleVal = im.FloatPtr(0.01)
-							elseif environment.nightScaleVal[0] > 100 then
-								environment.nightScaleVal = im.FloatPtr(100)
-							end
-							environment.nightScaleVal = im.FloatPtr(environment.nightScaleVal)
-							TriggerServerEvent("CEISetEnv", "nightScale|" .. tostring(environment.nightScaleVal[0]))
-							log('W', logTag, "CEISetEnv Called: nightScale|" .. tostring(environment.nightScaleVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Realtime##NS") then
-							TriggerServerEvent("CEISetEnv", "nightScale|0.0115740")
-							log('W', logTag, "CEISetEnv Called: nightScale|0.0115740")
-						end
-						im.SameLine()
-						if im.SmallButton("Reset##NS") then
-							TriggerServerEvent("CEISetEnv", "nightScale|default")
-							log('W', logTag, "CEISetEnv Called: nightScale|default")
-						end
-						
-						im.Text("Azimuth Override: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##azimuthOverride", environment.azimuthOverrideVal, 0.001, 0.01) then
-							if environment.azimuthOverrideVal[0] < 0 then
-								environment.azimuthOverrideVal = im.FloatPtr(6.25)
-							elseif environment.azimuthOverrideVal[0] > 6.25 then
-								environment.azimuthOverrideVal = im.FloatPtr(0)
-							end
-							environment.azimuthOverrideVal = im.FloatPtr(environment.azimuthOverrideVal)
-							TriggerServerEvent("CEISetEnv", "azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
-							log('W', logTag, "CEISetEnv Called: azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##AO") then
-							TriggerServerEvent("CEISetEnv", "azimuthOverride|default")
-							log('W', logTag, "CEISetEnv Called: azimuthOverride|default")
-						end
-						
-						im.Text("Sun Size: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##sunSize", environment.sunSizeVal, 0.01, 0.1) then
-							if environment.sunSizeVal[0] < 0 then
-								environment.sunSizeVal = im.FloatPtr(0)
-							elseif environment.sunSizeVal[0] > 100 then
-								environment.sunSizeVal = im.FloatPtr(100)
-							end
-							environment.sunSizeVal = im.FloatPtr(environment.sunSizeVal)
-							TriggerServerEvent("CEISetEnv", "sunSize|" .. tostring(environment.sunSizeVal[0]))
-							log('W', logTag, "CEISetEnv Called: sunSize|" .. tostring(environment.sunSizeVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SS") then
-							TriggerServerEvent("CEISetEnv", "sunSize|default")
-							log('W', logTag, "CEISetEnv Called: sunSize|default")
-						end
-						
-						im.Text("Sky Brightness: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##skyBrightness", environment.skyBrightnessVal, 0.1, 1.0) then
-							if environment.skyBrightnessVal[0] < 0 then
-								environment.skyBrightnessVal = im.FloatPtr(0)
-							elseif environment.skyBrightnessVal[0] > 200 then
-								environment.skyBrightnessVal = im.FloatPtr(200)
-							end
-							environment.skyBrightnessVal = im.FloatPtr(environment.skyBrightnessVal)
-							TriggerServerEvent("CEISetEnv", "skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
-							log('W', logTag, "CEISetEnv Called: skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SB") then
-							TriggerServerEvent("CEISetEnv", "skyBrightness|default")
-							log('W', logTag, "CEISetEnv Called: skyBrightness|default")
-						end
-						
-						im.Text("Sunlight Brightness: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##sunLightBrightness", environment.sunLightBrightnessVal, 0.01, 0.1) then
-							if environment.sunLightBrightnessVal[0] < 0 then
-								environment.sunLightBrightnessVal = im.FloatPtr(0)
-							elseif environment.sunLightBrightnessVal[0] > 10 then
-								environment.sunLightBrightnessVal = im.FloatPtr(10)
-							end
-							environment.sunLightBrightnessVal = im.FloatPtr(environment.sunLightBrightnessVal)
-							TriggerServerEvent("CEISetEnv", "sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
-							log('W', logTag, "CEISetEnv Called: sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##GB") then
-							TriggerServerEvent("CEISetEnv", "sunLightBrightness|default")
-							log('W', logTag, "CEISetEnv Called: sunLightBrightness|default")
-						end
-						
-						im.Text("Exposure: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##exposure", environment.exposureVal, 0.01, 0.1) then
-							if environment.exposureVal[0] < 0 then
-								environment.exposureVal = im.FloatPtr(0)
-							elseif environment.exposureVal[0] > 3 then
-								environment.exposureVal = im.FloatPtr(3)
-							end
-							environment.exposureVal = im.FloatPtr(environment.exposureVal)
-							TriggerServerEvent("CEISetEnv", "exposure|" .. tostring(environment.exposureVal[0]))
-							log('W', logTag, "CEISetEnv Called: exposure|" .. tostring(environment.exposureVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##EX") then
-							TriggerServerEvent("CEISetEnv", "exposure|default")
-							log('W', logTag, "CEISetEnv Called: exposure|default")
-						end
-						
-						im.Text("Shadow Distance: ")
-						im.SameLine()
-						im.PushItemWidth(120)
-						if im.InputFloat("##shadowDistance", environment.shadowDistanceVal, 0.001, 0.01) then
-							if environment.shadowDistanceVal[0] < 0 then
-								environment.shadowDistanceVal = im.FloatPtr(0)
-							elseif environment.shadowDistanceVal[0] > 12800 then
-								environment.shadowDistanceVal = im.FloatPtr(12800)
-							end
-							environment.shadowDistanceVal = im.FloatPtr(environment.shadowDistanceVal)
-							TriggerServerEvent("CEISetEnv", "shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
-							log('W', logTag, "CEISetEnv Called: shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SD") then
-							TriggerServerEvent("CEISetEnv", "shadowDistance|default")
-							log('W', logTag, "CEISetEnv Called: shadowDistance|default")
-						end
-						
-						im.Text("Shadow Softness: ")
-						im.SameLine()
-						im.PushItemWidth(110)
-						if im.InputFloat("##shadowSoftness", environment.shadowSoftnessVal, 0.001, 0.01) then
-							if environment.shadowSoftnessVal[0] < -10 then
-								environment.shadowSoftnessVal = im.FloatPtr(-10)
-							elseif environment.shadowSoftnessVal[0] > 10 then
-								environment.shadowSoftnessVal = im.FloatPtr(10)
-							end
-							environment.shadowSoftnessVal = im.FloatPtr(environment.shadowSoftnessVal)
-							TriggerServerEvent("CEISetEnv", "shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
-							log('W', logTag, "CEISetEnv Called: shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SSFT") then
-							TriggerServerEvent("CEISetEnv", "shadowSoftness|default")
-							log('W', logTag, "CEISetEnv Called: shadowSoftness|default")
-						end
-						
-						im.Text("Shadow Splits: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##shadowSplits", environment.shadowSplitsInt, 1) then
-							if environment.shadowSplitsInt[0] < 0 then
-								environment.shadowSplitsInt = im.IntPtr(0)
-							elseif environment.shadowSplitsInt[0] > 4 then
-								environment.shadowSplitsInt = im.IntPtr(4)
-							end
-							TriggerServerEvent("CEISetEnv", "shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
-							log('W', logTag, "CEISetEnv Called: shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##SSPL") then
-							TriggerServerEvent("CEISetEnv", "shadowSplits|default")
-							log('W', logTag, "CEISetEnv Called: shadowSplits|default")
-						end
-						
-						
-						
-						
-						
-						im.TreePop()
-						im.Unindent()
-					else
-						im.SameLine()
-						if im.SmallButton("Reset##SUN") then
-							TriggerServerEvent("CEISetEnv", "allSun|default")
-							log('W', logTag, "CEISetEnv Called: allSun|default")
-						end
-					end
-					
-					
-					
-					if im.TreeNode1("Weather") then
-						im.SameLine()
-						if im.SmallButton("Reset##WET") then
-							TriggerServerEvent("CEISetEnv", "allWeather|default")
-							log('W', logTag, "CEISetEnv Called: allWeather|default")
-						end
-						
-						im.Indent()
-						
-						im.Text("Fog Density: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##fogDensity", environment.fogDensityVal, 0.00001, 0.0001) then
-							if environment.fogDensityVal[0] < 0.00001 then
-								environment.fogDensityVal = im.FloatPtr(0.00001)
-							elseif environment.fogDensityVal[0] > 0.01 then
-								environment.fogDensityVal = im.FloatPtr(0.01)
-							end
-							TriggerServerEvent("CEISetEnv", "fogDensity|" .. tostring(environment.fogDensityVal[0]))
-							log('W', logTag, "CEISetEnv Called: fogDensity|" .. tostring(environment.fogDensityVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##FD") then
-							TriggerServerEvent("CEISetEnv", "fogDensity|default")
-							log('W', logTag, "CEISetEnv Called: fogDensity|default")
-						end
-						
-						im.Text("Fog Distance: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##fogDensityOffset", environment.fogDensityOffsetVal, 0.001, 0.01) then
-							if environment.fogDensityOffsetVal[0] < 0 then
-								environment.fogDensityOffsetVal = im.FloatPtr(0)
-							elseif environment.fogDensityOffsetVal[0] > 100 then
-								environment.fogDensityOffsetVal = im.FloatPtr(100)
-							end
-							TriggerServerEvent("CEISetEnv", "fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
-							log('W', logTag, "CEISetEnv Called: fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##FDO") then
-							TriggerServerEvent("CEISetEnv", "fogDensityOffset|default")
-							log('W', logTag, "CEISetEnv Called: fogDensityOffset|default")
-						end
-						
-						im.Text("Cloud Cover: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##cloudCover", environment.cloudCoverVal, 0.01, 0.1) then
-							if environment.cloudCoverVal[0] < 0 then
-								environment.cloudCoverVal = im.FloatPtr(0)
-							elseif environment.cloudCoverVal[0] > 5 then
-								environment.cloudCoverVal = im.FloatPtr(5)
-							end
-							TriggerServerEvent("CEISetEnv", "cloudCover|" .. tostring(environment.cloudCoverVal[0]))
-							log('W', logTag, "CEISetEnv Called: cloudCover|" .. tostring(environment.cloudCoverVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##CC") then
-							TriggerServerEvent("CEISetEnv", "cloudCover|default")
-							log('W', logTag, "CEISetEnv Called: cloudCover|default")
-						end
-						
-						im.Text("Cloud Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##cloudSpeed", environment.cloudSpeedVal, 0.01, 0.1) then
-							if environment.cloudSpeedVal[0] < 0 then
-								environment.cloudSpeedVal = im.FloatPtr(0)
-							elseif environment.cloudSpeedVal[0] > 10 then
-								environment.cloudSpeedVal = im.FloatPtr(10)
-							end
-							TriggerServerEvent("CEISetEnv", "cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
-							log('W', logTag, "CEISetEnv Called: cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##CS") then
-							TriggerServerEvent("CEISetEnv", "cloudSpeed|default")
-							log('W', logTag, "CEISetEnv Called: cloudSpeed|default")
-						end
-						
-						im.Text("Rain Drops: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##rainDrops", environment.rainDropsInt, 1, 10) then
-							if environment.rainDropsInt[0] < 0 then
-								environment.rainDropsInt = im.IntPtr(0)
-							elseif environment.rainDropsInt[0] > 20000 then
-								environment.rainDropsInt = im.IntPtr(20000)
-							end
-							TriggerServerEvent("CEISetEnv", "rainDrops|" .. tostring(environment.rainDropsInt[0]))
-							log('W', logTag, "CEISetEnv Called: rainDrops|" .. tostring(environment.rainDropsInt[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##RD") then
-							TriggerServerEvent("CEISetEnv", "rainDrops|default")
-							log('W', logTag, "CEISetEnv Called: rainDrops|default")
-						end
-						
-						im.Text("Drop Size: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropSize", environment.dropSizeVal, 0.001, 0.01) then
-							if environment.dropSizeVal[0] < 0 then
-								environment.dropSizeVal = im.FloatPtr(0)
-							elseif environment.dropSizeVal[0] > 2 then
-								environment.dropSizeVal = im.FloatPtr(2)
-							end
-							environment.dropSizeVal = im.FloatPtr(environment.dropSizeVal)
-							TriggerServerEvent("CEISetEnv", "dropSize|" .. tostring(environment.dropSizeVal[0]))
-							log('W', logTag, "CEISetEnv Called: dropSize|" .. tostring(environment.dropSizeVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DSZ") then
-							TriggerServerEvent("CEISetEnv", "dropSize|default")
-							log('W', logTag, "CEISetEnv Called: dropSize|default")
-						end
-						
-						im.Text("Drop Min Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropMinSpeed", environment.dropMinSpeedVal, 0.001, 0.01) then
-							if environment.dropMinSpeedVal[0] < 0 then
-								environment.dropMinSpeedVal = im.FloatPtr(0)
-							elseif environment.dropMinSpeedVal[0] > 2 then
-								environment.dropMinSpeedVal = im.FloatPtr(2)
-							end
-							environment.dropMinSpeedVal = im.FloatPtr(environment.dropMinSpeedVal)
-							TriggerServerEvent("CEISetEnv", "dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
-							log('W', logTag, "CEISetEnv Called: dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DMNS") then
-							TriggerServerEvent("CEISetEnv", "dropMinSpeed|default")
-							log('W', logTag, "CEISetEnv Called: dropMinSpeed|default")
-						end
-						
-						im.Text("Drop Max Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropMaxSpeed", environment.dropMaxSpeedVal, 0.001, 0.01) then
-							if environment.dropMaxSpeedVal[0] < 0 then
-								environment.dropMaxSpeedVal = im.FloatPtr(0)
-							elseif environment.dropMaxSpeedVal[0] > 2 then
-								environment.dropMaxSpeedVal = im.FloatPtr(2)
-							end
-							environment.dropMaxSpeedVal = im.FloatPtr(environment.dropMaxSpeedVal)
-							TriggerServerEvent("CEISetEnv", "dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
-							log('W', logTag, "CEISetEnv Called: dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DMXS") then
-							TriggerServerEvent("CEISetEnv", "dropMaxSpeed|default")
-							log('W', logTag, "CEISetEnv Called: dropMaxSpeed|default")
-						end
-						
-						im.Text("Precipitation Type: ")
-						im.SameLine()
-						local precipType = environment.precipType
-						if precipType == "rain_medium" then
-							if im.SmallButton("Medium Rain") then
-								TriggerServerEvent("CEISetEnv", "precipType|rain_drop")
-								log('W', logTag, "CEISetEnv Called: precipType|rain_drop")
-							end
-						elseif precipType == "rain_drop" then
-							if im.SmallButton("Light Rain") then
-								TriggerServerEvent("CEISetEnv", "precipType|Snow_menu")
-								log('W', logTag, "CEISetEnv Called: precipType|Snow_menu")
-							end
-						elseif precipType == "Snow_menu" then
-							if im.SmallButton("Snow") then
-								TriggerServerEvent("CEISetEnv", "precipType|rain_medium")
-								log('W', logTag, "CEISetEnv Called: precipType|rain_medium")
-							end
-						end
-						
-						im.TreePop()
-						im.Unindent()
-					else
-						im.SameLine()
-						if im.SmallButton("Reset##WET") then
-							TriggerServerEvent("CEISetEnv", "allWeather|default")
-							log('W', logTag, "CEISetEnv Called: allWeather|default")
-						end
-					end
-					
-					
-					
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##ENV") then
-						TriggerServerEvent("CEISetEnv", "all|default")
-						log('W', logTag, "CEISetEnv Called: all|default")
+				elseif timePlay == "true" then
+					if im.SmallButton("Stop") then
+						local timeOfDay = core_environment.getTimeOfDay()
+						TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+						log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(timeOfDay.time))
+						TriggerServerEvent("CEISetEnv", "timePlay|false")
+						log('W', logTag, "CEISetEnv Called: timePlay|false")
 					end
 				end
 				
-				if im.TreeNode1("Simulation") then
-					im.Indent()
-					
-					im.Text("Teleport Timeout: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
-						if environment.teleportTimeoutInt[0] < 0 then
-							environment.teleportTimeoutInt = im.IntPtr(0)
-						elseif environment.teleportTimeoutInt[0] > 60 then
-							environment.teleportTimeoutInt = im.IntPtr(60)
-						end
-						TriggerServerEvent("CEISetEnv", "teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
-						log('W', logTag, "CEISetEnv Called: teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+				im.Text("Time of Day: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##ToD", environment.todVal, 0.001, 0.01) then
+					if environment.todVal[0] < 0 then
+						environment.todVal = im.FloatPtr(1)
+					elseif environment.todVal[0] > 1 then
+						environment.todVal = im.FloatPtr(0)
 					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##TLPT") then
-						TriggerServerEvent("CEISetEnv", "teleportTimeout|default")
-						log('W', logTag, "CEISetEnv Called: teleportTimeout|default")
+					environment.todVal = im.FloatPtr(environment.todVal)
+					TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(environment.todVal[0]))
+					log('W', logTag, "CEISetEnv Called: ToD|" .. tostring(environment.todVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##ToD") then
+					TriggerServerEvent("CEISetEnv", "ToD|default")
+					log('W', logTag, "CEISetEnv Called: ToD|default")
+				end
+				
+				im.Text("Day Scale: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##dayScale", environment.dayScaleVal, 0.01, 0.1) then
+					if environment.dayScaleVal[0] < 0.01 then
+						environment.dayScaleVal = im.FloatPtr(0.01)
+					elseif environment.dayScaleVal[0] > 100 then
+						environment.dayScaleVal = im.FloatPtr(100)
 					end
-					
-					im.Text("Simulation Speed: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##simSpeed", environment.simSpeedVal, 0.001, 0.1) then
-						if environment.simSpeedVal[0] < 0.01 then
-							environment.simSpeedVal = im.FloatPtr(0.01)
-						elseif environment.simSpeedVal[0] > 5 then
-							environment.simSpeedVal = im.FloatPtr(5)
-						end
-						environment.simSpeedVal = im.FloatPtr(environment.simSpeedVal)
-						TriggerServerEvent("CEISetEnv", "simSpeed|" .. tostring(environment.simSpeedVal[0]))
-						log('W', logTag, "CEISetEnv Called: simSpeed|" .. tostring(environment.simSpeedVal[0]))
+					environment.dayScaleVal = im.FloatPtr(environment.dayScaleVal)
+					TriggerServerEvent("CEISetEnv", "dayScale|" .. tostring(environment.dayScaleVal[0]))
+					log('W', logTag, "CEISetEnv Called: dayScale|" .. tostring(environment.dayScaleVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Realtime##DS") then
+					TriggerServerEvent("CEISetEnv", "dayScale|0.0115740")
+					log('W', logTag, "CEISetEnv Called: dayScale|0.0115740")
+				end
+				im.SameLine()
+				if im.SmallButton("Reset##DS") then
+					TriggerServerEvent("CEISetEnv", "dayScale|default")
+					log('W', logTag, "CEISetEnv Called: dayScale|default")
+				end
+				
+				im.Text("Night Scale: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##nightScale", environment.nightScaleVal, 0.01, 0.1) then
+					if environment.nightScaleVal[0] < 0.01 then
+						environment.nightScaleVal = im.FloatPtr(0.01)
+					elseif environment.nightScaleVal[0] > 100 then
+						environment.nightScaleVal = im.FloatPtr(100)
 					end
-					im.PopItemWidth()
+					environment.nightScaleVal = im.FloatPtr(environment.nightScaleVal)
+					TriggerServerEvent("CEISetEnv", "nightScale|" .. tostring(environment.nightScaleVal[0]))
+					log('W', logTag, "CEISetEnv Called: nightScale|" .. tostring(environment.nightScaleVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Realtime##NS") then
+					TriggerServerEvent("CEISetEnv", "nightScale|0.0115740")
+					log('W', logTag, "CEISetEnv Called: nightScale|0.0115740")
+				end
+				im.SameLine()
+				if im.SmallButton("Reset##NS") then
+					TriggerServerEvent("CEISetEnv", "nightScale|default")
+					log('W', logTag, "CEISetEnv Called: nightScale|default")
+				end
+				
+				im.Text("Azimuth Override: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##azimuthOverride", environment.azimuthOverrideVal, 0.001, 0.01) then
+					if environment.azimuthOverrideVal[0] < 0 then
+						environment.azimuthOverrideVal = im.FloatPtr(6.25)
+					elseif environment.azimuthOverrideVal[0] > 6.25 then
+						environment.azimuthOverrideVal = im.FloatPtr(0)
+					end
+					environment.azimuthOverrideVal = im.FloatPtr(environment.azimuthOverrideVal)
+					TriggerServerEvent("CEISetEnv", "azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
+					log('W', logTag, "CEISetEnv Called: azimuthOverride|" .. tostring(environment.azimuthOverrideVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##AO") then
+					TriggerServerEvent("CEISetEnv", "azimuthOverride|default")
+					log('W', logTag, "CEISetEnv Called: azimuthOverride|default")
+				end
+				
+				im.Text("Sun Size: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##sunSize", environment.sunSizeVal, 0.01, 0.1) then
+					if environment.sunSizeVal[0] < 0 then
+						environment.sunSizeVal = im.FloatPtr(0)
+					elseif environment.sunSizeVal[0] > 100 then
+						environment.sunSizeVal = im.FloatPtr(100)
+					end
+					environment.sunSizeVal = im.FloatPtr(environment.sunSizeVal)
+					TriggerServerEvent("CEISetEnv", "sunSize|" .. tostring(environment.sunSizeVal[0]))
+					log('W', logTag, "CEISetEnv Called: sunSize|" .. tostring(environment.sunSizeVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SS") then
+					TriggerServerEvent("CEISetEnv", "sunSize|default")
+					log('W', logTag, "CEISetEnv Called: sunSize|default")
+				end
+				
+				im.Text("Sky Brightness: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##skyBrightness", environment.skyBrightnessVal, 0.1, 1.0) then
+					if environment.skyBrightnessVal[0] < 0 then
+						environment.skyBrightnessVal = im.FloatPtr(0)
+					elseif environment.skyBrightnessVal[0] > 200 then
+						environment.skyBrightnessVal = im.FloatPtr(200)
+					end
+					environment.skyBrightnessVal = im.FloatPtr(environment.skyBrightnessVal)
+					TriggerServerEvent("CEISetEnv", "skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
+					log('W', logTag, "CEISetEnv Called: skyBrightness|" .. tostring(environment.skyBrightnessVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SB") then
+					TriggerServerEvent("CEISetEnv", "skyBrightness|default")
+					log('W', logTag, "CEISetEnv Called: skyBrightness|default")
+				end
+				
+				im.Text("Sunlight Brightness: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##sunLightBrightness", environment.sunLightBrightnessVal, 0.01, 0.1) then
+					if environment.sunLightBrightnessVal[0] < 0 then
+						environment.sunLightBrightnessVal = im.FloatPtr(0)
+					elseif environment.sunLightBrightnessVal[0] > 10 then
+						environment.sunLightBrightnessVal = im.FloatPtr(10)
+					end
+					environment.sunLightBrightnessVal = im.FloatPtr(environment.sunLightBrightnessVal)
+					TriggerServerEvent("CEISetEnv", "sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
+					log('W', logTag, "CEISetEnv Called: sunLightBrightness|" .. tostring(environment.sunLightBrightnessVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##GB") then
+					TriggerServerEvent("CEISetEnv", "sunLightBrightness|default")
+					log('W', logTag, "CEISetEnv Called: sunLightBrightness|default")
+				end
+				
+				im.Text("Exposure: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##exposure", environment.exposureVal, 0.01, 0.1) then
+					if environment.exposureVal[0] < 0 then
+						environment.exposureVal = im.FloatPtr(0)
+					elseif environment.exposureVal[0] > 3 then
+						environment.exposureVal = im.FloatPtr(3)
+					end
+					environment.exposureVal = im.FloatPtr(environment.exposureVal)
+					TriggerServerEvent("CEISetEnv", "exposure|" .. tostring(environment.exposureVal[0]))
+					log('W', logTag, "CEISetEnv Called: exposure|" .. tostring(environment.exposureVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##EX") then
+					TriggerServerEvent("CEISetEnv", "exposure|default")
+					log('W', logTag, "CEISetEnv Called: exposure|default")
+				end
+				
+				im.Text("Shadow Distance: ")
+				im.SameLine()
+				im.PushItemWidth(120)
+				if im.InputFloat("##shadowDistance", environment.shadowDistanceVal, 0.001, 0.01) then
+					if environment.shadowDistanceVal[0] < 0 then
+						environment.shadowDistanceVal = im.FloatPtr(0)
+					elseif environment.shadowDistanceVal[0] > 12800 then
+						environment.shadowDistanceVal = im.FloatPtr(12800)
+					end
+					environment.shadowDistanceVal = im.FloatPtr(environment.shadowDistanceVal)
+					TriggerServerEvent("CEISetEnv", "shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
+					log('W', logTag, "CEISetEnv Called: shadowDistance|" .. tostring(environment.shadowDistanceVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SD") then
+					TriggerServerEvent("CEISetEnv", "shadowDistance|default")
+					log('W', logTag, "CEISetEnv Called: shadowDistance|default")
+				end
+				
+				im.Text("Shadow Softness: ")
+				im.SameLine()
+				im.PushItemWidth(110)
+				if im.InputFloat("##shadowSoftness", environment.shadowSoftnessVal, 0.001, 0.01) then
+					if environment.shadowSoftnessVal[0] < -10 then
+						environment.shadowSoftnessVal = im.FloatPtr(-10)
+					elseif environment.shadowSoftnessVal[0] > 10 then
+						environment.shadowSoftnessVal = im.FloatPtr(10)
+					end
+					environment.shadowSoftnessVal = im.FloatPtr(environment.shadowSoftnessVal)
+					TriggerServerEvent("CEISetEnv", "shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
+					log('W', logTag, "CEISetEnv Called: shadowSoftness|" .. tostring(environment.shadowSoftnessVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SSFT") then
+					TriggerServerEvent("CEISetEnv", "shadowSoftness|default")
+					log('W', logTag, "CEISetEnv Called: shadowSoftness|default")
+				end
+				
+				im.Text("Shadow Splits: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputInt("##shadowSplits", environment.shadowSplitsInt, 1) then
+					if environment.shadowSplitsInt[0] < 0 then
+						environment.shadowSplitsInt = im.IntPtr(0)
+					elseif environment.shadowSplitsInt[0] > 4 then
+						environment.shadowSplitsInt = im.IntPtr(4)
+					end
+					TriggerServerEvent("CEISetEnv", "shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
+					log('W', logTag, "CEISetEnv Called: shadowSplits|" .. tostring(environment.shadowSplitsInt[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##SSPL") then
+					TriggerServerEvent("CEISetEnv", "shadowSplits|default")
+					log('W', logTag, "CEISetEnv Called: shadowSplits|default")
+				end
+				
+				
+				
+				
+				
+				im.TreePop()
+				im.Unindent()
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##SUN") then
+					TriggerServerEvent("CEISetEnv", "allSun|default")
+					log('W', logTag, "CEISetEnv Called: allSun|default")
+				end
+			end
+			
+			if im.TreeNode1("Weather") then
+				im.SameLine()
+				if im.SmallButton("Reset##WET") then
+					TriggerServerEvent("CEISetEnv", "allWeather|default")
+					log('W', logTag, "CEISetEnv Called: allWeather|default")
+				end
+				
+				im.Indent()
+				
+				im.Text("Fog Density: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##fogDensity", environment.fogDensityVal, 0.00001, 0.0001) then
+					if environment.fogDensityVal[0] < 0.00001 then
+						environment.fogDensityVal = im.FloatPtr(0.00001)
+					elseif environment.fogDensityVal[0] > 0.01 then
+						environment.fogDensityVal = im.FloatPtr(0.01)
+					end
+					TriggerServerEvent("CEISetEnv", "fogDensity|" .. tostring(environment.fogDensityVal[0]))
+					log('W', logTag, "CEISetEnv Called: fogDensity|" .. tostring(environment.fogDensityVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##FD") then
+					TriggerServerEvent("CEISetEnv", "fogDensity|default")
+					log('W', logTag, "CEISetEnv Called: fogDensity|default")
+				end
+				
+				im.Text("Fog Distance: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##fogDensityOffset", environment.fogDensityOffsetVal, 0.001, 0.01) then
+					if environment.fogDensityOffsetVal[0] < 0 then
+						environment.fogDensityOffsetVal = im.FloatPtr(0)
+					elseif environment.fogDensityOffsetVal[0] > 100 then
+						environment.fogDensityOffsetVal = im.FloatPtr(100)
+					end
+					TriggerServerEvent("CEISetEnv", "fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
+					log('W', logTag, "CEISetEnv Called: fogDensityOffset|" .. tostring(environment.fogDensityOffsetVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##FDO") then
+					TriggerServerEvent("CEISetEnv", "fogDensityOffset|default")
+					log('W', logTag, "CEISetEnv Called: fogDensityOffset|default")
+				end
+				
+				im.Text("Cloud Cover: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##cloudCover", environment.cloudCoverVal, 0.01, 0.1) then
+					if environment.cloudCoverVal[0] < 0 then
+						environment.cloudCoverVal = im.FloatPtr(0)
+					elseif environment.cloudCoverVal[0] > 5 then
+						environment.cloudCoverVal = im.FloatPtr(5)
+					end
+					TriggerServerEvent("CEISetEnv", "cloudCover|" .. tostring(environment.cloudCoverVal[0]))
+					log('W', logTag, "CEISetEnv Called: cloudCover|" .. tostring(environment.cloudCoverVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##CC") then
+					TriggerServerEvent("CEISetEnv", "cloudCover|default")
+					log('W', logTag, "CEISetEnv Called: cloudCover|default")
+				end
+				
+				im.Text("Cloud Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##cloudSpeed", environment.cloudSpeedVal, 0.01, 0.1) then
+					if environment.cloudSpeedVal[0] < 0 then
+						environment.cloudSpeedVal = im.FloatPtr(0)
+					elseif environment.cloudSpeedVal[0] > 10 then
+						environment.cloudSpeedVal = im.FloatPtr(10)
+					end
+					TriggerServerEvent("CEISetEnv", "cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: cloudSpeed|" .. tostring(environment.cloudSpeedVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##CS") then
+					TriggerServerEvent("CEISetEnv", "cloudSpeed|default")
+					log('W', logTag, "CEISetEnv Called: cloudSpeed|default")
+				end
+				
+				im.Text("Rain Drops: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputInt("##rainDrops", environment.rainDropsInt, 1, 10) then
+					if environment.rainDropsInt[0] < 0 then
+						environment.rainDropsInt = im.IntPtr(0)
+					elseif environment.rainDropsInt[0] > 20000 then
+						environment.rainDropsInt = im.IntPtr(20000)
+					end
+					TriggerServerEvent("CEISetEnv", "rainDrops|" .. tostring(environment.rainDropsInt[0]))
+					log('W', logTag, "CEISetEnv Called: rainDrops|" .. tostring(environment.rainDropsInt[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##RD") then
+					TriggerServerEvent("CEISetEnv", "rainDrops|default")
+					log('W', logTag, "CEISetEnv Called: rainDrops|default")
+				end
+				
+				im.Text("Drop Size: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##dropSize", environment.dropSizeVal, 0.001, 0.01) then
+					if environment.dropSizeVal[0] < 0 then
+						environment.dropSizeVal = im.FloatPtr(0)
+					elseif environment.dropSizeVal[0] > 2 then
+						environment.dropSizeVal = im.FloatPtr(2)
+					end
+					environment.dropSizeVal = im.FloatPtr(environment.dropSizeVal)
+					TriggerServerEvent("CEISetEnv", "dropSize|" .. tostring(environment.dropSizeVal[0]))
+					log('W', logTag, "CEISetEnv Called: dropSize|" .. tostring(environment.dropSizeVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##DSZ") then
+					TriggerServerEvent("CEISetEnv", "dropSize|default")
+					log('W', logTag, "CEISetEnv Called: dropSize|default")
+				end
+				
+				im.Text("Drop Min Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##dropMinSpeed", environment.dropMinSpeedVal, 0.001, 0.01) then
+					if environment.dropMinSpeedVal[0] < 0 then
+						environment.dropMinSpeedVal = im.FloatPtr(0)
+					elseif environment.dropMinSpeedVal[0] > 2 then
+						environment.dropMinSpeedVal = im.FloatPtr(2)
+					end
+					environment.dropMinSpeedVal = im.FloatPtr(environment.dropMinSpeedVal)
+					TriggerServerEvent("CEISetEnv", "dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: dropMinSpeed|" .. tostring(environment.dropMinSpeedVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##DMNS") then
+					TriggerServerEvent("CEISetEnv", "dropMinSpeed|default")
+					log('W', logTag, "CEISetEnv Called: dropMinSpeed|default")
+				end
+				
+				im.Text("Drop Max Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##dropMaxSpeed", environment.dropMaxSpeedVal, 0.001, 0.01) then
+					if environment.dropMaxSpeedVal[0] < 0 then
+						environment.dropMaxSpeedVal = im.FloatPtr(0)
+					elseif environment.dropMaxSpeedVal[0] > 2 then
+						environment.dropMaxSpeedVal = im.FloatPtr(2)
+					end
+					environment.dropMaxSpeedVal = im.FloatPtr(environment.dropMaxSpeedVal)
+					TriggerServerEvent("CEISetEnv", "dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: dropMaxSpeed|" .. tostring(environment.dropMaxSpeedVal[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##DMXS") then
+					TriggerServerEvent("CEISetEnv", "dropMaxSpeed|default")
+					log('W', logTag, "CEISetEnv Called: dropMaxSpeed|default")
+				end
+				
+				im.Text("Precipitation Type: ")
+				im.SameLine()
+				local precipType = environment.precipType
+				if precipType == "rain_medium" then
+					if im.SmallButton("Medium Rain") then
+						TriggerServerEvent("CEISetEnv", "precipType|rain_drop")
+						log('W', logTag, "CEISetEnv Called: precipType|rain_drop")
+					end
+				elseif precipType == "rain_drop" then
+					if im.SmallButton("Light Rain") then
+						TriggerServerEvent("CEISetEnv", "precipType|Snow_menu")
+						log('W', logTag, "CEISetEnv Called: precipType|Snow_menu")
+					end
+				elseif precipType == "Snow_menu" then
+					if im.SmallButton("Snow") then
+						TriggerServerEvent("CEISetEnv", "precipType|rain_medium")
+						log('W', logTag, "CEISetEnv Called: precipType|rain_medium")
+					end
+				end
+				
+				im.TreePop()
+				im.Unindent()
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##WET") then
+					TriggerServerEvent("CEISetEnv", "allWeather|default")
+					log('W', logTag, "CEISetEnv Called: allWeather|default")
+				end
+			end
+			
+			if im.TreeNode1("Simulation") then
+				im.SameLine()
+				if im.SmallButton("Reset##SIM") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|default")
+					log('W', logTag, "CEISetEnv Called: simSpeed|default")
+				end
+			
+				im.Indent()
+				
+				im.Text("Teleport Timeout: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
+					if environment.teleportTimeoutInt[0] < 0 then
+						environment.teleportTimeoutInt = im.IntPtr(0)
+					elseif environment.teleportTimeoutInt[0] > 60 then
+						environment.teleportTimeoutInt = im.IntPtr(60)
+					end
+					TriggerServerEvent("CEISetEnv", "teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+					log('W', logTag, "CEISetEnv Called: teleportTimeout|" .. tostring(environment.teleportTimeoutInt[0]))
+				end
+				im.PopItemWidth()
+				im.SameLine()
+				if im.SmallButton("Reset##TLPT") then
+					TriggerServerEvent("CEISetEnv", "teleportTimeout|default")
+					log('W', logTag, "CEISetEnv Called: teleportTimeout|default")
+				end
+				
+				im.Text("Simulation Speed: ")
+				im.SameLine()
+				im.PushItemWidth(100)
+				if im.InputFloat("##simSpeed", environment.simSpeedVal, 0.001, 0.1) then
+					if environment.simSpeedVal[0] < 0.01 then
+						environment.simSpeedVal = im.FloatPtr(0.01)
+					elseif environment.simSpeedVal[0] > 5 then
+						environment.simSpeedVal = im.FloatPtr(5)
+					end
+					environment.simSpeedVal = im.FloatPtr(environment.simSpeedVal)
+					TriggerServerEvent("CEISetEnv", "simSpeed|" .. tostring(environment.simSpeedVal[0]))
+					log('W', logTag, "CEISetEnv Called: simSpeed|" .. tostring(environment.simSpeedVal[0]))
+				end
+				im.PopItemWidth()
 
-					if im.SmallButton("0.5X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|2")
-						log('W', logTag, "CEISetEnv Called: simSpeed|2")
-					end
-					im.SameLine()
-					if im.SmallButton("Real") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|default")
-						log('W', logTag, "CEISetEnv Called: simSpeed|default")
-					end
-					im.SameLine()
-					if im.SmallButton("2X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.5")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.5")
-					end
-					im.SameLine()
-					if im.SmallButton("4X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.25")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.25")
-					end
-					im.SameLine()
-					if im.SmallButton("10X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.1")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.1")
-					end
-					im.SameLine()
-					if im.SmallButton("100X") then
-						TriggerServerEvent("CEISetEnv", "simSpeed|0.01")
-						log('W', logTag, "CEISetEnv Called: simSpeed|0.01")
-					end
-					
-					im.TreePop()
-					im.Unindent()
+				if im.SmallButton("0.5X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|2")
+					log('W', logTag, "CEISetEnv Called: simSpeed|2")
+				end
+				im.SameLine()
+				if im.SmallButton("Real") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|default")
+					log('W', logTag, "CEISetEnv Called: simSpeed|default")
+				end
+				im.SameLine()
+				if im.SmallButton("2X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.5")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.5")
+				end
+				im.SameLine()
+				if im.SmallButton("4X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.25")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.25")
+				end
+				im.SameLine()
+				if im.SmallButton("10X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.1")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.1")
+				end
+				im.SameLine()
+				if im.SmallButton("100X") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|0.01")
+					log('W', logTag, "CEISetEnv Called: simSpeed|0.01")
 				end
 				
-				if im.TreeNode1("Gravity") then
-					im.Indent()
+				im.TreePop()
+				im.Unindent()
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##SIM") then
+					TriggerServerEvent("CEISetEnv", "simSpeed|default")
+					log('W', logTag, "CEISetEnv Called: simSpeed|default")
+				end
+			end
+		
+			if im.TreeNode1("Gravity") then
+				im.SameLine()
+				if im.SmallButton("Reset##GRV") then
+					TriggerServerEvent("CEISetEnv", "gravity|default")
+					log('W', logTag, "CEISetEnv Called: gravity|default")
+				end
+				im.Indent()
+				
+				im.Text("		")
+				im.SameLine()
+				im.PushItemWidth(130)
+				if im.InputFloat("##gravity", environment.gravityVal, 0.001, 0.1) then
+					if environment.gravityVal[0] < -280 then
+						environment.gravityVal = im.FloatPtr(-280)
+					elseif environment.gravityVal[0] > 10 then
+						environment.gravityVal = im.FloatPtr(10)
+					end
+					environment.gravityVal = im.FloatPtr(environment.gravityVal)
+					TriggerServerEvent("CEISetEnv", "gravity|" .. tostring(environment.gravityVal[0]))
+					log('W', logTag, "CEISetEnv Called: gravity|" .. tostring(environment.gravityVal[0]))
+				end
+				im.PopItemWidth()
+
+				if im.SmallButton("Zero") then
+					TriggerServerEvent("CEISetEnv", "gravity|0")
+					log('W', logTag, "CEISetEnv Called: gravity|0")
+				end
+				im.SameLine()
+				if im.SmallButton("Earth") then
+					TriggerServerEvent("CEISetEnv", "gravity|default")
+					log('W', logTag, "CEISetEnv Called: gravity|default")
+				end
+				im.SameLine()
+				if im.SmallButton("Moon") then
+					TriggerServerEvent("CEISetEnv", "gravity|-1.62")
+					log('W', logTag, "CEISetEnv Called: gravity|-1.62")
+				end
+
+				if im.SmallButton("Mars") then
+					TriggerServerEvent("CEISetEnv", "gravity|-3.71")
+					log('W', logTag, "CEISetEnv Called: gravity|-3.71")
+				end
+				im.SameLine()
+				if im.SmallButton("Sun") then
+					TriggerServerEvent("CEISetEnv", "gravity|-274")
+					log('W', logTag, "CEISetEnv Called: gravity|-274")
+				end
+				im.SameLine()
+				if im.SmallButton("Jupiter") then
+					TriggerServerEvent("CEISetEnv", "gravity|-24.92")
+					log('W', logTag, "CEISetEnv Called: gravity|-24.92")
+				end
+				
+
+				if im.SmallButton("Neptune") then
+					TriggerServerEvent("CEISetEnv", "gravity|-11.15")
+					log('W', logTag, "CEISetEnv Called: gravity|-11.15")
+				end
+				im.SameLine()
+				if im.SmallButton("Saturn") then
+					TriggerServerEvent("CEISetEnv", "gravity|-10.44")
+					log('W', logTag, "CEISetEnv Called: gravity|-10.44")
+				end
+				im.SameLine()
+				if im.SmallButton("Uranus") then
+					TriggerServerEvent("CEISetEnv", "gravity|-8.87")
+					log('W', logTag, "CEISetEnv Called: gravity|-8.87")
+				end
+				
+				if im.SmallButton("Venus") then
+					TriggerServerEvent("CEISetEnv", "gravity|-8.87")
+					log('W', logTag, "CEISetEnv Called: gravity|-8.87")
+				end
+				im.SameLine()
+				if im.SmallButton("Mercury") then
+					TriggerServerEvent("CEISetEnv", "gravity|-3.7")
+					log('W', logTag, "CEISetEnv Called: gravity|-3.7")
+				end
+				im.SameLine()
+				if im.SmallButton("Pluto") then
+					TriggerServerEvent("CEISetEnv", "gravity|-0.58")
+					log('W', logTag, "CEISetEnv Called: gravity|-0.58")
+				end
+				
+				im.TreePop()
+				im.Unindent()
+				
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##GRV") then
+					TriggerServerEvent("CEISetEnv", "gravity|default")
+					log('W', logTag, "CEISetEnv Called: gravity|default")
+				end
+			end
+		
+			if im.TreeNode1("Temperature") then
+				im.SameLine()
+				if im.SmallButton("Reset##TMP") then
+					TriggerServerEvent("CEISetEnv", "useTempCurve|false")
+					log('W', logTag, "CEISetEnv Called: useTempCurve|false")
+					environment.useTempCurveSent = false
+				end
+				im.Indent()
+				
+				local useTempCurve = im.BoolPtr(environment.useTempCurveVal)
+				
+				if im.Checkbox("Use Custom Temperature Curve", useTempCurve) then
+					if useTempCurve[0] then
+						if environment.useTempCurveSent == false then
+							TriggerServerEvent("CEISetEnv", "useTempCurve|true")
+							log('W', logTag, "CEISetEnv Called: useTempCurve|true")
+							environment.useTempCurveSent = true
+						end
+					else
+						if environment.useTempCurveSent == true then
+							log('W', logTag, "CEISetEnv Called: useTempCurve|false")
+							TriggerServerEvent("CEISetEnv", "useTempCurve|false")
+							environment.useTempCurveSent = false
+						end
+					end
+				end
+				environment.useTempCurveVal = useTempCurve[0]
+				
+				if environment.useTempCurveVal == true then
+					im.Text("Custom Temperature Curve:")
+					im.SameLine()
+					if im.SmallButton("Reset##TCV") then
+						TriggerServerEvent("CEISetEnv", "tempCurveNoon|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveNoon|default")
+						TriggerServerEvent("CEISetEnv", "tempCurveDusk|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveDusk|default")
+						TriggerServerEvent("CEISetEnv", "tempCurveMidnight|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveMidnight|default")
+						TriggerServerEvent("CEISetEnv", "tempCurveDawn|default")
+						log('W', logTag, "CEISetEnv Called: tempCurveDawn|default")
+					end
 					
 					im.Text("		")
 					im.SameLine()
-					im.PushItemWidth(130)
-					if im.InputFloat("##gravity", environment.gravityVal, 0.001, 0.1) then
-						if environment.gravityVal[0] < -280 then
-							environment.gravityVal = im.FloatPtr(-280)
-						elseif environment.gravityVal[0] > 10 then
-							environment.gravityVal = im.FloatPtr(10)
+					im.Text("Noon")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveNoon", environment.tempCurveNoonInt, 1, 2) then
+						if environment.tempCurveNoonInt[0] < -50 then
+							environment.tempCurveNoonInt = im.IntPtr(-50)
+						elseif environment.tempCurveNoonInt[0] > 50 then
+							environment.tempCurveNoonInt = im.IntPtr(50)
 						end
-						environment.gravityVal = im.FloatPtr(environment.gravityVal)
-						TriggerServerEvent("CEISetEnv", "gravity|" .. tostring(environment.gravityVal[0]))
-						log('W', logTag, "CEISetEnv Called: gravity|" .. tostring(environment.gravityVal[0]))
+						TriggerServerEvent("CEISetEnv", "tempCurveNoon|" .. tostring(environment.tempCurveNoonInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveNoon|" .. tostring(environment.tempCurveNoonInt[0]))
 					end
 					im.PopItemWidth()
-
-					if im.SmallButton("Zero") then
-						TriggerServerEvent("CEISetEnv", "gravity|0")
-						log('W', logTag, "CEISetEnv Called: gravity|0")
-					end
+					im.Text("		")
 					im.SameLine()
-					if im.SmallButton("Earth") then
-						TriggerServerEvent("CEISetEnv", "gravity|default")
-						log('W', logTag, "CEISetEnv Called: gravity|default")
-					end
+					im.Text("Dusk")
 					im.SameLine()
-					if im.SmallButton("Moon") then
-						TriggerServerEvent("CEISetEnv", "gravity|-1.62")
-						log('W', logTag, "CEISetEnv Called: gravity|-1.62")
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveDusk", environment.tempCurveDuskInt, 1, 2) then
+						if environment.tempCurveDuskInt[0] < -50 then
+							environment.tempCurveDuskInt = im.IntPtr(-50)
+						elseif environment.tempCurveDuskInt[0] > 50 then
+							environment.tempCurveDuskInt = im.IntPtr(50)
+						end
+						TriggerServerEvent("CEISetEnv", "tempCurveDusk|" .. tostring(environment.tempCurveDuskInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveDusk|" .. tostring(environment.tempCurveDuskInt[0]))
 					end
-
-					if im.SmallButton("Mars") then
-						TriggerServerEvent("CEISetEnv", "gravity|-3.71")
-						log('W', logTag, "CEISetEnv Called: gravity|-3.71")
-					end
+					im.PopItemWidth()
+					im.Text("		")
 					im.SameLine()
-					if im.SmallButton("Sun") then
-						TriggerServerEvent("CEISetEnv", "gravity|-274")
-						log('W', logTag, "CEISetEnv Called: gravity|-274")
-					end
+					im.Text("Midnight")
 					im.SameLine()
-					if im.SmallButton("Jupiter") then
-						TriggerServerEvent("CEISetEnv", "gravity|-24.92")
-						log('W', logTag, "CEISetEnv Called: gravity|-24.92")
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveMidnight", environment.tempCurveMidnightInt, 1, 2) then
+						if environment.tempCurveMidnightInt[0] < -50 then
+							environment.tempCurveMidnightInt = im.IntPtr(-50)
+						elseif environment.tempCurveMidnightInt[0] > 50 then
+							environment.tempCurveMidnightInt = im.IntPtr(50)
+						end
+						TriggerServerEvent("CEISetEnv", "tempCurveMidnight|" .. tostring(environment.tempCurveMidnightInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveMidnight|" .. tostring(environment.tempCurveMidnightInt[0]))
 					end
-					
-
-					if im.SmallButton("Neptune") then
-						TriggerServerEvent("CEISetEnv", "gravity|-11.15")
-						log('W', logTag, "CEISetEnv Called: gravity|-11.15")
-					end
+					im.PopItemWidth()
+					im.Text("		")
 					im.SameLine()
-					if im.SmallButton("Saturn") then
-						TriggerServerEvent("CEISetEnv", "gravity|-10.44")
-						log('W', logTag, "CEISetEnv Called: gravity|-10.44")
-					end
+					im.Text("Dawn")
 					im.SameLine()
-					if im.SmallButton("Uranus") then
-						TriggerServerEvent("CEISetEnv", "gravity|-8.87")
-						log('W', logTag, "CEISetEnv Called: gravity|-8.87")
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveDawn", environment.tempCurveDawnInt, 1, 2) then
+						if environment.tempCurveDawnInt[0] < -50 then
+							environment.tempCurveDawnInt = im.IntPtr(-50)
+						elseif environment.tempCurveDawnInt[0] > 50 then
+							environment.tempCurveDawnInt = im.IntPtr(50)
+						end
+						TriggerServerEvent("CEISetEnv", "tempCurveDawn|" .. tostring(environment.tempCurveDawnInt[0]))
+						log('W', logTag, "CEISetEnv Called: tempCurveDawn|" .. tostring(environment.tempCurveDawnInt[0]))
 					end
-					
-					if im.SmallButton("Venus") then
-						TriggerServerEvent("CEISetEnv", "gravity|-8.87")
-						log('W', logTag, "CEISetEnv Called: gravity|-8.87")
-					end
-					im.SameLine()
-					if im.SmallButton("Mercury") then
-						TriggerServerEvent("CEISetEnv", "gravity|-3.7")
-						log('W', logTag, "CEISetEnv Called: gravity|-3.7")
-					end
-					im.SameLine()
-					if im.SmallButton("Pluto") then
-						TriggerServerEvent("CEISetEnv", "gravity|-0.58")
-						log('W', logTag, "CEISetEnv Called: gravity|-0.58")
-					end
-					
-					im.TreePop()
-					im.Unindent()
-					
+					im.PopItemWidth()
 				end
 				
+				im.TreePop()
+				im.Unindent()
+				
+			else
+				im.SameLine()
+				if im.SmallButton("Reset##TMP") then
+					TriggerServerEvent("CEISetEnv", "useTempCurve|false")
+					log('W', logTag, "CEISetEnv Called: useTempCurve|false")
+					environment.useTempCurveSent = false
+				end
 			end
 			
-			im.EndTabItem()
+		im.EndTabItem()
 		end
 		im.EndTabBar()
 	end
@@ -3819,7 +4031,6 @@ local function drawCEMI(dt)
 		for k,v in pairs(players) do
 			playersCounter = playersCounter + 1
 		end
-		
 		
 		if im.BeginTabItem("Players") then
 			im.Text("Current Players:")
@@ -3971,7 +4182,7 @@ local function drawCEMI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-					
+						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Focus##" .. tostring(k)) then
 							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
@@ -3981,7 +4192,7 @@ local function drawCEMI(dt)
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							if lastTeleport + dt >= environment.teleportTimeout then
+							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 							else
@@ -4013,14 +4224,12 @@ local function drawCEMI(dt)
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
-							if vehiclesCounter > 0 then
 							
-								im.Text("		")
-								im.SameLine()
-								im.Text("Reason:")
-								im.SameLine()
-								if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", players[k].player.vehDeleteReason, 128) then
-								end
+							im.Text("		")
+							im.SameLine()
+							im.Text("Reason:")
+							im.SameLine()
+							if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", players[k].player.vehDeleteReason, 128) then
 							end
 							
 							for x,y in pairs(players[k].player.vehicles) do
@@ -4084,51 +4293,61 @@ local function drawCEMI(dt)
 						end
 					end
 					im.Separator()
-					if im.TreeNode1("permissions##"..tostring(k)) then
-						im.Text("		level:")
+					if im.TreeNode1("info##"..tostring(k)) then
+						im.Text("		playerID: " .. players[k].player.playerID)
+						im.Text("		connectStage: " .. players[k].player.connectStage)
+						im.Text("		guest: " .. players[k].player.guest)
+						im.Text("		joinTime: " .. players[k].player.joinTime)
 						im.SameLine()
-						im.Text(players[k].player.permissions.level)
-						im.Text("		whitelisted: " .. players[k].player.permissions.whitelisted)
-						im.Text("		muted: " .. players[k].player.permissions.muted)
-						im.Text("		muteReason: " .. players[k].player.permissions.muteReason)
-						im.Text("		banned: " .. players[k].player.permissions.banned)
-						if im.TreeNode1("group:##"..tostring(k)) then
+						im.Text(": connectedTime: " .. players[k].player.connectedTime)
+						im.Separator()
+						if im.TreeNode1("permissions##"..tostring(k)) then
+							im.Text("		level:")
 							im.SameLine()
-							im.Text(players[k].player.permissions.group)
-							im.Text("		")
-							im.SameLine()
-							if im.InputTextWithHint("##newGroup", "Group Name", players[k].player.permissions.groupInput, 128) then
+							im.Text(players[k].player.permissions.level)
+							im.Text("		whitelisted: " .. players[k].player.permissions.whitelisted)
+							im.Text("		muted: " .. players[k].player.permissions.muted)
+							im.Text("		muteReason: " .. players[k].player.permissions.muteReason)
+							im.Text("		banned: " .. players[k].player.permissions.banned)
+							if im.TreeNode1("group:##"..tostring(k)) then
+								im.SameLine()
+								im.Text(players[k].player.permissions.group)
+								im.Text("		")
+								im.SameLine()
+								if im.InputTextWithHint("##newGroup", "Group Name", players[k].player.permissions.groupInput, 128) then
+								end
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##"..tostring(k)) then
+									TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
+									log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
+								end
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+								if im.SmallButton("Remove##"..tostring(k)) then
+									TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|none")
+									log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|none")
+								end
+								im.PopStyleColor(3)
+								im.SameLine()
+								im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(players[k].player.permissions.group)
 							end
-							im.Text("		")
-							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
-								TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
-								log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|" .. ffi.string(players[k].player.permissions.groupInput))
-							end
-							im.SameLine()
-							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-							if im.SmallButton("Remove##"..tostring(k)) then
-								TriggerServerEvent("CEISetGroup", players[k].player.playerID .. "|none")
-								log('W', logTag, "CEISetGroup Called: " .. players[k].player.playerID .. "|none")
-							end
-							im.PopStyleColor(3)
-							im.SameLine()
-							im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
 							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(players[k].player.permissions.group)
 						end
-						im.TreePop()
-					end
-					im.Separator()
-					if im.TreeNode1("gamemode##"..tostring(k)) then
-						im.Text("		mode: " .. players[k].player.gamemode.mode)
-						im.Text("		source: " .. players[k].player.gamemode.source)
-						im.Text("		queue: " .. players[k].player.gamemode.queue)
-						im.Text("		locked: " .. players[k].player.gamemode.locked)
+						im.Separator()
+						if im.TreeNode1("gamemode##"..tostring(k)) then
+							im.Text("		mode: " .. players[k].player.gamemode.mode)
+							im.Text("		source: " .. players[k].player.gamemode.source)
+							im.Text("		queue: " .. players[k].player.gamemode.queue)
+							im.Text("		locked: " .. players[k].player.gamemode.locked)
+							im.TreePop()
+						end
 						im.TreePop()
 					end
 					im.Unindent()
@@ -4167,7 +4386,7 @@ local function drawCEMI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-					
+						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Focus##" .. tostring(k)) then
 							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
@@ -4177,7 +4396,7 @@ local function drawCEMI(dt)
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							if lastTeleport + dt >= environment.teleportTimeout then
+							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 							else
@@ -4189,13 +4408,8 @@ local function drawCEMI(dt)
 					
 					end
 					
-					im.Text("		")
-					im.SameLine()
-					im.Text("Reason:")
-					im.SameLine()
-					if im.InputTextWithHint("##"..tostring(k), "Kick or Mute Reason", players[k].player.kickBanMuteReason, 128) then
-					end
 					im.Unindent()
+					
 				end
 			end
 			im.EndTabItem()
@@ -4300,7 +4514,7 @@ local function drawCEMI(dt)
 						im.SameLine()
 						im.Text(config.cobalt.whitelistedPlayers[x].name)
 						im.SameLine()
-						if im.SmallButton("Remove##whitelistName") then
+						if im.SmallButton("Remove##"..tostring(x)) then
 							TriggerServerEvent("CEIWhitelist", "remove|" .. config.cobalt.whitelistedPlayers[x].name)
 							log('W', logTag, "CEIWhitelist Called: remove|" .. config.cobalt.whitelistedPlayers[x].name)
 						end
@@ -4571,7 +4785,7 @@ local function drawCEPI(dt)
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							if lastTeleport + dt >= environment.teleportTimeout then
+							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 							else
@@ -4618,7 +4832,7 @@ local function drawCEPI(dt)
 						
 						im.SameLine()
 						if im.SmallButton("Teleport##" .. tostring(k)) then
-							if lastTeleport + dt >= environment.teleportTimeout then
+							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 							else
@@ -4986,6 +5200,7 @@ local function onUpdate(dt)
 	
 	if lastEnvReport + dt > envReportRate then
 		lastEnvReport = 0
+		core_environment.reset()
 		local timeOfDay = core_environment.getTimeOfDay()
 		if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 			TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
@@ -4993,6 +5208,8 @@ local function onUpdate(dt)
 	else
 		lastEnvReport = lastEnvReport + dt
 	end
+	
+	lastTeleport = lastTeleport + dt
 	
 	M.onDayScale(environment.dayScale)
 	M.onNightScale(environment.nightScale)
@@ -5013,6 +5230,7 @@ local function onUpdate(dt)
 	M.onDropMinSpeed(environment.dropMinSpeed)
 	M.onDropMaxSpeed(environment.dropMaxSpeed)
 	M.onSimSpeed(environment.simSpeed)
+	M.onTempCurve()
 	M.onGravity(environment.gravity)
 end
 
@@ -5266,6 +5484,44 @@ local function onDropMaxSpeed(value)
 	end
 end
 
+local function onTempCurve()
+
+	local tempCurve
+	
+	if environment.useTempCurveVal == false then
+		local levelInfo = M.getObject("LevelInfo")
+		if not levelInfo then
+			return
+		elseif defaultTempCurveSet == false then
+			defaultTempCurve = levelInfo:getTemperatureCurveC()
+			if type(defaultTempCurve) == "table" then
+				print("GOT TEMP CURVE TABLE!")
+				defaultTempCurveSet = true
+			end
+		elseif defaultTempCurveSet == true then
+			levelInfo:setTemperatureCurveC(defaultTempCurve)
+		end
+		return
+	elseif defaultTempCurveSet == true then
+		local levelInfo = M.getObject("LevelInfo")
+		if not levelInfo then
+			return
+		end
+	
+		tempCurve = { 
+			{ 0, environment.tempCurveNoonInt[0] },
+			{ 0.25, environment.tempCurveDuskInt[0] },
+			{ 0.5, environment.tempCurveMidnightInt[0] },
+			{ 0.75, environment.tempCurveDawnInt[0] },
+			{ 1, environment.tempCurveNoonInt[0] } 
+		}
+	
+		levelInfo:setTemperatureCurveC(tempCurve)
+		
+	end
+	
+end
+
 local function onSimSpeed(value)
 	if value == nil then
 		value = 1
@@ -5281,8 +5537,6 @@ end
 
 local function onWorldReadyState(state)
 	worldReadyState = state
-	if worldReadyState == 2 then
-	end
 end
 
 local function onExtensionLoaded()
@@ -5377,6 +5631,7 @@ end
 M.dependencies = {"ui_imgui"}
 M.onUpdate = onUpdate
 M.onWorldReadyState = onWorldReadyState
+
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 
@@ -5409,6 +5664,8 @@ M.onRainDrops = onRainDrops
 M.onDropSize = onDropSize
 M.onDropMinSpeed = onDropMinSpeed
 M.onDropMaxSpeed = onDropMaxSpeed
+
+M.onTempCurve = onTempCurve
 
 M.onSimSpeed = onSimSpeed
 M.onGravity = onGravity
