@@ -687,6 +687,7 @@ function CEISetEnv(senderID, data)
 			end
 		elseif key == "timePlay" then
 			timePlay = value
+			CobaltDB.set("environment", "timePlay", "value", timePlay)
 		elseif key == "dayScale" then
 			if value == "default" then
 				dayScale = defaultDayScale
@@ -851,6 +852,7 @@ function CEISetEnv(senderID, data)
 			end
 		elseif key == "precipType" then
 			precipType = value
+			CobaltDB.set("environment", "precipType", "value", precipType)
 		elseif key == "teleportTimeout" then
 			if value == "default" then
 				teleportTimeout = defaultTeleportTimeout
@@ -916,6 +918,7 @@ function CEISetEnv(senderID, data)
 			end
 		elseif key == "useTempCurve" then
 			useTempCurve = value
+			CobaltDB.set("environment", "useTempCurve", "value", useTempCurve)
 		end
 	end
 end
