@@ -49,6 +49,11 @@ local defaultPrecipType = "rain_medium"
 local defaultTeleportTimeout = 5
 local defaultSimSpeed = 1
 local defaultGravity = -9.81
+local defaultTempCurveNoon = 38
+local defaultTempCurveDusk = 12
+local defaultTempCurveMidnight = -15
+local defaultTempCurveDawn = 12
+local defaultUseTempCurve = "false"
 local ToD
 local timePlay
 local dayScale
@@ -73,6 +78,11 @@ local precipType
 local teleportTimeout
 local simSpeed
 local gravity
+local tempCurveNoon
+local tempCurveDusk
+local tempCurveMidnight
+local tempCurveDawn
+local useTempCurve
 
 local defaultEnvironment = {
 	ToD = {value = defaultToD, description = "What is the Time of Day?"},
@@ -99,6 +109,11 @@ local defaultEnvironment = {
 	teleportTimeout = {value = defaultTeleportTimeout, description = "How long between telports?"},
 	simSpeed = {value = defaultSimSpeed, description = "At what rate does the simulation run?"},
 	gravity = {value = defaultGravity, description = "At what rate do objects fall towards the ground?"},
+	tempCurveNoon = {value = defaultTempCurveNoon, description = "What is the custom temperature in C at noon?"},
+	tempCurveDusk = {value = defaultTempCurveDusk, description = "What is the custom temperature in C at dusk?"},
+	tempCurveMidnight = {value = defaultTempCurveMidnight, description = "What is the custom temperature in C at midnight?"},
+	tempCurveDawn = {value = defaultTempCurveDawn, description = "What is the custom temperature in C at dawn?"},
+	useTempCurve = {value = defaultUseTempCurve, description = "Do we use a custom temperature curve?"},
 }
 
 local raceCountdown
@@ -176,6 +191,11 @@ local function onInit()
 	teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
 	simSpeed = CobaltDB.query("environment", "simSpeed", "value")
 	gravity = CobaltDB.query("environment", "gravity", "value")
+	tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
+	tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
+	tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
+	tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
+	useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
 	
 	CElog("CEI Loaded!", "CEI")
 end
@@ -285,6 +305,11 @@ local function txEnvironment(player)
 				.. "$" .. teleportTimeout
 				.. "$" .. simSpeed
 				.. "$" .. gravity
+				.. "$" .. tempCurveNoon
+				.. "$" .. tempCurveDusk
+				.. "$" .. tempCurveMidnight
+				.. "$" .. tempCurveDawn
+				.. "$" .. useTempCurve
 				
 	if MP.IsPlayerConnected(player.playerID) then
 		MP.TriggerClientEvent(player.playerID,"rxEnvironment",data)
@@ -634,7 +659,23 @@ function CEISetEnv(senderID, data)
 			dropMaxSpeed = defaultDropMaxSpeed
 			CobaltDB.set("environment", "precipType", "value", defaultPrecipType)
 			precipType = defaultPrecipType
-		
+			CobaltDB.set("environment", "teleportTimeout", "value", defaultTeleportTimeout)
+			teleportTimeout = defaultTeleportTimeout
+			CobaltDB.set("environment", "simSpeed", "value", defaultSimSpeed)
+			simSpeed = defaultSimSpeed
+			CobaltDB.set("environment", "gravity", "value", defaultGravity)
+			gravity = defaultGravity
+			CobaltDB.set("environment", "tempCurveNoon", "value", defaultTempCurveNoon)
+			tempCurveNoon = defaultTempCurveNoon
+			CobaltDB.set("environment", "tempCurveDusk", "value", defaultTempCurveDusk)
+			tempCurveDusk = defaultTempCurveDusk
+			CobaltDB.set("environment", "tempCurveMidnight", "value", defaultTempCurveMidnight)
+			tempCurveMidnight = defaultTempCurveMidnight
+			CobaltDB.set("environment", "tempCurveDawn", "value", defaultTempCurveDawn)
+			tempCurveDawn = defaultTempCurveDawn
+			CobaltDB.set("environment", "useTempCurve", "value", defaultUseTempCurve)
+			useTempCurve = defaultUseTempCurve
+			
 		elseif key == "ToD" then
 			if value == "default" then
 				ToD = defaultToD
@@ -823,7 +864,7 @@ function CEISetEnv(senderID, data)
 			if value == "default" then
 				simSpeed = defaultSimSpeed
 				value = defaultSimSpeed
-				CobaltDB.set("environment", "simSpeed", "value", simSpeed)
+				CobaltDB.set("environment", "simSpeed", "value", defaultSimSpeed)
 			else
 				simSpeed = tonumber(value)
 				CobaltDB.set("environment", "simSpeed", "value", simSpeed)
@@ -832,11 +873,49 @@ function CEISetEnv(senderID, data)
 			if value == "default" then
 				gravity = defaultGravity
 				value = defaultGravity
-				CobaltDB.set("environment", "gravity", "value", gravity)
+				CobaltDB.set("environment", "gravity", "value", defaultGravity)
 			else
 				gravity = tonumber(value)
 				CobaltDB.set("environment", "gravity", "value", gravity)
 			end
+		elseif key == "tempCurveNoon" then
+			if value == "default" then
+				tempCurveNoon = defaultTempCurveNoon
+				value = defaultTempCurveNoon
+				CobaltDB.set("environment", "tempCurveNoon", "value", defaultTempCurveNoon)
+			else
+				tempCurveNoon = tonumber(value)
+				CobaltDB.set("environment", "tempCurveNoon", "value", tempCurveNoon)
+			end
+		elseif key == "tempCurveDusk" then
+			if value == "default" then
+				tempCurveDusk = defaultTempCurveDusk
+				value = defaultTempCurveDusk
+				CobaltDB.set("environment", "tempCurveDusk", "value", defaultTempCurveDusk)
+			else
+				tempCurveDusk = tonumber(value)
+				CobaltDB.set("environment", "tempCurveDusk", "value", tempCurveDusk)
+			end
+		elseif key == "tempCurveMidnight" then
+			if value == "default" then
+				tempCurveMidnight = defaultTempCurveMidnight
+				value = defaultTempCurveMidnight
+				CobaltDB.set("environment", "tempCurveMidnight", "value", defaultTempCurveMidnight)
+			else
+				tempCurveMidnight = tonumber(value)
+				CobaltDB.set("environment", "tempCurveMidnight", "value", tempCurveMidnight)
+			end
+		elseif key == "tempCurveDawn" then
+			if value == "default" then
+				tempCurveDawn = defaultTempCurveDawn
+				value = defaultTempCurveDawn
+				CobaltDB.set("environment", "tempCurveDawn", "value", defaultTempCurveDawn)
+			else
+				tempCurveDawn = tonumber(value)
+				CobaltDB.set("environment", "tempCurveDawn", "value", tempCurveDawn)
+			end
+		elseif key == "useTempCurve" then
+			useTempCurve = value
 		end
 	end
 end
@@ -901,7 +980,7 @@ function CEIRemoveGroup(senderID, data)
 				loadedDatabases["playerPermissions"][k] = v
 			end
 		end
-		updateDatabase("playerPermissions")
+		M.updatePlayerDatabase("playerPermissions")
 		playerPermissions = CobaltDB.new("playerPermissions")
 	end
 end
@@ -1179,7 +1258,7 @@ end
 
 function CEIWhitelist(senderID, data)
 	CElog("CEIWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local arguments
 		local tempPlayerID
@@ -1348,7 +1427,7 @@ local function split(s, sep)
 	return fields
 end
 
-local function updateDatabase(DBname)
+local function updatePlayerDatabase(DBname)
 	local filePath = dbpath .. DBname
 	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
 	if success then
@@ -1386,6 +1465,9 @@ M.onPlayerJoining = onPlayerJoining
 M.onPlayerJoin = onPlayerJoin
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
+
+M.updatePlayerDatabase = updatePlayerDatabase
+
 M.CEI = CEI
 
 return M
