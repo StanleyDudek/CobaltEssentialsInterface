@@ -388,6 +388,28 @@ local function drawCEOI(dt)
 	im.SetNextWindowBgAlpha(0.666)
 	
 	im.Begin("Cobalt Essentials Owner Interface")
+	
+	im.SameLine()
+	local tempToD = core_environment.getTimeOfDay()
+	local curSecs
+	if tempToD.time >= 0 and tempToD.time < 0.5 then
+		curSecs = tempToD.time * 86400 + 43200
+	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+		curSecs = tempToD.time * 86400 - 43200
+	end
+	local curHours = math.floor(curSecs / 3600 )
+	curSecs = curSecs - curHours * 3600
+	local curMins = math.floor(curSecs / 60) 
+	curSecs = curSecs - curMins * 60
+	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
+	local currentTempC = core_environment.getTemperatureK() - 273.15
+	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+	local currentTempF = currentTempC * 9/5 + 32
+	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -1469,8 +1491,8 @@ local function drawCEOI(dt)
 				im.PopItemWidth()
 				im.SameLine()
 				if im.SmallButton("Realtime##DS") then
-					TriggerServerEvent("CEISetEnv", "dayScale|0.0115740")
-					log('W', logTag, "CEISetEnv Called: dayScale|0.0115740")
+					TriggerServerEvent("CEISetEnv", "dayScale|0.020855")
+					log('W', logTag, "CEISetEnv Called: dayScale|0.020855")
 				end
 				im.SameLine()
 				if im.SmallButton("Reset##DS") then
@@ -1494,8 +1516,8 @@ local function drawCEOI(dt)
 				im.PopItemWidth()
 				im.SameLine()
 				if im.SmallButton("Realtime##NS") then
-					TriggerServerEvent("CEISetEnv", "nightScale|0.0115740")
-					log('W', logTag, "CEISetEnv Called: nightScale|0.0115740")
+					TriggerServerEvent("CEISetEnv", "nightScale|0.020855")
+					log('W', logTag, "CEISetEnv Called: nightScale|0.020855")
 				end
 				im.SameLine()
 				if im.SmallButton("Reset##NS") then
@@ -2206,6 +2228,28 @@ local function drawCEAI(dt)
 	im.SetNextWindowBgAlpha(0.666)
 	
 	im.Begin("Cobalt Essentials Administrator Interface")
+	
+	im.SameLine()
+	local tempToD = core_environment.getTimeOfDay()
+	local curSecs
+	if tempToD.time >= 0 and tempToD.time < 0.5 then
+		curSecs = tempToD.time * 86400 + 43200
+	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+		curSecs = tempToD.time * 86400 - 43200
+	end
+	local curHours = math.floor(curSecs / 3600 )
+	curSecs = curSecs - curHours * 3600
+	local curMins = math.floor(curSecs / 60) 
+	curSecs = curSecs - curMins * 60
+	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
+	local currentTempC = core_environment.getTemperatureK() - 273.15
+	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+	local currentTempF = currentTempC * 9/5 + 32
+	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -3287,8 +3331,8 @@ local function drawCEAI(dt)
 				im.PopItemWidth()
 				im.SameLine()
 				if im.SmallButton("Realtime##DS") then
-					TriggerServerEvent("CEISetEnv", "dayScale|0.0115740")
-					log('W', logTag, "CEISetEnv Called: dayScale|0.0115740")
+					TriggerServerEvent("CEISetEnv", "dayScale|0.020855")
+					log('W', logTag, "CEISetEnv Called: dayScale|0.020855")
 				end
 				im.SameLine()
 				if im.SmallButton("Reset##DS") then
@@ -3312,8 +3356,8 @@ local function drawCEAI(dt)
 				im.PopItemWidth()
 				im.SameLine()
 				if im.SmallButton("Realtime##NS") then
-					TriggerServerEvent("CEISetEnv", "nightScale|0.0115740")
-					log('W', logTag, "CEISetEnv Called: nightScale|0.0115740")
+					TriggerServerEvent("CEISetEnv", "nightScale|0.020855")
+					log('W', logTag, "CEISetEnv Called: nightScale|0.020855")
 				end
 				im.SameLine()
 				if im.SmallButton("Reset##NS") then
@@ -4024,6 +4068,28 @@ local function drawCEMI(dt)
 	im.SetNextWindowBgAlpha(0.666)
 	
 	im.Begin("Cobalt Essentials Moderator Interface")
+	
+	im.SameLine()
+	local tempToD = core_environment.getTimeOfDay()
+	local curSecs
+	if tempToD.time >= 0 and tempToD.time < 0.5 then
+		curSecs = tempToD.time * 86400 + 43200
+	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+		curSecs = tempToD.time * 86400 - 43200
+	end
+	local curHours = math.floor(curSecs / 3600 )
+	curSecs = curSecs - curHours * 3600
+	local curMins = math.floor(curSecs / 60) 
+	curSecs = curSecs - curMins * 60
+	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
+	local currentTempC = core_environment.getTemperatureK() - 273.15
+	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+	local currentTempF = currentTempC * 9/5 + 32
+	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -4723,7 +4789,30 @@ local function drawCEPI(dt)
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
+	
 	im.Begin("Cobalt Essentials Player Interface")
+	
+	im.SameLine()
+	local tempToD = core_environment.getTimeOfDay()
+	local curSecs
+	if tempToD.time >= 0 and tempToD.time < 0.5 then
+		curSecs = tempToD.time * 86400 + 43200
+	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+		curSecs = tempToD.time * 86400 - 43200
+	end
+	local curHours = math.floor(curSecs / 3600 )
+	curSecs = curSecs - curHours * 3600
+	local curMins = math.floor(curSecs / 60) 
+	curSecs = curSecs - curMins * 60
+	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
+	local currentTempC = core_environment.getTemperatureK() - 273.15
+	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+	local currentTempF = currentTempC * 9/5 + 32
+	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -4885,7 +4974,30 @@ local function drawCEGI(dt)
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
+	
 	im.Begin("Cobalt Essentials Guest Interface")
+	
+	im.SameLine()
+	local tempToD = core_environment.getTimeOfDay()
+	local curSecs
+	if tempToD.time >= 0 and tempToD.time < 0.5 then
+		curSecs = tempToD.time * 86400 + 43200
+	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+		curSecs = tempToD.time * 86400 - 43200
+	end
+	local curHours = math.floor(curSecs / 3600 )
+	curSecs = curSecs - curHours * 3600
+	local curMins = math.floor(curSecs / 60) 
+	curSecs = curSecs - curMins * 60
+	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
+	local currentTempC = core_environment.getTemperatureK() - 273.15
+	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+	local currentTempF = currentTempC * 9/5 + 32
+	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -5007,7 +5119,30 @@ local function drawCESI(dt)
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
+	
 	im.Begin("Cobalt Essentials Spectator Interface")
+	
+	im.SameLine()
+	local tempToD = core_environment.getTimeOfDay()
+	local curSecs
+	if tempToD.time >= 0 and tempToD.time < 0.5 then
+		curSecs = tempToD.time * 86400 + 43200
+	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+		curSecs = tempToD.time * 86400 - 43200
+	end
+	local curHours = math.floor(curSecs / 3600 )
+	curSecs = curSecs - curHours * 3600
+	local curMins = math.floor(curSecs / 60) 
+	curSecs = curSecs - curMins * 60
+	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
+	local currentTempC = core_environment.getTemperatureK() - 273.15
+	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+	local currentTempF = currentTempC * 9/5 + 32
+	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -5168,70 +5303,72 @@ local function checkVehicleState(gameVehicleID, argument)
 end
 
 local function onUpdate(dt)
-	if currentRole == "owner" then
-		if windowOpen[0] ~= true then return end
-		drawCEOI(dt)
-	elseif currentRole == "admin" then
-		if windowOpen[0] ~= true then return end
-		drawCEAI(dt)
-	elseif currentRole == "mod" then
-		if windowOpen[0] ~= true then return end
-		drawCEMI(dt)
-	elseif currentRole == "player" then
-		if windowOpen[0] ~= true then return end
-		drawCEPI(dt)
-	elseif currentRole == "guest" then
-		if windowOpen[0] ~= true then return end
-		drawCEGI(dt)
-	elseif currentRole == "spectator" then
-		if windowOpen[0] ~= true then return end
-		drawCESI(dt)
-	end
-	checkVehicleState()
-	
-	M.onTimePlay(environment.timePlay)
-	
-	if environment.timePlay == "false" then
-		M.onTime(environment.ToD)
-	elseif firstReport == false then
-		M.onTime(environment.ToD)
-		firstReport = true
-	end
-	
-	if lastEnvReport + dt > envReportRate then
-		lastEnvReport = 0
-		core_environment.reset()
-		local timeOfDay = core_environment.getTimeOfDay()
-		if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
-			TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+	if worldReadyState == 2 then
+		if currentRole == "owner" then
+			if windowOpen[0] ~= true then return end
+			drawCEOI(dt)
+		elseif currentRole == "admin" then
+			if windowOpen[0] ~= true then return end
+			drawCEAI(dt)
+		elseif currentRole == "mod" then
+			if windowOpen[0] ~= true then return end
+			drawCEMI(dt)
+		elseif currentRole == "player" then
+			if windowOpen[0] ~= true then return end
+			drawCEPI(dt)
+		elseif currentRole == "guest" then
+			if windowOpen[0] ~= true then return end
+			drawCEGI(dt)
+		elseif currentRole == "spectator" then
+			if windowOpen[0] ~= true then return end
+			drawCESI(dt)
 		end
-	else
-		lastEnvReport = lastEnvReport + dt
+		checkVehicleState()
+		
+		M.onTimePlay(environment.timePlay)
+		
+		if environment.timePlay == "false" then
+			M.onTime(environment.ToD)
+		elseif firstReport == false then
+			M.onTime(environment.ToD)
+			firstReport = true
+		end
+		
+		if lastEnvReport + dt > envReportRate then
+			lastEnvReport = 0
+			core_environment.reset()
+			local timeOfDay = core_environment.getTimeOfDay()
+			if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+				TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+			end
+		else
+			lastEnvReport = lastEnvReport + dt
+		end
+		
+		lastTeleport = lastTeleport + dt
+		
+		M.onDayScale(environment.dayScale)
+		M.onNightScale(environment.nightScale)
+		M.onAzimuthOverride(environment.azimuthOverride)
+		M.onSunSize(environment.sunSize)
+		M.onSkyBrightness(environment.skyBrightness)
+		M.onSunLightBrightness(environment.sunLightBrightness)
+		M.onExposure(environment.exposure)
+		M.onShadowDistance(environment.shadowDistance)
+		M.onShadowSoftness(environment.shadowSoftness)
+		M.onShadowSplits(environment.shadowSplits)
+		M.onFogDensity(environment.fogDensity)
+		M.onFogDensityOffset(environment.fogDensityOffset)
+		M.onCloudCover(environment.cloudCover)
+		M.onCloudSpeed(environment.cloudSpeed)
+		M.onRainDrops(environment.rainDrops)
+		M.onDropSize(environment.dropSize)
+		M.onDropMinSpeed(environment.dropMinSpeed)
+		M.onDropMaxSpeed(environment.dropMaxSpeed)
+		M.onSimSpeed(environment.simSpeed)
+		M.onTempCurve()
+		M.onGravity(environment.gravity)
 	end
-	
-	lastTeleport = lastTeleport + dt
-	
-	M.onDayScale(environment.dayScale)
-	M.onNightScale(environment.nightScale)
-	M.onAzimuthOverride(environment.azimuthOverride)
-	M.onSunSize(environment.sunSize)
-	M.onSkyBrightness(environment.skyBrightness)
-	M.onSunLightBrightness(environment.sunLightBrightness)
-	M.onExposure(environment.exposure)
-	M.onShadowDistance(environment.shadowDistance)
-	M.onShadowSoftness(environment.shadowSoftness)
-	M.onShadowSplits(environment.shadowSplits)
-	M.onFogDensity(environment.fogDensity)
-	M.onFogDensityOffset(environment.fogDensityOffset)
-	M.onCloudCover(environment.cloudCover)
-	M.onCloudSpeed(environment.cloudSpeed)
-	M.onRainDrops(environment.rainDrops)
-	M.onDropSize(environment.dropSize)
-	M.onDropMinSpeed(environment.dropMinSpeed)
-	M.onDropMaxSpeed(environment.dropMaxSpeed)
-	M.onSimSpeed(environment.simSpeed)
-	M.onTempCurve()
-	M.onGravity(environment.gravity)
 end
 
 local function onVehicleSpawned(gameVehicleID)
