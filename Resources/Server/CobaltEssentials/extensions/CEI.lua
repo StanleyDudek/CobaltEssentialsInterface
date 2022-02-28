@@ -23,8 +23,8 @@ cobaltConfig.whitelistedPlayers = {}
 cobaltConfig.groups = {}
 cobaltConfig.permissions = {}
 cobaltConfig.permissions.vehicleCap = {}
+cobaltConfig.permissions.vehiclePerm = {}
 
-local environment = CobaltDB.new("environment")
 local defaultToD = 0.1
 local defaultTimePlay = "false"
 local defaultDayScale = 1
@@ -84,6 +84,7 @@ local tempCurveMidnight
 local tempCurveDawn
 local useTempCurve
 
+local environment = CobaltDB.new("environment")
 local defaultEnvironment = {
 	ToD = {value = defaultToD, description = "What is the Time of Day?"},
 	timePlay = {value = defaultTimePlay, description = "Does time progress?"},
@@ -116,6 +117,95 @@ local defaultEnvironment = {
 	useTempCurve = {value = defaultUseTempCurve, description = "Do we use a custom temperature curve?"},
 }
 
+local vehicles = CobaltDB.new("vehicles")
+local defaultVehicles = {
+	autobello = { level = 1 },
+	ball = { level = 1 },
+	barrels = { level = 1 },
+	barrier = { level = 1 },
+	barstow = { level = 1 },
+	bastion = { level = 1 },
+	blockwall = { level = 1 },
+	bluebuck = { level = 1 },
+	bolide = { level = 1 },
+	bollard = { level = 1 },
+	boxutility = { level = 1 },
+	boxutility_large = { level = 1 },
+	burnside = { level = 1 },
+	cannon = { level = 1 },
+	caravan = { level = 1 },
+	cardboard_box = { level = 1 },
+	chair = { level = 1 },
+	christmas_tree = { level = 1 },
+	citybus = { level = 1, ["partlevel:citybus_ramplow"] = 1 },
+	cones = { level = 1 },
+	couch = { level = 1 },
+	coupe = { level = 1 },
+	default = { level = 1 },
+	dryvan = { level = 1 },
+	etk800 = { level = 1 },
+	etkc = { level = 1 },
+	etki = { level = 1 },
+	flail = { level = 1 },
+	flatbed = { level = 1 },
+	flipramp = { level = 1 },
+	fridge = { level = 1 },
+	fullsize = { level = 1 },
+	gate = { level = 1 },
+	hatch = { level = 1 },
+	haybale = { level = 1 },
+	hopper = { level = 1 },
+	inflated_mat = { level = 1 },
+	kickplate = { level = 1 },
+	large_angletester = { level = 1 },
+	large_bridge = { level = 1 },
+	large_cannon = { level = 1 },
+	large_crusher = { level = 1 },
+	large_hamster_wheel = { level = 1 },
+	large_roller = { level = 1 },
+	large_spinner = { level = 1 },
+	large_tilt = { level = 1 },
+	legran = { level = 1 },
+	mattress = { level = 1 },
+	metal_box = { level = 1 },
+	metal_ramp = { level = 1 },
+	midsize = { level = 1 },
+	miramar = { level = 1 },
+	moonhawk = { level = 1 },
+	pessima = { level = 1 },
+	piano = { level = 1 },
+	pickup = { level = 1 },
+	pigeon = { level = 1 },
+	roadsigns = { level = 1 },
+	roamer = { level = 1 },
+	rocks = { level = 1 },
+	rollover = { level = 1 },
+	sawhorse = { level = 1 },
+	sbr = { level = 1 },
+	semi = { level = 1, ["partlevel:semi_ramplow"] = 1},
+	shipping_container = { level = 1 },
+	streetlight = { level = 1 },
+	sunburst = { level = 1 },
+	suspensionbridge = { level = 1 },
+	tanker = { level = 1 },
+	testroller = { level = 1 },
+	tirestacks = { level = 1 },
+	tirewall = { level = 1 },
+	trafficbarrel = { level = 1 },
+	tsfb = { level = 1 },
+	tube = { level = 1 },
+	tv = { level = 1 },
+	unicycle = { level = 1 },
+	van = { level = 1 },
+	vivace = { level = 1 },
+	wall = { level = 1 },
+	weightpad = { level = 1 },
+	wendover = { level = 1 },
+	wigeon = { level = 1 },
+	woodcrate = { level = 1 },
+	woodplanks = { level = 1 }
+}
+
 local raceCountdown
 local raceCountdownStarted
 
@@ -132,6 +222,7 @@ local function onInit()
 	MP.RegisterEvent("CEISetPerm","CEISetPerm")
 	MP.RegisterEvent("CEISetTempPerm","CEISetTempPerm")
 	MP.RegisterEvent("CEISetVehiclePerms","CEISetVehiclePerms")
+	MP.RegisterEvent("CEISetVehiclePermLevel","CEISetVehiclePermLevel")
 	MP.RegisterEvent("CEISetNewVehiclePermsLevel","CEISetNewVehiclePermsLevel")
 	MP.RegisterEvent("CEIRemoveVehiclePermsLevel","CEIRemoveVehiclePermsLevel")
 	MP.RegisterEvent("CEISetGroup","CEISetGroup")
@@ -149,6 +240,7 @@ local function onInit()
 	MP.RegisterEvent("CEIStop","CEIStop")
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
+	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	serverConfig.name = utils.readCfg("ServerConfig.toml").General.Name
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
 		serverConfig.debug = "false"
@@ -166,6 +258,7 @@ local function onInit()
 	serverConfig.description = utils.readCfg("ServerConfig.toml").General.Description
 	
 	M.applyStuff(environment, defaultEnvironment)
+	M.applyStuff(vehicles, defaultVehicles)
 	
 	ToD = CobaltDB.query("environment", "ToD", "value")
 	timePlay = CobaltDB.query("environment", "timePlay", "value")
@@ -524,7 +617,9 @@ local function txConfigData(player)
 			end
 		end
 	end
+	
 	data = data .. "$"
+	
 	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
 	local vehicleCapsLength = 0
 	for k,v in pairs(vehicleCaps) do
@@ -535,15 +630,58 @@ local function txConfigData(player)
 			cobaltConfig.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
 		end
 	end
+	
 	for i = 1, vehicleCapsLength do
 		data = data .. "|" .. cobaltConfig.permissions.vehicleCap[i].level
 					.. "#" .. cobaltConfig.permissions.vehicleCap[i].vehicles
 	end
+	
 	data = data .. "$"
+	
+	local vehiclePerms = CobaltDB.getTables("vehicles")
+	local vehiclePermsLength = 0
+
+	for k,v in pairs(vehiclePerms) do
+	
+		vehiclePermsLength = vehiclePermsLength + 1
+		
+		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength] = {}
+		
+		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].name = v
+		
+		local vehiclePerm = CobaltDB.getTable("vehicles",v)
+		
+		
+		for i,j in pairs(vehiclePerm) do
+			if i == "level" then
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].level = j
+			end
+			if string.find(i,"partLevel") then
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel.name = i
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel.level = j
+			end
+
+		end
+	end
+	for i = 1, vehiclePermsLength do
+		data = data .. "|" .. cobaltConfig.permissions.vehiclePerm[i].name
+					.. "#" .. cobaltConfig.permissions.vehiclePerm[i].level
+		if cobaltConfig.permissions.vehiclePerm[i].partLevel then
+			for k,v in pairs(cobaltConfig.permissions.vehiclePerm[i].partLevel) do
+				data = data .. "#" .. k .. "@" .. v
+			end
+		end
+	end
+	
+	data = data .. "$"
+	
 	for i = 1, whitelistLength do
 		data = data .. "|" .. cobaltConfig.whitelistedPlayers[i].name
 	end
+
 	MP.TriggerClientEvent(player.playerID,"rxConfigData",data)
+	
 end
 
 function CEIPreRace(senderID, data)
@@ -551,6 +689,16 @@ function CEIPreRace(senderID, data)
 	if not raceCountdownStarted then
 		raceCountdownStarted = true
 		raceCountdown = 15
+	end
+end
+
+function CEISetVehiclePermLevel(senderID, data)
+	CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	local tempData = split(data,"|")
+	local vehicleName = tempData[1]
+	local vehiclePermLevel = tonumber(tempData[2])
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
 	end
 end
 
@@ -1227,7 +1375,7 @@ function CEIBan(senderID, data)
 end
 
 function CEITempBan(senderID, data)
-	CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
+	CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local playerID = tonumber(tempData[1])
@@ -1305,6 +1453,14 @@ function CEIConfig(senderID, data)
 		MP.TriggerLocalEvent("onCobaltDBhandshake",CobaltDBport)
 	elseif players[senderID].permissions.group == "mod" then
 		MP.SendChatMessage(senderID, "You cannot edit this Admin-level setting!")
+	end
+end
+
+function CEITeleportFrom(senderID, data)
+	CElog("CEITeleportFrom Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+		local targetID = tonumber(data)
+		MP.TriggerClientEvent(targetID, "rxTeleportFrom", players[senderID].name)
 	end
 end
 
