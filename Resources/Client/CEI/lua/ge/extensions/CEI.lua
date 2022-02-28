@@ -281,9 +281,37 @@ local function rxConfigData(data)
 		config.cobalt.permissions.vehicleCaps[k].vehicles = permissionData[2]
 		config.cobalt.permissions.vehicleCaps[k].vehiclesInt = im.IntPtr(tonumber(config.cobalt.permissions.vehicleCaps[k].vehicles))
 	end
-	if configData[19] then
-	config.cobalt.whitelistedPlayers = {}
+	
+	config.cobalt.vehicles = {}
+	config.cobalt.vehicles.newLevelInput = im.ArrayChar(128)
+	config.cobalt.vehicles.vehiclePerms = {}
+	
 	tempString = configData[19]
+	tempData = string.sub(tempString, 2)
+	
+	local tempVehiclePerms = split(tempData,"|")
+	
+	for k,v in pairs(tempVehiclePerms) do
+		local tempVehiclePerm = tempVehiclePerms[k]
+		local vehiclePermData = split(tempVehiclePerm,"#")
+		config.cobalt.vehicles.vehiclePerms[k] = {}
+		config.cobalt.vehicles.vehiclePerms[k].name = vehiclePermData[1]
+		config.cobalt.vehicles.vehiclePerms[k].nameInput = im.ArrayChar(128)
+		config.cobalt.vehicles.vehiclePerms[k].level = vehiclePermData[2]
+		config.cobalt.vehicles.vehiclePerms[k].levelInt = im.IntPtr(tonumber(config.cobalt.vehicles.vehiclePerms[k].level))
+		if vehiclePermData[3] then
+			local tempVehiclePartLevel = split(vehiclePermData[3], "@")
+			config.cobalt.vehicles.vehiclePerms[k].partLevel = {}
+			config.cobalt.vehicles.vehiclePerms[k].partLevel.name = tempVehiclePartLevel[1]
+			config.cobalt.vehicles.vehiclePerms[k].partLevel.nameInput = im.ArrayChar(128)
+			config.cobalt.vehicles.vehiclePerms[k].partLevel.level = tempVehiclePartLevel[2]
+			config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt = im.IntPtr(tonumber(config.cobalt.vehicles.vehiclePerms[k].partLevel.level))
+		end
+	end
+	
+	if configData[20] then
+	config.cobalt.whitelistedPlayers = {}
+	tempString = configData[20]
 	tempData = string.sub(tempString, 2)
 	local tempWhitelistPlayers = split(tempData,"|")
 		for k,v in pairs(tempWhitelistPlayers) do
@@ -588,11 +616,18 @@ local function drawCEOI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
+						
+						im.SameLine()
+						if im.SmallButton("Teleport From##" .. tostring(k)) then
+							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+						end
+						im.SameLine()
+						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Text("		")
@@ -825,11 +860,18 @@ local function drawCEOI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
+						
+						im.SameLine()
+						if im.SmallButton("Teleport From##" .. tostring(k)) then
+							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+						end
+						im.SameLine()
+						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Unindent()
@@ -842,12 +884,49 @@ local function drawCEOI(dt)
 		if im.BeginTabItem("Config") then
 ----------------------------------------------------------------------------------COBALT HEADER
 			if im.CollapsingHeader1("Cobalt Essentials") then
+				im.Indent()
+			
+				local vehiclePerms = config.cobalt.vehicles.vehiclePerms
+				local vehiclePermsCounter = 0
+				for a,b in pairs(vehiclePerms) do
+					vehiclePermsCounter = vehiclePermsCounter + 1
+				end
+				
+				if im.TreeNode1("vehiclePerms:") then
+					im.SameLine()
+					im.Text(tostring(vehiclePermsCounter))
+					for k,v in pairs(vehiclePerms) do
+						if im.TreeNode1(config.cobalt.vehicles.vehiclePerms[k].name .. ":") then
+							im.SameLine()
+							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
+							im.PushItemWidth(100)
+							if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].levelInt, 1) then
+								TriggerServerEvent("CEISetVehiclePermLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+								log('W', logTag, "CEISetVehiclePermLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+							end
+							im.PopItemWidth()
+							
+							
+							
+							im.TreePop()
+						else
+							im.SameLine()
+							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
+						end
+					end
+					im.TreePop()
+				else
+					im.SameLine()
+					im.Text(tostring(vehiclePermsCounter))
+				end
+				im.Separator()
+				
 				local vehicleCaps = config.cobalt.permissions.vehicleCaps
 				local vehicleCapsCounter = 0
 				for a,b in pairs(vehicleCaps) do
 					vehicleCapsCounter = vehicleCapsCounter + 1
 				end
-				im.Indent()
+				
 				if im.TreeNode1("vehicleCaps:") then
 					im.SameLine()
 					im.Text(tostring(vehicleCapsCounter))
@@ -2428,11 +2507,18 @@ local function drawCEAI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
+						
+						im.SameLine()
+						if im.SmallButton("Teleport From##" .. tostring(k)) then
+							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+						end
+						im.SameLine()
+						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Text("		")
@@ -2665,11 +2751,18 @@ local function drawCEAI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
 						end
 						im.SameLine()
 						im.ShowHelpMarker("Teleport to this player's current vehicle.")
+						
+						im.SameLine()
+						if im.SmallButton("Teleport From##" .. tostring(k)) then
+							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+						end
+						im.SameLine()
+						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Unindent()
@@ -2682,6 +2775,43 @@ local function drawCEAI(dt)
 		if im.BeginTabItem("Config") then
 ----------------------------------------------------------------------------------COBALT HEADER
 			if im.CollapsingHeader1("Cobalt Essentials") then
+				im.Indent()
+			
+				local vehiclePerms = config.cobalt.vehicles.vehiclePerms
+				local vehiclePermsCounter = 0
+				for a,b in pairs(vehiclePerms) do
+					vehiclePermsCounter = vehiclePermsCounter + 1
+				end
+				
+				if im.TreeNode1("vehiclePerms:") then
+					im.SameLine()
+					im.Text(tostring(vehiclePermsCounter))
+					for k,v in pairs(vehiclePerms) do
+						if im.TreeNode1(config.cobalt.vehicles.vehiclePerms[k].name .. ":") then
+							im.SameLine()
+							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
+							im.PushItemWidth(100)
+							if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].levelInt, 1) then
+								TriggerServerEvent("CEISetVehiclePermLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+								log('W', logTag, "CEISetVehiclePermLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+							end
+							im.PopItemWidth()
+							
+							
+							
+							im.TreePop()
+						else
+							im.SameLine()
+							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
+						end
+					end
+					im.TreePop()
+				else
+					im.SameLine()
+					im.Text(tostring(vehiclePermsCounter))
+				end
+				im.Separator()
+				
 				local vehicleCaps = config.cobalt.permissions.vehicleCaps
 				local vehicleCapsCounter = 0
 				for a,b in pairs(vehicleCaps) do
@@ -4257,7 +4387,7 @@ local function drawCEMI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
@@ -4461,7 +4591,7 @@ local function drawCEMI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
@@ -4873,7 +5003,7 @@ local function drawCEPI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
@@ -4920,7 +5050,7 @@ local function drawCEPI(dt)
 						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
 						
 						im.SameLine()
-						if im.SmallButton("Teleport##" .. tostring(k)) then
+						if im.SmallButton("Teleport To##" .. tostring(k)) then
 							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
 								lastTeleport = 0
 								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
@@ -5676,6 +5806,10 @@ local function onWorldReadyState(state)
 	worldReadyState = state
 end
 
+local function rxTeleportFrom(data)
+	MPVehicleGE.teleportVehToPlayer(data)
+end
+
 local function onExtensionLoaded()
 	local currentMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 	originalMpLayout = currentMpLayout
@@ -5715,6 +5849,7 @@ local function onExtensionLoaded()
 	AddEventHandler("rxEnvironment", rxEnvironment)
 	AddEventHandler("rxPreferences", rxPreferences)
 	AddEventHandler("rxCEIstate", rxCEIstate)
+	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
 	AddEventHandler("CEIToggleIgnition", CEIToggleIgnition)
 	AddEventHandler("CEIToggleLock", CEIToggleLock)
 	AddEventHandler("CEISetCurVeh", CEISetCurVeh)
@@ -5732,6 +5867,10 @@ local function onExtensionUnloaded()
 	jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json",originalMpLayout)
 	Lua:requestReload()
 	log('W', logTag, "-=$=- CEI UNLOADED -=$=-")
+end
+
+local function teleportPlayerToVeh(targetName, player_id)
+	TriggerServerEvent("CEITeleportFrom", player_id)
 end
 
 local function round(num, numDecimalPlaces)
@@ -5771,6 +5910,8 @@ M.onWorldReadyState = onWorldReadyState
 
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
+
+M.teleportPlayerToVeh = teleportPlayerToVeh
 
 M.round = round
 
