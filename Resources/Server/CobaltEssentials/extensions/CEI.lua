@@ -222,7 +222,12 @@ local function onInit()
 	MP.RegisterEvent("CEISetPerm","CEISetPerm")
 	MP.RegisterEvent("CEISetTempPerm","CEISetTempPerm")
 	MP.RegisterEvent("CEISetVehiclePerms","CEISetVehiclePerms")
+	MP.RegisterEvent("CEIRemoveVehiclePerm","CEIRemoveVehiclePerm")
+	MP.RegisterEvent("CEIRemoveVehiclePart","CEIRemoveVehiclePart")
+	MP.RegisterEvent("CEISetNewVehiclePerm","CEISetNewVehiclePerm")
+	MP.RegisterEvent("CEISetNewVehiclePart","CEISetNewVehiclePart")
 	MP.RegisterEvent("CEISetVehiclePermLevel","CEISetVehiclePermLevel")
+	MP.RegisterEvent("CEISetVehiclePartLevel","CEISetVehiclePartLevel")
 	MP.RegisterEvent("CEISetNewVehiclePermsLevel","CEISetNewVehiclePermsLevel")
 	MP.RegisterEvent("CEIRemoveVehiclePermsLevel","CEIRemoveVehiclePermsLevel")
 	MP.RegisterEvent("CEISetGroup","CEISetGroup")
@@ -617,9 +622,7 @@ local function txConfigData(player)
 			end
 		end
 	end
-	
 	data = data .. "$"
-	
 	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
 	local vehicleCapsLength = 0
 	for k,v in pairs(vehicleCaps) do
@@ -630,58 +633,42 @@ local function txConfigData(player)
 			cobaltConfig.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
 		end
 	end
-	
 	for i = 1, vehicleCapsLength do
 		data = data .. "|" .. cobaltConfig.permissions.vehicleCap[i].level
 					.. "#" .. cobaltConfig.permissions.vehicleCap[i].vehicles
 	end
-	
 	data = data .. "$"
-	
 	local vehiclePerms = CobaltDB.getTables("vehicles")
 	local vehiclePermsLength = 0
-
 	for k,v in pairs(vehiclePerms) do
-	
 		vehiclePermsLength = vehiclePermsLength + 1
-		
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength] = {}
-		
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].name = v
-		
 		local vehiclePerm = CobaltDB.getTable("vehicles",v)
-		
-		
 		for i,j in pairs(vehiclePerm) do
 			if i == "level" then
 				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].level = j
 			end
-			if string.find(i,"partLevel") then
+			if string.find(i,"partlevel") then
 				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
 				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel.name = i
 				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel.level = j
 			end
-
 		end
 	end
 	for i = 1, vehiclePermsLength do
 		data = data .. "|" .. cobaltConfig.permissions.vehiclePerm[i].name
 					.. "#" .. cobaltConfig.permissions.vehiclePerm[i].level
 		if cobaltConfig.permissions.vehiclePerm[i].partLevel then
-			for k,v in pairs(cobaltConfig.permissions.vehiclePerm[i].partLevel) do
-				data = data .. "#" .. k .. "@" .. v
-			end
+			data = data .. "," .. cobaltConfig.permissions.vehiclePerm[i].partLevel.name
+						.. "@" .. cobaltConfig.permissions.vehiclePerm[i].partLevel.level
 		end
 	end
-	
 	data = data .. "$"
-	
 	for i = 1, whitelistLength do
 		data = data .. "|" .. cobaltConfig.whitelistedPlayers[i].name
 	end
-
 	MP.TriggerClientEvent(player.playerID,"rxConfigData",data)
-	
 end
 
 function CEIPreRace(senderID, data)
@@ -692,6 +679,15 @@ function CEIPreRace(senderID, data)
 	end
 end
 
+function CEISetNewVehiclePerm(senderID, data)
+	CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
+	local vehicleName = data
+	local vehiclePermLevel = 1
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
+	end
+end
+
 function CEISetVehiclePermLevel(senderID, data)
 	CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
@@ -699,6 +695,73 @@ function CEISetVehiclePermLevel(senderID, data)
 	local vehiclePermLevel = tonumber(tempData[2])
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
+	end
+end
+
+function CEIRemoveVehiclePerm(senderID, data)
+	CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
+	local vehicleName = data
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		local removeVehicle = vehicleName
+		loadedDatabases["vehicles"] = {}
+		local currentVehiclesList = CobaltDB.getTables("vehicles")
+		for k,v in pairs(currentVehiclesList) do
+			if k == removeVehicle then
+			else
+				local vehiclePerms = CobaltDB.getTable("vehicles",v)
+				loadedDatabases["vehicles"][k] = vehiclePerms
+			end
+		end
+		M.updateCobaltDatabase("vehicles")
+		vehicles = CobaltDB.new("vehicles")
+	end
+end
+
+function CEISetNewVehiclePart(senderID, data)
+	CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
+	local tempData = split(data,"|")
+	local vehicleName = tempData[1]
+	local partName = "partlevel:" .. tempData[2]
+	local partLevel = 1
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("vehicles", vehicleName, partName, partLevel)
+	end
+end
+
+function CEISetVehiclePartLevel(senderID, data)
+	CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	local tempData = split(data,"|")
+	local vehicleName = tempData[1]
+	local partLevel = tonumber(tempData[2])
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("vehicles", vehicleName, partName, partLevel)
+	end
+end
+
+function CEIRemoveVehiclePart(senderID, data)
+	CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
+	local tempData = split(data,"|")
+	local vehicleName = tempData[1]
+	local partName = "partlevel:" .. tempData[2]
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+
+		local targetLevel = data
+		if CobaltDB.query("vehicles", vehicleName, partName) then
+			CobaltDB.set("vehicles", vehicleName, partName, nil)
+		else
+			return
+		end
+	end
+end
+
+function CEISetVehiclePartLevel(senderID, data)
+	CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	local tempData = split(data,"|")
+	local vehicleName = tempData[1]
+	local vehiclePartName = "partlevel:" .. tempData[2]
+	local vehiclePartLevel = tonumber(tempData[3])
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("vehicles", vehicleName, vehiclePartName, vehiclePartLevel)
 	end
 end
 
@@ -1131,7 +1194,7 @@ function CEIRemoveGroup(senderID, data)
 				loadedDatabases["playerPermissions"][k] = v
 			end
 		end
-		M.updatePlayerDatabase("playerPermissions")
+		M.updateCobaltDatabase("playerPermissions")
 		playerPermissions = CobaltDB.new("playerPermissions")
 	end
 end
@@ -1586,7 +1649,7 @@ local function split(s, sep)
 	return fields
 end
 
-local function updatePlayerDatabase(DBname)
+local function updateCobaltDatabase(DBname)
 	local filePath = dbpath .. DBname
 	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
 	if success then
@@ -1625,7 +1688,7 @@ M.onPlayerJoin = onPlayerJoin
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
 
-M.updatePlayerDatabase = updatePlayerDatabase
+M.updateCobaltDatabase = updateCobaltDatabase
 
 M.CEI = CEI
 
