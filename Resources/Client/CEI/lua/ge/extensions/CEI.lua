@@ -25,6 +25,9 @@ local players = {}
 local config = {}
 local stats = {}
 
+local vehiclePermsFiltering = {}
+vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
+
 local environment = {}
 environment.useTempCurveSent = false
 
@@ -305,6 +308,14 @@ local function rxConfigData(data)
 			config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt = im.IntPtr(tonumber(config.cobalt.vehicles.vehiclePerms[k].partLevel.level))
 		end
 	end
+	
+	local tempFilterTable = {}
+	for k,v in pairs(config.cobalt.vehicles.vehiclePerms) do
+		tempFilterTable[k] = config.cobalt.vehicles.vehiclePerms[k].name
+	end
+	
+	vehiclePermsFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
+	
 	if configData[20] then
 	config.cobalt.whitelistedPlayers = {}
 	tempString = configData[20]
@@ -906,74 +917,86 @@ local function drawCEOI(dt)
 					im.SameLine()
 					im.ShowHelpMarker("Enter new vehicle and press Apply")
 					
+					im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter[0])
+					
 					for k,v in pairs(vehiclePerms) do
-						if im.TreeNode1(config.cobalt.vehicles.vehiclePerms[k].name .. ":") then
-							im.SameLine()
-							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
-							im.Text("	")
-							im.SameLine()
-							im.PushItemWidth(100)
-							if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].levelInt, 1) then
-								TriggerServerEvent("CEISetVehiclePermLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
-								log('W', logTag, "CEISetVehiclePermLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
-							end
-							im.PopItemWidth()
+						
+						for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
+						
+							if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter[0], vehiclePermsFiltering.lines[i]) then
 							
-							im.SameLine()
-							if im.SmallButton("Remove##vehPerm") then
-								TriggerServerEvent("CEIRemoveVehiclePerm", config.cobalt.vehicles.vehiclePerms[k].name)
-								log('W', logTag, "CEIRemoveVehiclePerm Called: " .. config.cobalt.vehicles.vehiclePerms[k].name)
-							end
-							im.SameLine()
-							im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
+								if config.cobalt.vehicles.vehiclePerms[k].name == ffi.string(vehiclePermsFiltering.lines[i]) then
 							
-							im.Text("	Add part: ")
-							im.SameLine()
-							if im.InputTextWithHint("##newPart", "New Part", config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput, 128) then
-							end
-							im.Text("	")
-							im.SameLine()
-							if im.SmallButton("Apply##newVehPart") then
-								TriggerServerEvent("CEISetNewVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
-								log('W', logTag, "CEISetNewVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
-							end
-							im.SameLine()
-							im.ShowHelpMarker("Enter new part and press Apply")
-							
-							if config.cobalt.vehicles.vehiclePerms[k].partLevel then
-							
-								
-								local partName = string.gsub(config.cobalt.vehicles.vehiclePerms[k].partLevel.name, "partlevel:", "")
-								if im.TreeNode1(partName .. ":") then
-									im.SameLine()
-									im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
-									im.Text("	")
-									im.SameLine()
-									im.PushItemWidth(100)
-									if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt, 1) then
-										TriggerServerEvent("CEISetVehiclePartLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
-										log('W', logTag, "CEISetVehiclePartLevel Called: " ..  config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+									if im.TreeNode1(ffi.string(vehiclePermsFiltering.lines[i]) .. ":") then
+										im.SameLine()
+										im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
+										im.Text("	")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].levelInt, 1) then
+											TriggerServerEvent("CEISetVehiclePermLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+											log('W', logTag, "CEISetVehiclePermLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+										end
+										im.PopItemWidth()
+										
+										im.SameLine()
+										if im.SmallButton("Remove##vehPerm") then
+											TriggerServerEvent("CEIRemoveVehiclePerm", config.cobalt.vehicles.vehiclePerms[k].name)
+											log('W', logTag, "CEIRemoveVehiclePerm Called: " .. config.cobalt.vehicles.vehiclePerms[k].name)
+										end
+										im.SameLine()
+										im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
+										
+										im.Text("	Add part: ")
+										im.SameLine()
+										if im.InputTextWithHint("##newPart", "New Part", config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput, 128) then
+										end
+										im.Text("	")
+										im.SameLine()
+										if im.SmallButton("Apply##newVehPart") then
+											TriggerServerEvent("CEISetNewVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
+											log('W', logTag, "CEISetNewVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
+										end
+										im.SameLine()
+										im.ShowHelpMarker("Enter new part and press Apply")
+										
+										if config.cobalt.vehicles.vehiclePerms[k].partLevel then
+										
+											
+											local partName = string.gsub(config.cobalt.vehicles.vehiclePerms[k].partLevel.name, "partlevel:", "")
+											if im.TreeNode1(partName .. ":") then
+												im.SameLine()
+												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
+												im.Text("	")
+												im.SameLine()
+												im.PushItemWidth(100)
+												if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt, 1) then
+													TriggerServerEvent("CEISetVehiclePartLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+													log('W', logTag, "CEISetVehiclePartLevel Called: " ..  config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+												end
+												im.PopItemWidth()
+												
+												im.SameLine()
+												if im.SmallButton("Remove##vehPart") then
+													TriggerServerEvent("CEIRemoveVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
+													log('W', logTag, "CEIRemoveVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
+												end
+												im.SameLine()
+												im.ShowHelpMarker("In-/Decrease vehicle part permission level requirement or Remove vehicle part entry")
+												
+												im.TreePop()
+											else
+												im.SameLine()
+												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
+											end
+										end
+										im.TreePop()
+									else
+										im.SameLine()
+										im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
 									end
-									im.PopItemWidth()
-									
-									im.SameLine()
-									if im.SmallButton("Remove##vehPart") then
-										TriggerServerEvent("CEIRemoveVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
-										log('W', logTag, "CEIRemoveVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
-									end
-									im.SameLine()
-									im.ShowHelpMarker("In-/Decrease vehicle part permission level requirement or Remove vehicle part entry")
-									
-									im.TreePop()
-								else
-									im.SameLine()
-									im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
 								end
 							end
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
 						end
 					end
 					im.TreePop()
@@ -2863,74 +2886,86 @@ local function drawCEAI(dt)
 					im.SameLine()
 					im.ShowHelpMarker("Enter new vehicle and press Apply")
 					
+					im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter[0])
+					
 					for k,v in pairs(vehiclePerms) do
-						if im.TreeNode1(config.cobalt.vehicles.vehiclePerms[k].name .. ":") then
-							im.SameLine()
-							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
-							im.Text("	")
-							im.SameLine()
-							im.PushItemWidth(100)
-							if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].levelInt, 1) then
-								TriggerServerEvent("CEISetVehiclePermLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
-								log('W', logTag, "CEISetVehiclePermLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
-							end
-							im.PopItemWidth()
+						
+						for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
+						
+							if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter[0], vehiclePermsFiltering.lines[i]) then
 							
-							im.SameLine()
-							if im.SmallButton("Remove##vehPerm") then
-								TriggerServerEvent("CEIRemoveVehiclePerm", config.cobalt.vehicles.vehiclePerms[k].name)
-								log('W', logTag, "CEIRemoveVehiclePerm Called: " .. config.cobalt.vehicles.vehiclePerms[k].name)
-							end
-							im.SameLine()
-							im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
+								if config.cobalt.vehicles.vehiclePerms[k].name == ffi.string(vehiclePermsFiltering.lines[i]) then
 							
-							im.Text("	Add part: ")
-							im.SameLine()
-							if im.InputTextWithHint("##newPart", "New Part", config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput, 128) then
-							end
-							im.Text("	")
-							im.SameLine()
-							if im.SmallButton("Apply##newVehPart") then
-								TriggerServerEvent("CEISetNewVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
-								log('W', logTag, "CEISetNewVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
-							end
-							im.SameLine()
-							im.ShowHelpMarker("Enter new part and press Apply")
-							
-							if config.cobalt.vehicles.vehiclePerms[k].partLevel then
-							
-								
-								local partName = string.gsub(config.cobalt.vehicles.vehiclePerms[k].partLevel.name, "partlevel:", "")
-								if im.TreeNode1(partName .. ":") then
-									im.SameLine()
-									im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
-									im.Text("	")
-									im.SameLine()
-									im.PushItemWidth(100)
-									if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt, 1) then
-										TriggerServerEvent("CEISetVehiclePartLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
-										log('W', logTag, "CEISetVehiclePartLevel Called: " ..  config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+									if im.TreeNode1(ffi.string(vehiclePermsFiltering.lines[i]) .. ":") then
+										im.SameLine()
+										im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
+										im.Text("	")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].levelInt, 1) then
+											TriggerServerEvent("CEISetVehiclePermLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+											log('W', logTag, "CEISetVehiclePermLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].levelInt[0]))
+										end
+										im.PopItemWidth()
+										
+										im.SameLine()
+										if im.SmallButton("Remove##vehPerm") then
+											TriggerServerEvent("CEIRemoveVehiclePerm", config.cobalt.vehicles.vehiclePerms[k].name)
+											log('W', logTag, "CEIRemoveVehiclePerm Called: " .. config.cobalt.vehicles.vehiclePerms[k].name)
+										end
+										im.SameLine()
+										im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
+										
+										im.Text("	Add part: ")
+										im.SameLine()
+										if im.InputTextWithHint("##newPart", "New Part", config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput, 128) then
+										end
+										im.Text("	")
+										im.SameLine()
+										if im.SmallButton("Apply##newVehPart") then
+											TriggerServerEvent("CEISetNewVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
+											log('W', logTag, "CEISetNewVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. ffi.string(config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput))
+										end
+										im.SameLine()
+										im.ShowHelpMarker("Enter new part and press Apply")
+										
+										if config.cobalt.vehicles.vehiclePerms[k].partLevel then
+										
+											
+											local partName = string.gsub(config.cobalt.vehicles.vehiclePerms[k].partLevel.name, "partlevel:", "")
+											if im.TreeNode1(partName .. ":") then
+												im.SameLine()
+												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
+												im.Text("	")
+												im.SameLine()
+												im.PushItemWidth(100)
+												if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt, 1) then
+													TriggerServerEvent("CEISetVehiclePartLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+													log('W', logTag, "CEISetVehiclePartLevel Called: " ..  config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+												end
+												im.PopItemWidth()
+												
+												im.SameLine()
+												if im.SmallButton("Remove##vehPart") then
+													TriggerServerEvent("CEIRemoveVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
+													log('W', logTag, "CEIRemoveVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
+												end
+												im.SameLine()
+												im.ShowHelpMarker("In-/Decrease vehicle part permission level requirement or Remove vehicle part entry")
+												
+												im.TreePop()
+											else
+												im.SameLine()
+												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
+											end
+										end
+										im.TreePop()
+									else
+										im.SameLine()
+										im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
 									end
-									im.PopItemWidth()
-									
-									im.SameLine()
-									if im.SmallButton("Remove##vehPart") then
-										TriggerServerEvent("CEIRemoveVehiclePart", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
-										log('W', logTag, "CEIRemoveVehiclePart Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName)
-									end
-									im.SameLine()
-									im.ShowHelpMarker("In-/Decrease vehicle part permission level requirement or Remove vehicle part entry")
-									
-									im.TreePop()
-								else
-									im.SameLine()
-									im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
 								end
 							end
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].level)
 						end
 					end
 					im.TreePop()
