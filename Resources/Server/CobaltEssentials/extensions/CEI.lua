@@ -312,7 +312,8 @@ local function applyStuff(targetDatabase, tables)
 end
 
 local CEICommands = {
-		CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"}
+		CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
+		cei = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
 	}
 
 applyStuff(commands, CEICommands)
@@ -1627,7 +1628,7 @@ local function onPlayerJoin(player)
 	end
 	MP.TriggerClientEvent(player.playerID, "rxCEIstate", state)
 	CE.delayExec( 2000 , MP.SendChatMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
-	CE.delayExec( 2500 , MP.SendChatMessage , { player.playerID , "Use /CEI in chat to toggle." } )
+	CE.delayExec( 2500 , MP.SendChatMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
 end
 
 local function onPlayerDisconnect(player)
@@ -1691,5 +1692,6 @@ M.onVehicleSpawn = onVehicleSpawn
 M.updateCobaltDatabase = updateCobaltDatabase
 
 M.CEI = CEI
+M.cei = CEI
 
 return M
