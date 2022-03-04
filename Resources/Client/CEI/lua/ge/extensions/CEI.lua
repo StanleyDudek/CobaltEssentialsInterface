@@ -390,9 +390,6 @@ local function rxPlayersData(data)
 end
 
 local function drawCEOI(dt)
-	if not gui.isWindowVisible("CEI") then
-		return
-	end
 	if tableIsEmpty(players) then
 		return
 	end
@@ -2359,9 +2356,6 @@ local function drawCEOI(dt)
 end
 
 local function drawCEAI(dt)
-	if not gui.isWindowVisible("CEI") then
-		return
-	end
 	if tableIsEmpty(players) then
 		return
 	end
@@ -4328,9 +4322,6 @@ local function drawCEAI(dt)
 end
 
 local function drawCEMI(dt)
-	if not gui.isWindowVisible("CEI") then
-		return
-	end
 	if tableIsEmpty(players) then
 		return
 	end
@@ -5051,9 +5042,6 @@ local function drawCEMI(dt)
 end
 
 local function drawCEPI(dt)
-	if not gui.isWindowVisible("CEI") then
-		return
-	end
 	if tableIsEmpty(players) then
 		return
 	end
@@ -5236,9 +5224,6 @@ local function drawCEPI(dt)
 end
 
 local function drawCEGI(dt)
-	if not gui.isWindowVisible("CEI") then
-		return
-	end
 	if tableIsEmpty(players) then
 		return
 	end
@@ -5381,9 +5366,6 @@ local function drawCEGI(dt)
 end
 
 local function drawCESI(dt)
-	if not gui.isWindowVisible("CEI") then
-		return
-	end
 	if tableIsEmpty(players) then
 		return
 	end
@@ -5598,23 +5580,29 @@ end
 local function onUpdate(dt)
 	if worldReadyState == 2 then
 		if currentRole == "owner" then
-			if windowOpen[0] ~= true then return end
-			drawCEOI(dt)
+			if windowOpen[0] == true then
+				drawCEOI(dt)
+			end
 		elseif currentRole == "admin" then
-			if windowOpen[0] ~= true then return end
-			drawCEAI(dt)
+			if windowOpen[0] == true then
+				drawCEAI(dt)
+			end
 		elseif currentRole == "mod" then
-			if windowOpen[0] ~= true then return end
-			drawCEMI(dt)
+			if windowOpen[0] == true then
+				drawCEMI(dt)
+			end
 		elseif currentRole == "player" then
-			if windowOpen[0] ~= true then return end
-			drawCEPI(dt)
+			if windowOpen[0] == true then
+				drawCEPI(dt)
+			end
 		elseif currentRole == "guest" then
-			if windowOpen[0] ~= true then return end
-			drawCEGI(dt)
+			if windowOpen[0] == true then
+				drawCEGI(dt)
+			end
 		elseif currentRole == "spectator" then
-			if windowOpen[0] ~= true then return end
-			drawCESI(dt)
+			if windowOpen[0] == true then
+				drawCESI(dt)
+			end
 		end
 		checkVehicleState()
 		
