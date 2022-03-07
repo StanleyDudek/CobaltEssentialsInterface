@@ -24,6 +24,13 @@ cobaltConfig.groups = {}
 cobaltConfig.permissions = {}
 cobaltConfig.permissions.vehicleCap = {}
 cobaltConfig.permissions.vehiclePerm = {}
+local nametagsConfig = {}
+nametagsConfig.whitelist = {}
+nametagsConfig.settings = {}
+
+local defaultNametagsBlockingEnabled = "false"
+local defaultNametagsBlockingTimeout = 300
+local defaultNametagsBlockingWhitelist = "exampleName"
 
 local defaultToD = 0.1
 local defaultTimePlay = "false"
@@ -206,6 +213,13 @@ local defaultVehicles = {
 	woodplanks = { level = 1 }
 }
 
+local nametags = CobaltDB.new("nametags")
+local defaultNametagsSettings = {
+	blockingEnabled = {value = defaultNametagsBlockingEnabled, description = "Are nametags blocked?"},
+	blockingTimeout = {value = defaultNametagsBlockingTimeout, description = "For how long are nametags blocked?"},
+	nametagsWhitelist = {exampleName = defaultNametagsBlockingWhitelist, description = "Who is immune to nametag blocking?"}
+}
+
 local raceCountdown
 local raceCountdownStarted
 
@@ -241,11 +255,16 @@ local function onInit()
 	MP.RegisterEvent("CEIMute","CEIMute")
 	MP.RegisterEvent("CEIUnmute","CEIUnmute")
 	MP.RegisterEvent("CEIWhitelist","CEIWhitelist")
+	MP.RegisterEvent("CEISetNametagWhitelist","CEISetNametagWhitelist")
+	MP.RegisterEvent("CEIRemoveNametagWhitelist","CEIRemoveNametagWhitelist")
+	MP.RegisterEvent("CEINametagSetting","CEINametagSetting")
+	MP.RegisterEvent("CEINametagBlockingTimer","CEINametagBlockingTimer")
 	MP.RegisterEvent("CEIConfig","CEIConfig")
 	MP.RegisterEvent("CEIStop","CEIStop")
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
+	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
 	serverConfig.name = utils.readCfg("ServerConfig.toml").General.Name
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
 		serverConfig.debug = "false"
@@ -264,6 +283,10 @@ local function onInit()
 	
 	M.applyStuff(environment, defaultEnvironment)
 	M.applyStuff(vehicles, defaultVehicles)
+	M.applyStuff(nametags, defaultNametagsSettings)
+	
+	nametagsConfig.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
+	nametagsConfig.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
 	
 	ToD = CobaltDB.query("environment", "ToD", "value")
 	timePlay = CobaltDB.query("environment", "timePlay", "value")
@@ -665,11 +688,54 @@ local function txConfigData(player)
 						.. "@" .. cobaltConfig.permissions.vehiclePerm[i].partLevel.level
 		end
 	end
+	
+	data = data .. "$" .. nametagsConfig.settings.blockingEnabled
+	data = data .. "$" .. nametagsConfig.settings.blockingTimeout
+	
+	local nametagWhitelistLength = 0
+	for k,v in pairs(nametagsConfig.whitelist) do
+		nametagWhitelistLength = nametagWhitelistLength + 1
+	end
+	
+	data = data .. "$"
+	for i = 1, nametagWhitelistLength do
+		data = data .. "|" .. nametagsConfig.whitelist[i]
+	end
+	
 	data = data .. "$"
 	for i = 1, whitelistLength do
 		data = data .. "|" .. cobaltConfig.whitelistedPlayers[i].name
 	end
+	
 	MP.TriggerClientEvent(player.playerID,"rxConfigData",data)
+end
+
+function txNametagWhitelisted(player)
+	local isWhitelisted
+	if CobaltDB.query("nametags","nametagsWhitelist",player.name) then
+		nametagsConfig.whitelist[player.name] = CobaltDB.query("nametags","nametagsWhitelist",player.name)
+		isWhitelisted = "true"
+	else
+		isWhitelisted = "false"
+	end
+	local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
+	local nametagWhitelistIterator = 0
+	nametagsConfig.whitelist = {}
+	for k,v in pairs(nametagsBlockingWhitelist) do
+		if k ~= "description" then
+			nametagWhitelistIterator = nametagWhitelistIterator + 1
+			nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+		end
+	end
+	MP.TriggerClientEvent(player.playerID,"rxNametagWhitelisted",isWhitelisted)
+end
+
+function txNametagBlockerActive(player)
+	MP.TriggerClientEvent(player.playerID,"rxNametagBlockerActive",CobaltDB.query("nametags","blockingEnabled","value"))
+end
+
+function txNametagBlockerTimeout(player_id, data)
+	MP.TriggerClientEvent(-1,"rxNametagBlockerTimeout",data)
 end
 
 function CEIPreRace(senderID, data)
@@ -1494,6 +1560,58 @@ function CEIWhitelist(senderID, data)
 	end
 end
 
+function CEISetNametagWhitelist(senderID, data)
+	CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("nametags", "nametagsWhitelist", data, data)
+		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
+		local nametagWhitelistIterator = 0
+		nametagsConfig.whitelist = {}
+		for k,v in pairs(nametagsBlockingWhitelist) do
+			if k ~= "description" then
+				nametagWhitelistIterator = nametagWhitelistIterator + 1
+				nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+			end
+		end
+	end
+end
+
+function CEIRemoveNametagWhitelist(senderID, data)
+	CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		CobaltDB.set("nametags", "nametagsWhitelist", data, nil)
+		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
+		local nametagWhitelistIterator = 0
+		nametagsConfig.whitelist = {}
+		for k,v in pairs(nametagsBlockingWhitelist) do
+			if k ~= "description" then
+				nametagWhitelistIterator = nametagWhitelistIterator + 1
+				nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+			end
+		end
+	end
+end
+
+function CEINametagSetting(senderID, data)
+	CElog("CEINametagSetting Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or player.permissions.group == "mod" then
+		if tonumber(data) then
+			CobaltDB.set("nametags", "blockingTimeout", "value", tonumber(data))
+			nametagsConfig.settings.blockingTimeout = data
+		else
+			CobaltDB.set("nametags", "blockingEnabled", "value", data)
+			nametagsConfig.settings.blockingEnabled = data
+		end
+	end
+end
+
+function CEINametagBlockingTimer(senderID, data)
+	CElog("CEINametagBlockingTimer Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or player.permissions.group == "mod" then
+		MP.TriggerClientEvent("","")
+	end
+end
+
 function CEIConfig(senderID, data)
 	CElog("CEIConfig Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
@@ -1538,10 +1656,14 @@ local function onTick(age)
 					txStats(player)
 					txPlayersRoles(player)
 					txEnvironment(player)
+					txNametagWhitelisted(player)
+					txNametagBlockerActive(player)
 				else
 					txPlayersData(player)
 					txPlayersRoles(player)
 					txEnvironment(player)
+					txNametagWhitelisted(player)
+					txNametagBlockerActive(player)
 				end
 			end
 		end
