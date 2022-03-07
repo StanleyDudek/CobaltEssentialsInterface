@@ -4,6 +4,16 @@ local M = {}
 
 local logTag = "CEI"
 
+local gui_module = require("ge/extensions/editor/api/gui")
+local gui = {setupEditorGuiTheme = nop}
+local im = ui_imgui
+local windowOpen = im.BoolPtr(true)
+local ffi = require('ffi')
+
+local nametagWhitelisted = false
+local nametagBlockerActive = false
+local nametagBlockerTimeout
+
 local originalMpLayout
 
 local ignitionEnabled = {}
@@ -21,8 +31,31 @@ roles.guest = {}
 roles.spectator = {}
 
 local self = {}
+
 local players = {}
+
 local config = {}
+config.server = {}
+config.server.nameInput = im.ArrayChar(128)
+config.server.mapInput = im.ArrayChar(128)
+config.server.descriptionInput = im.ArrayChar(256)
+config.cobalt = {}
+config.cobalt.newRCONport = im.ArrayChar(128)
+config.cobalt.newRCONpassword = im.ArrayChar(128)
+config.cobalt.newCobaltDBport = im.ArrayChar(128)
+config.cobalt.newGroupInput = im.ArrayChar(128)
+config.cobalt.whitelistNameInput = im.ArrayChar(128)
+config.cobalt.groups = {}
+config.cobalt.permissions = {}
+config.cobalt.permissions.newLevelInput = im.ArrayChar(128)
+config.cobalt.permissions.vehicleCaps = {}
+config.cobalt.vehicles = {}
+config.cobalt.vehicles.newVehicleInput = im.ArrayChar(128)
+config.cobalt.vehicles.vehiclePerms = {}
+config.nametags = {}
+config.nametags.settings = {}
+config.nametags.whitelistNameInput = im.ArrayChar(128)
+
 local stats = {}
 
 local vehiclePermsFiltering = {}
@@ -43,11 +76,29 @@ local lastTeleport = 0
 
 local worldReadyState = 0
 
-local gui_module = require("ge/extensions/editor/api/gui")
-local gui = {setupEditorGuiTheme = nop}
-local im = ui_imgui
-local windowOpen = im.BoolPtr(true)
-local ffi = require('ffi')
+local function rxNametagWhitelisted(data)
+	if data == "false" then
+		nametagWhitelisted = false
+	elseif data == "true" then
+		nametagWhitelisted = true
+	end
+end
+
+local function rxNametagBlockerActive(data)
+	if data == "false" then
+		nametagBlockerActive = false
+	elseif data == "true" then
+		nametagBlockerActive = true
+	end
+end
+
+local function rxNametagBlockerTimeout(data)
+	if tonumber(data) == 0 then
+		nametagBlockerTimeout = nil
+	else
+		nametagBlockerTimeout = tonumber(data)
+	end
+end
 
 local function rxCEIstate(state)
 	if state == "show" then
@@ -197,7 +248,6 @@ end
 local function rxConfigData(data)
 	data = string.sub(data, 2)
 	local configData = split(data,"$")
-	config.server = {}
 	config.server.name = configData[1]
 	config.server.debug = configData[2]
 	config.server.private = configData[3]
@@ -205,12 +255,8 @@ local function rxConfigData(data)
 	config.server.maxPlayers = configData[5]
 	config.server.map = configData[6]
 	config.server.description = configData[7]
-	config.server.nameInput = im.ArrayChar(128)
-	config.server.mapInput = im.ArrayChar(128)
-	config.server.descriptionInput = im.ArrayChar(256)
 	config.server.maxCarsInt = im.IntPtr(tonumber(config.server.maxCars))
 	config.server.maxPlayersInt = im.IntPtr(tonumber(config.server.maxPlayers))
-	config.cobalt = {}
 	config.cobalt.maxActivePlayers = configData[8]
 	config.cobalt.enableWhitelist = configData[9]
 	config.cobalt.enableColors = configData[10]
@@ -218,15 +264,9 @@ local function rxConfigData(data)
 	config.cobalt.RCONenabled = configData[12]
 	config.cobalt.RCONkeepAliveTick = configData[13]
 	config.cobalt.RCONpassword = configData[14]
-	config.cobalt.newRCONpassword = im.ArrayChar(128)
 	config.cobalt.RCONport = configData[15]
-	config.cobalt.newRCONport = im.ArrayChar(128)
 	config.cobalt.CobaltDBport = configData[16]
-	config.cobalt.newCobaltDBport = im.ArrayChar(128)
-	config.cobalt.newGroupInput = im.ArrayChar(128)
-	config.cobalt.whitelistNameInput = im.ArrayChar(128)
 	config.cobalt.maxActivePlayersInt = im.IntPtr(tonumber(config.cobalt.maxActivePlayers))
-	config.cobalt.groups = {}
 	local tempString = configData[17]
 	local tempData = string.sub(tempString, 2)
 	local tempGroups = split(tempData,"|")
@@ -270,9 +310,6 @@ local function rxConfigData(data)
 		config.cobalt.groups[k].groupBanReasonInput = im.ArrayChar(128)
 		config.cobalt.groups[k].newGroupPlayerInput = im.ArrayChar(128)
 	end
-	config.cobalt.permissions = {} --TODO: Use spawnVehicles and sendMessage in permissions?
-	config.cobalt.permissions.newLevelInput = im.ArrayChar(128)
-	config.cobalt.permissions.vehicleCaps = {}
 	tempString = configData[18]
 	tempData = string.sub(tempString, 2)
 	local tempPermissions = split(tempData,"|")
@@ -284,9 +321,6 @@ local function rxConfigData(data)
 		config.cobalt.permissions.vehicleCaps[k].vehicles = permissionData[2]
 		config.cobalt.permissions.vehicleCaps[k].vehiclesInt = im.IntPtr(tonumber(config.cobalt.permissions.vehicleCaps[k].vehicles))
 	end
-	config.cobalt.vehicles = {}
-	config.cobalt.vehicles.newVehicleInput = im.ArrayChar(128)
-	config.cobalt.vehicles.vehiclePerms = {}
 	tempString = configData[19]
 	tempData = string.sub(tempString, 2)
 	local tempVehiclePerms = split(tempData,"|")
@@ -316,9 +350,25 @@ local function rxConfigData(data)
 	
 	vehiclePermsFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 	
-	if configData[20] then
+	config.nametags.settings.blockingEnabled = configData[20]
+	config.nametags.settings.blockingTimeout = configData[21]
+	config.nametags.settings.blockingTimeoutInt = im.IntPtr(tonumber(config.nametags.settings.blockingTimeout))
+	
+	if configData[22] then
+		config.nametags.whitelistedPlayers = {}
+		tempString = configData[22]
+		tempData = string.sub(tempString, 2)
+		local tempNametagsWhitelistPlayers = split(tempData,"|")
+		for k,v in pairs(tempNametagsWhitelistPlayers) do
+			local tempNametagsWhitelistPlayer = tempNametagsWhitelistPlayers[k]
+			config.nametags.whitelistedPlayers[k] = {}
+			config.nametags.whitelistedPlayers[k].name = tempNametagsWhitelistPlayer
+		end
+	end
+	
+	if configData[23] then
 	config.cobalt.whitelistedPlayers = {}
-	tempString = configData[20]
+	tempString = configData[23]
 	tempData = string.sub(tempString, 2)
 	local tempWhitelistPlayers = split(tempData,"|")
 		for k,v in pairs(tempWhitelistPlayers) do
@@ -327,6 +377,7 @@ local function rxConfigData(data)
 			config.cobalt.whitelistedPlayers[k].name = tempWhitelistPlayer
 		end
 	end
+	
 end
 
 local function rxPlayerAuth(player_name)
@@ -441,6 +492,16 @@ local function drawCEOI(dt)
 	local currentTempF = currentTempC * 9/5 + 32
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
+	if nametagBlockerTimeout ~= nil then
+		im.Text("Nametags Blocked for:")
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
+		im.SameLine()
+		im.Text("seconds")
+	elseif nametagBlockerActive == true then
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
+	end
 	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
@@ -1578,8 +1639,109 @@ local function drawCEOI(dt)
 				im.Unindent()
 				
 			end
+----------------------------------------------------------------------------------NAMETAGS HEADER
+			if im.CollapsingHeader1("Nametags") then
+			
+				local nametagWhitelist = config.nametags.whitelistedPlayers
+				local nametagWhitelistCounter = 0
+				for a,b in pairs(nametagWhitelist) do
+					nametagWhitelistCounter = nametagWhitelistCounter + 1
+				end
+			
+				im.Indent()
+				if im.TreeNode1("Nametag Settings") then
+					im.Text("		")
+					im.SameLine()
+					im.Text("Nametag Blocking: ")
+					if config.nametags.settings.blockingEnabled == "true" then
+						im.SameLine()
+						if im.SmallButton("Enabled##NametagBlocking") then
+							
+							TriggerServerEvent("CEINametagSetting", "false")
+							log('W', logTag, "CEINametagSetting: false")
+							TriggerServerEvent("txNametagBlockerTimeout", "0")
+							log('W', logTag, "txNametagBlockerTimeout: 0")
+						end
+					elseif config.nametags.settings.blockingEnabled == "false" then
+						im.SameLine()
+						if im.SmallButton("Disabled##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "true")
+							log('W', logTag, "CEINametagSetting: true")
+						end
+					end
+					
+					im.Text("		")
+					im.SameLine()
+					im.Text("Blocking Timeout: ")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##nametagBlockingTimeout", config.nametags.settings.blockingTimeoutInt, 1) then
+						if config.nametags.settings.blockingTimeoutInt[0] < 0 then
+							config.nametags.settings.blockingTimeoutInt = im.IntPtr(0)
+						elseif config.nametags.settings.blockingTimeoutInt[0] > 3600 then
+							config.nametags.settings.blockingTimeoutInt = im.IntPtr(3600)
+						end
+						TriggerServerEvent("CEINametagSetting", tostring(config.nametags.settings.blockingTimeoutInt[0]))
+						log('W', logTag, "CEINametagSetting Called: " .. tostring(config.nametags.settings.blockingTimeoutInt[0]))
+					end
+					im.PopItemWidth()
+					
+					if config.nametags.settings.blockingEnabled == "true" then
+
+					elseif config.nametags.settings.blockingEnabled == "false" then
+						im.SameLine()
+						if im.SmallButton("Start##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "true")
+							log('W', logTag, "CEINametagSetting: true")
+							TriggerServerEvent("txNametagBlockerTimeout", tostring(config.nametags.settings.blockingTimeoutInt[0]))
+							log('W', logTag, "txNametagBlockerTimeout: " .. tostring(config.nametags.settings.blockingTimeoutInt[0]))
+						end
+					end
+					
+					im.TreePop()
+				else
+				end
+				im.Separator()
+				if im.TreeNode1("Nametag Whitelist: ") then
+					im.SameLine()
+					im.Text(tostring(nametagWhitelistCounter))
+					
+					for k,v in pairs(config.nametags.whitelistedPlayers) do
+						im.Text("		")
+						im.SameLine()
+						im.Text(config.nametags.whitelistedPlayers[k].name)
+						im.SameLine()
+						if im.SmallButton("Remove##"..config.nametags.whitelistedPlayers[k].name) then
+							TriggerServerEvent("CEIRemoveNametagWhitelist", config.nametags.whitelistedPlayers[k].name)
+							log('W', logTag, "CEIRemoveNametagWhitelist: " .. config.nametags.whitelistedPlayers[k].name)
+						end
+					end
+					
+					im.Text("		")
+					im.SameLine()
+					if im.InputTextWithHint("##whitelistName", "Whitelist Name", config.nametags.whitelistNameInput, 128) then
+					end
+					im.Text("		")
+					im.SameLine()
+					if im.SmallButton("Apply##nametagWhitleist") then
+						TriggerServerEvent("CEISetNametagWhitelist", ffi.string(config.nametags.whitelistNameInput))
+						log('W', logTag, "CEISetNametagWhitelist Called: " .. ffi.string(config.nametags.whitelistNameInput))
+					end
+					im.SameLine()
+					im.ShowHelpMarker("Enter new Whitelist Name and press Apply")
+				
+					im.TreePop()
+				else
+					im.SameLine()
+					im.Text(tostring(nametagWhitelistCounter))
+				end
+				im.Unindent()
+				
+			end
+			
 			im.EndTabItem()
 		end
+		
 ----------------------------------------------------------------------------------ENVIRONMENT TAB
 		if im.BeginTabItem("Environment") then
 					
@@ -2408,6 +2570,16 @@ local function drawCEAI(dt)
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	
+	if nametagBlockerTimeout ~= nil then
+		im.Text("Nametags Blocked for:")
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
+		im.SameLine()
+		im.Text("seconds")
+	elseif nametagBlockerActive == true then
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
+	end
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -3544,8 +3716,108 @@ local function drawCEAI(dt)
 				im.Unindent()
 				
 			end
+----------------------------------------------------------------------------------NAMETAGS HEADER
+			if im.CollapsingHeader1("Nametags") then
+			
+				local nametagWhitelist = config.nametags.whitelistedPlayers
+				local nametagWhitelistCounter = 0
+				for a,b in pairs(nametagWhitelist) do
+					nametagWhitelistCounter = nametagWhitelistCounter + 1
+				end
+			
+				im.Indent()
+				if im.TreeNode1("Nametag Settings") then
+					im.Text("		")
+					im.SameLine()
+					im.Text("Nametag Blocking: ")
+					if config.nametags.settings.blockingEnabled == "true" then
+						im.SameLine()
+						if im.SmallButton("Enabled##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "false")
+							log('W', logTag, "CEINametagSetting: false")
+							TriggerServerEvent("txNametagBlockerTimeout", "0")
+							log('W', logTag, "txNametagBlockerTimeout: 0")
+						end
+					elseif config.nametags.settings.blockingEnabled == "false" then
+						im.SameLine()
+						if im.SmallButton("Disabled##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "true")
+							log('W', logTag, "CEINametagSetting: true")
+						end
+					end
+					
+					im.Text("		")
+					im.SameLine()
+					im.Text("Blocking Timeout: ")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##nametagBlockingTimeout", config.nametags.settings.blockingTimeoutInt, 1) then
+						if config.nametags.settings.blockingTimeoutInt[0] < 0 then
+							config.nametags.settings.blockingTimeoutInt = im.IntPtr(0)
+						elseif config.nametags.settings.blockingTimeoutInt[0] > 3600 then
+							config.nametags.settings.blockingTimeoutInt = im.IntPtr(3600)
+						end
+						TriggerServerEvent("CEINametagSetting", tostring(config.nametags.settings.blockingTimeoutInt[0]))
+						log('W', logTag, "CEINametagSetting Called: " .. tostring(config.nametags.settings.blockingTimeoutInt[0]))
+					end
+					im.PopItemWidth()
+					
+					if config.nametags.settings.blockingEnabled == "true" then
+
+					elseif config.nametags.settings.blockingEnabled == "false" then
+						im.SameLine()
+						if im.SmallButton("Start##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "true")
+							log('W', logTag, "CEINametagSetting: true")
+							TriggerServerEvent("txNametagBlockerTimeout", tostring(config.nametags.settings.blockingTimeoutInt[0]))
+							log('W', logTag, "txNametagBlockerTimeout: " .. tostring(config.nametags.settings.blockingTimeoutInt[0]))
+						end
+					end
+					
+					im.TreePop()
+				else
+				end
+				im.Separator()
+				if im.TreeNode1("Nametag Whitelist: ") then
+					im.SameLine()
+					im.Text(tostring(nametagWhitelistCounter))
+					
+					for k,v in pairs(config.nametags.whitelistedPlayers) do
+						im.Text("		")
+						im.SameLine()
+						im.Text(config.nametags.whitelistedPlayers[k].name)
+						im.SameLine()
+						if im.SmallButton("Remove##"..config.nametags.whitelistedPlayers[k].name) then
+							TriggerServerEvent("CEIRemoveNametagWhitelist", config.nametags.whitelistedPlayers[k].name)
+							log('W', logTag, "CEIRemoveNametagWhitelist: " .. config.nametags.whitelistedPlayers[k].name)
+						end
+					end
+					
+					im.Text("		")
+					im.SameLine()
+					if im.InputTextWithHint("##whitelistName", "Whitelist Name", config.nametags.whitelistNameInput, 128) then
+					end
+					im.Text("		")
+					im.SameLine()
+					if im.SmallButton("Apply##nametagWhitleist") then
+						TriggerServerEvent("CEISetNametagWhitelist", ffi.string(config.nametags.whitelistNameInput))
+						log('W', logTag, "CEISetNametagWhitelist Called: " .. ffi.string(config.nametags.whitelistNameInput))
+					end
+					im.SameLine()
+					im.ShowHelpMarker("Enter new Whitelist Name and press Apply")
+				
+					im.TreePop()
+				else
+					im.SameLine()
+					im.Text(tostring(nametagWhitelistCounter))
+				end
+				im.Unindent()
+				
+			end
+			
 			im.EndTabItem()
 		end
+		
 ----------------------------------------------------------------------------------ENVIRONMENT TAB
 		if im.BeginTabItem("Environment") then
 					
@@ -4374,6 +4646,16 @@ local function drawCEMI(dt)
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	
+	if nametagBlockerTimeout ~= nil then
+		im.Text("Nametags Blocked for:")
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
+		im.SameLine()
+		im.Text("seconds")
+	elseif nametagBlockerActive == true then
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
+	end
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -5032,8 +5314,89 @@ local function drawCEMI(dt)
 				end
 				im.Text("		")
 			end
+----------------------------------------------------------------------------------NAMETAGS HEADER
+			if im.CollapsingHeader1("Nametags") then
+			
+				local nametagWhitelist = config.nametags.whitelistedPlayers
+				local nametagWhitelistCounter = 0
+				for a,b in pairs(nametagWhitelist) do
+					nametagWhitelistCounter = nametagWhitelistCounter + 1
+				end
+			
+				im.Indent()
+				if im.TreeNode1("Nametag Settings") then
+					im.Text("		")
+					im.SameLine()
+					im.Text("Nametag Blocking: ")
+					if config.nametags.settings.blockingEnabled == "true" then
+						im.SameLine()
+						if im.SmallButton("Enabled##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "false")
+							log('W', logTag, "CEINametagSetting: false")
+							TriggerServerEvent("txNametagBlockerTimeout", "0")
+							log('W', logTag, "txNametagBlockerTimeout: 0")
+						end
+					elseif config.nametags.settings.blockingEnabled == "false" then
+						im.SameLine()
+						if im.SmallButton("Disabled##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "true")
+							log('W', logTag, "CEINametagSetting: true")
+						end
+					end
+					
+					im.Text("		")
+					im.SameLine()
+					im.Text("Blocking Timeout: ")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##nametagBlockingTimeout", config.nametags.settings.blockingTimeoutInt, 1) then
+						if config.nametags.settings.blockingTimeoutInt[0] < 0 then
+							config.nametags.settings.blockingTimeoutInt = im.IntPtr(0)
+						elseif config.nametags.settings.blockingTimeoutInt[0] > 3600 then
+							config.nametags.settings.blockingTimeoutInt = im.IntPtr(3600)
+						end
+						TriggerServerEvent("CEINametagSetting", tostring(config.nametags.settings.blockingTimeoutInt[0]))
+						log('W', logTag, "CEINametagSetting Called: " .. tostring(config.nametags.settings.blockingTimeoutInt[0]))
+					end
+					im.PopItemWidth()
+					
+					if config.nametags.settings.blockingEnabled == "true" then
+
+					elseif config.nametags.settings.blockingEnabled == "false" then
+						im.SameLine()
+						if im.SmallButton("Start##NametagBlocking") then
+							TriggerServerEvent("CEINametagSetting", "true")
+							log('W', logTag, "CEINametagSetting: true")
+							TriggerServerEvent("txNametagBlockerTimeout", tostring(config.nametags.settings.blockingTimeoutInt[0]))
+							log('W', logTag, "txNametagBlockerTimeout: " .. tostring(config.nametags.settings.blockingTimeoutInt[0]))
+						end
+					end
+					
+					im.TreePop()
+				else
+				end
+				im.Separator()
+				if im.TreeNode1("Nametag Whitelist: ") then
+					im.SameLine()
+					im.Text(tostring(nametagWhitelistCounter))
+					
+					for k,v in pairs(config.nametags.whitelistedPlayers) do
+						im.Text("		")
+						im.SameLine()
+						im.Text(config.nametags.whitelistedPlayers[k].name)
+					end
+					
+					im.TreePop()
+				else
+					im.SameLine()
+					im.Text(tostring(nametagWhitelistCounter))
+				end
+				im.Unindent()
+				
+			end
 			im.Unindent()
 			im.EndTabItem()
+
 		end
 		im.EndTabBar()
 	end
@@ -5093,6 +5456,16 @@ local function drawCEPI(dt)
 	local currentTempF = currentTempC * 9/5 + 32
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
+	if nametagBlockerTimeout ~= nil then
+		im.Text("Nametags Blocked for:")
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
+		im.SameLine()
+		im.Text("seconds")
+	elseif nametagBlockerActive == true then
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
+	end
 	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
@@ -5276,6 +5649,16 @@ local function drawCEGI(dt)
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	
+	if nametagBlockerTimeout ~= nil then
+		im.Text("Nametags Blocked for:")
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
+		im.SameLine()
+		im.Text("seconds")
+	elseif nametagBlockerActive == true then
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
+	end
+	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -5417,6 +5800,16 @@ local function drawCESI(dt)
 	local currentTempF = currentTempC * 9/5 + 32
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
+	
+	if nametagBlockerTimeout ~= nil then
+		im.Text("Nametags Blocked for:")
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
+		im.SameLine()
+		im.Text("seconds")
+	elseif nametagBlockerActive == true then
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
+	end
 	
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
@@ -5961,6 +6354,33 @@ local function rxTeleportFrom(data)
 	MPVehicleGE.teleportVehToPlayer(data)
 end
 
+local function onPreRender(dt)
+	if nametagBlockerActive then
+		if nametagBlockerTimeout ~= nil then
+			nametagBlockerTimeout = nametagBlockerTimeout - dt
+			if nametagBlockerTimeout > 0 then
+				if not nametagWhitelisted then
+					MPVehicleGE.hideNicknames(true)
+				else
+					MPVehicleGE.hideNicknames(false)
+				end
+			else
+				nametagBlockerTimeout = nil
+				TriggerServerEvent("CEINametagSetting", "false")
+				log('W', logTag, "CEINametagSetting: false")
+			end
+		else
+			if not nametagWhitelisted then
+				MPVehicleGE.hideNicknames(true)
+			else
+				MPVehicleGE.hideNicknames(false)
+			end
+		end
+	else
+		MPVehicleGE.hideNicknames(false)
+	end
+end
+
 local function onExtensionLoaded()
 	local currentMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 	originalMpLayout = currentMpLayout
@@ -6001,6 +6421,9 @@ local function onExtensionLoaded()
 	AddEventHandler("rxPreferences", rxPreferences)
 	AddEventHandler("rxCEIstate", rxCEIstate)
 	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
+	AddEventHandler("rxNametagWhitelisted", rxNametagWhitelisted)
+	AddEventHandler("rxNametagBlockerActive", rxNametagBlockerActive)
+	AddEventHandler("rxNametagBlockerTimeout", rxNametagBlockerTimeout)
 	AddEventHandler("CEIToggleIgnition", CEIToggleIgnition)
 	AddEventHandler("CEIToggleLock", CEIToggleLock)
 	AddEventHandler("CEISetCurVeh", CEISetCurVeh)
@@ -6057,6 +6480,7 @@ end
 
 M.dependencies = {"ui_imgui"}
 M.onUpdate = onUpdate
+M.onPreRender = onPreRender
 M.onWorldReadyState = onWorldReadyState
 
 M.onExtensionLoaded = onExtensionLoaded
