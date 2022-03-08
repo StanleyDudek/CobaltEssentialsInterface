@@ -264,6 +264,7 @@ local function onInit()
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
+	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
 	serverConfig.name = utils.readCfg("ServerConfig.toml").General.Name
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
@@ -499,6 +500,7 @@ local function txPlayersData(player)
 						.. "," .. muteReason
 						.. "," .. tempPlayers[playerName].tempBanLength
 						.. "," .. tempPlayers[playerName].tempPermLevel
+						.. "," .. tempPlayers[playerName].includeInRace
 						.. "," .. tempPCV[playerName]
 			if player.vehicles then
 				data = data .. ","
@@ -1560,6 +1562,16 @@ function CEIWhitelist(senderID, data)
 	end
 end
 
+function CEIRaceInclude(senderID, data)
+	CElog("CEIRaceInclude Called by: " .. senderID .. ": " .. data, "CEI")
+		playerName = players[senderID].name
+	if data == "true" then
+		tempPlayers[playerName].includeInRace = "true"
+	elseif data == "false" then
+		tempPlayers[playerName].includeInRace = "false"
+	end
+end
+
 function CEISetNametagWhitelist(senderID, data)
 	CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
@@ -1668,49 +1680,102 @@ local function onTick(age)
 			end
 		end
 	end
+	
 	if raceCountdown ~= nil then
 		if raceCountdown == 15 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountSound", "3ping")
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "You have been locked in place, prepare to start!|5")
-			MP.SendChatMessage(-1, "🚦 You have been locked in place, prepare to start! 🚦")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "3ping")
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "You have been locked in place, prepare to start!|5")
+					MP.SendChatMessage(v.player_id, "🚦 You have been locked in place, prepare to start! 🚦")
+				end
+			end
 		elseif raceCountdown == 11 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountSound", "countTenHorn")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "countTenHorn")
+				end
+			end
 		elseif raceCountdown == 10 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "10...|1|true")
-			MP.SendChatMessage(-1, "🟥🔟🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "10...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥🔟🟥")
+				end
+			end
 		elseif raceCountdown == 9 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "9...|1|true")
-			MP.SendChatMessage(-1, "🟥9️⃣🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "9...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥9️⃣🟥")
+				end
+			end
 		elseif raceCountdown == 8 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "8...|1|true")
-			MP.SendChatMessage(-1, "🟥8️⃣🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "8...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥8️⃣🟥")
+				end
+			end
 		elseif raceCountdown == 7 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "7...|1|true")
-			MP.SendChatMessage(-1, "🟥7️⃣🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "7...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥7️⃣🟥")
+				end
+			end
 		elseif raceCountdown == 6 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "6...|1|true")
-			MP.SendChatMessage(-1, "🟥6️⃣🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "6...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥6️⃣🟥")
+				end
+			end
 		elseif raceCountdown == 5 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "5...|1|true")
-			MP.SendChatMessage(-1, "🟥5️⃣🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "5...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥5️⃣🟥")
+				end
+			end
 		elseif raceCountdown == 4 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "4...|1|true")
-			MP.SendChatMessage(-1, "🟥4️⃣🟥")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "4...|1|true")
+					MP.SendChatMessage(v.player_id, "🟥4️⃣🟥")
+				end
+			end
 		elseif raceCountdown == 3 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "3...|1|true")
-			MP.SendChatMessage(-1, "🟨3️⃣🟨")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "3...|1|true")
+					MP.SendChatMessage(v.player_id, "🟨3️⃣🟨")
+				end
+			end
 		elseif raceCountdown == 2 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "2...|1|true")
-			MP.SendChatMessage(-1, "🟨2️⃣🟨")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "2...|1|true")
+					MP.SendChatMessage(v.player_id, "🟨2️⃣🟨")
+				end
+			end
 		elseif raceCountdown == 1 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "1...|1|true")
-			MP.SendChatMessage(-1, "🟨1️⃣🟨")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "1...|1|true")
+					MP.SendChatMessage(v.player_id, "🟨1️⃣🟨")
+				end
+			end
 		elseif raceCountdown == 0 then
-			MP.TriggerClientEvent(-1, "CEIRaceCountdown", "❇️GO!!!❇️|3|true")
-			MP.TriggerClientEvent(-1, "CEIRaceStart", "true")
-			MP.SendChatMessage(-1, "🟩🟩🟩")
-			MP.SendChatMessage(-1, "🟩❇️🟩")
-			MP.SendChatMessage(-1, "🟩🟩🟩")
+			for k,v in pairs(tempPlayers) do
+				if v.includeInRace == "true" then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", "❇️GO!!!❇️|3|true")
+					MP.TriggerClientEvent(-1, "CEIRaceStart", "true")
+					MP.SendChatMessage(v.player_id, "🟩🟩🟩")
+					MP.SendChatMessage(v.player_id, "🟩❇️🟩")
+					MP.SendChatMessage(v.player_id, "🟩🟩🟩")
+				end
+			end
 		end
 		raceCountdown = raceCountdown - 1
 		if raceCountdown == -1 then
@@ -1728,11 +1793,13 @@ function onPlayerAuthHandler(player_name, player_role, is_guest)
 	tempPlayers[player_name] = {}
 	tempPlayers[player_name].tempPermLevel = 0
 	tempPlayers[player_name].tempBanLength = 1
+	tempPlayers[player_name].includeInRace = "false"
 	tempPCV[player_name] = "none"
 end
 
 local function onPlayerJoining(player)
 	tempPlayers[player.name].tempPermLevel = player.permissions.level
+	tempPlayers[player.name].player_id = player.playerID
 end
 
 local function onPlayerJoin(player)
