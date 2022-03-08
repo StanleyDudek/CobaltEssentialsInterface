@@ -13,6 +13,7 @@ local tomlParser = require("toml")
 local loadedDatabases = {}
 
 local showCEI = {}
+local teleport = {}
 
 local tempPlayers = {}
 local tempPCV = {}
@@ -263,6 +264,7 @@ local function onInit()
 	MP.RegisterEvent("CEIStop","CEIStop")
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
+	MP.RegisterEvent("CEISetTeleportPerm","CEISetTeleportPerm")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
@@ -450,6 +452,7 @@ local function txPlayersData(player)
 			local muted
 			local muteReason
 			local banned
+			local tp
 			if player.guest then
 				guest = "true"
 			else
@@ -480,6 +483,13 @@ local function txPlayersData(player)
 			else
 				banned = "false"
 			end
+			
+			if CobaltDB.query("playersDB/" .. playerName, "teleport", "value") == false or CobaltDB.query("playersDB/" .. playerName, "teleport", "value") == nil then
+				tp = "false"
+			elseif CobaltDB.query("playersDB/" .. playerName, "teleport", "value") == true then
+				tp = "true"
+			end
+			
 			local connectedTime = round(os.clock()*1000 - player.joinTime)
 			connectedTime = round(connectedTime / 1000)
 			data = data .. "|" .. player.playerID
@@ -493,6 +503,7 @@ local function txPlayersData(player)
 						.. "," .. locked
 						.. "," .. whitelisted
 						.. "," .. muted
+						.. "," .. tp
 						.. "," .. player.permissions.level
 						.. "," .. banned
 						.. "," .. player.permissions.group
@@ -1658,6 +1669,24 @@ function CEITeleportFrom(senderID, data)
 	end
 end
 
+function CEISetTeleportPerm(senderID, data)
+	CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+		local tempData = split(data,"|")
+		playerID = tonumber(tempData[1])
+		playerName = players[playerID].name
+		if tempData[2] == "false" then
+			teleport[playerName] = false
+			CobaltDB.set("playersDB/" .. playerName, "teleport", "value", false)
+			MP.TriggerClientEvent(playerID, "rxCEItp", "false")
+		elseif tempData[2] == "true" then
+			teleport[playerName] = true
+			CobaltDB.set("playersDB/" .. playerName, "teleport", "value", true)
+			MP.TriggerClientEvent(playerID, "rxCEItp", "true")
+		end
+	end
+end
+
 local function onTick(age)
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
@@ -1804,6 +1833,8 @@ end
 
 local function onPlayerJoin(player)
 	local state
+	local tp
+	
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", true)
 		showCEI[player.name] = true
@@ -1815,7 +1846,22 @@ local function onPlayerJoin(player)
 		showCEI[player.name] = false
 		state = "hide"
 	end
+	
+	if CobaltDB.query("playersDB/" .. player.name, "teleport", "value") == nil then
+		CobaltDB.set("playersDB/" .. player.name, "teleport", "value", false)
+		teleport[player.name] = false
+		tp = "false"
+	elseif CobaltDB.query("playersDB/" .. player.name, "teleport", "value") == true then
+		teleport[player.name] = true
+		tp = "true"
+	elseif CobaltDB.query("playersDB/" .. player.name, "teleport", "value") == false then
+		teleport[player.name] = false
+		tp = "false"
+	end
+	
 	MP.TriggerClientEvent(player.playerID, "rxCEIstate", state)
+	MP.TriggerClientEvent(player.playerID, "rxCEItp", tp)
+	
 	CE.delayExec( 2000 , MP.SendChatMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
 	CE.delayExec( 2500 , MP.SendChatMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
 end
