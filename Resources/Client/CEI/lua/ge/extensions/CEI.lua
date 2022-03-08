@@ -10,6 +10,8 @@ local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
 
+local canTeleport
+
 local includeForRace = false
 local includeForRaceSent = false
 
@@ -110,6 +112,14 @@ local function rxCEIstate(state)
 	elseif state == "hide" then
 		windowOpen[0] = false
 		gui.hideWindow("CEI")
+	end
+end
+
+local function rxCEItp(tp)
+	if tp == "true" then
+		canTeleport = true
+	elseif tp == "false" then
+		canTeleport = false
 	end
 end
 
@@ -404,9 +414,9 @@ local function rxPlayersData(data)
 		players[tempPlayerID].player.connectStage = tempData[3]
 		players[tempPlayerID].player.guest = tempData[4]
 		players[tempPlayerID].player.joinTime = tempData[5]
-		players[tempPlayerID].player.connectedTime = tempData[15]
+		players[tempPlayerID].player.connectedTime = tempData[16]
 		players[tempPlayerID].player.kickBanMuteReason = im.ArrayChar(128)
-		players[tempPlayerID].player.tempBanLength = im.FloatPtr(tonumber(tempData[17]))
+		players[tempPlayerID].player.tempBanLength = im.FloatPtr(tonumber(tempData[18]))
 		players[tempPlayerID].player.vehDeleteReason = im.ArrayChar(128)
 		players[tempPlayerID].player.gamemode = {}
 		players[tempPlayerID].player.gamemode.mode = tempData[6]
@@ -416,21 +426,22 @@ local function rxPlayersData(data)
 		players[tempPlayerID].player.permissions = {}
 		players[tempPlayerID].player.permissions.whitelisted = tempData[10]
 		players[tempPlayerID].player.permissions.muted = tempData[11]
-		players[tempPlayerID].player.permissions.level = tempData[12]
-		players[tempPlayerID].player.permissions.levelInt = im.IntPtr(tonumber(tempData[18]))
-		players[tempPlayerID].player.permissions.banned = tempData[13]
-		players[tempPlayerID].player.permissions.group = tempData[14]
-		players[tempPlayerID].player.permissions.muteReason = tempData[16]
+		players[tempPlayerID].player.teleport = tempData[12]
+		players[tempPlayerID].player.permissions.level = tempData[13]
+		players[tempPlayerID].player.permissions.levelInt = im.IntPtr(tonumber(tempData[19]))
+		players[tempPlayerID].player.permissions.banned = tempData[14]
+		players[tempPlayerID].player.permissions.group = tempData[15]
+		players[tempPlayerID].player.permissions.muteReason = tempData[17]
 		players[tempPlayerID].player.permissions.groupInput = im.ArrayChar(128)
-		players[tempPlayerID].player.includeInRace = tempData[19]
-		if tempData[21] then
+		players[tempPlayerID].player.includeInRace = tempData[20]
+		if tempData[22] then
 			players[tempPlayerID].player.vehicles = {}
-			if tempData[20] == "none" then
+			if tempData[21] == "none" then
 				playersCurrentVehicle[tempPlayerID] = nil
 			else
-				playersCurrentVehicle[tempPlayerID] = tempData[20]
+				playersCurrentVehicle[tempPlayerID] = tempData[21]
 			end
-			local vehString = string.sub(tempData[21], 2)
+			local vehString = string.sub(tempData[22], 2)
 			local vehiclesData = split(vehString,"$")
 			for i,v in pairs(vehiclesData) do
 				local tempVehicleData = split(v,"_")
@@ -700,27 +711,29 @@ local function drawCEOI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-						im.Text("		")
-						im.SameLine()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+						if canTeleport then
+							im.Text("		")
+							im.SameLine()
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport From##" .. tostring(k)) then
+								M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport From##" .. tostring(k)) then
-							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Text("		")
@@ -830,8 +843,22 @@ local function drawCEOI(dt)
 						im.Text("		joinTime: " .. players[k].player.joinTime)
 						im.SameLine()
 						im.Text(": connectedTime: " .. players[k].player.connectedTime)
+						
 						im.Separator()
 						if im.TreeNode1("permissions##"..tostring(k)) then
+						
+							if players[k].player.teleport == "false" then
+								if im.SmallButton("Allow Teleport##"..tostring(k)) then
+									TriggerServerEvent("CEISetTeleportPerm", tostring(k) .. "|true")
+									log('W', logTag, "CEISetTeleportPerm Called: " .. tostring(k) .. "|true")
+								end
+							elseif players[k].player.teleport == "true" then
+								if im.SmallButton("Revoke Teleport##"..tostring(k)) then
+									TriggerServerEvent("CEISetTeleportPerm", tostring(k) .. "|false")
+									log('W', logTag, "CEISetTeleportPerm Called: " .. tostring(k) .. "|false")
+								end
+							end
+						
 							if im.TreeNode1("level:") then
 								im.SameLine()
 								im.Text(players[k].player.permissions.level)
@@ -944,27 +971,29 @@ local function drawCEOI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-						im.Text("		")
-						im.SameLine()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+						if canTeleport then
+							im.Text("		")
+							im.SameLine()
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport From##" .. tostring(k)) then
+								M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport From##" .. tostring(k)) then
-							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Unindent()
@@ -2797,27 +2826,29 @@ local function drawCEAI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-						im.Text("		")
-						im.SameLine()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+						if canTeleport then
+							im.Text("		")
+							im.SameLine()
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport From##" .. tostring(k)) then
+								M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport From##" .. tostring(k)) then
-							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Text("		")
@@ -2929,6 +2960,19 @@ local function drawCEAI(dt)
 						im.Text(": connectedTime: " .. players[k].player.connectedTime)
 						im.Separator()
 						if im.TreeNode1("permissions##"..tostring(k)) then
+						
+							if players[k].player.teleport == "false" then
+								if im.SmallButton("Allow Teleport##"..tostring(k)) then
+									TriggerServerEvent("CEISetTeleportPerm", tostring(k) .. "|true")
+									log('W', logTag, "CEISetTeleportPerm Called: " .. tostring(k) .. "|true")
+								end
+							elseif players[k].player.teleport == "true" then
+								if im.SmallButton("Revoke Teleport##"..tostring(k)) then
+									TriggerServerEvent("CEISetTeleportPerm", tostring(k) .. "|false")
+									log('W', logTag, "CEISetTeleportPerm Called: " .. tostring(k) .. "|false")
+								end
+							end
+						
 							if im.TreeNode1("level:") then
 								im.SameLine()
 								im.Text(players[k].player.permissions.level)
@@ -3041,27 +3085,29 @@ local function drawCEAI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-						im.Text("		")
-						im.SameLine()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+						if canTeleport then
+							im.Text("		")
+							im.SameLine()
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport From##" .. tostring(k)) then
+								M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport From##" .. tostring(k)) then
-							M.teleportPlayerToVeh(players[k].player.playerName,tostring(k))
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport this player's current vehicle to you.")
 					end
 					
 					im.Unindent()
@@ -4882,26 +4928,27 @@ local function drawCEMI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-						im.Text("		")
-						im.SameLine()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
-								lastTeleport = 0
-								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-							else
-								lastTeleport = lastTeleport + dt
+						if canTeleport then
+							im.Text("		")
+							im.SameLine()
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
 							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
+									lastTeleport = 0
+									MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+								else
+									lastTeleport = lastTeleport + dt
+								end
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 					end
 					
 					im.Text("		")
@@ -5086,26 +5133,27 @@ local function drawCEMI(dt)
 					end
 					
 					if vehiclesCounter > 0 then
-						im.Text("		")
-						im.SameLine()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
-								lastTeleport = 0
-								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-							else
-								lastTeleport = lastTeleport + dt
+						if canTeleport then
+							im.Text("		")
+							im.SameLine()
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
 							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
+									lastTeleport = 0
+									MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+								else
+									lastTeleport = lastTeleport + dt
+								end
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 					end
 					
 					im.Unindent()
@@ -5609,24 +5657,25 @@ local function drawCEPI(dt)
 					
 					if vehiclesCounter > 0 then
 						im.Indent()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
-								lastTeleport = 0
-								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-							else
-								lastTeleport = lastTeleport + dt
+						if canTeleport then
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
 							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
+									lastTeleport = 0
+									MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+								else
+									lastTeleport = lastTeleport + dt
+								end
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
-					
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
@@ -6551,6 +6600,7 @@ local function onExtensionLoaded()
 	AddEventHandler("rxEnvironment", rxEnvironment)
 	AddEventHandler("rxPreferences", rxPreferences)
 	AddEventHandler("rxCEIstate", rxCEIstate)
+	AddEventHandler("rxCEItp", rxCEItp)
 	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
 	AddEventHandler("rxNametagWhitelisted", rxNametagWhitelisted)
 	AddEventHandler("rxNametagBlockerActive", rxNametagBlockerActive)
