@@ -10,6 +10,9 @@ local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
 
+local includeForRace = false
+local includeForRaceSent = false
+
 local nametagWhitelisted = false
 local nametagBlockerActive = false
 local nametagBlockerTimeout
@@ -419,14 +422,15 @@ local function rxPlayersData(data)
 		players[tempPlayerID].player.permissions.group = tempData[14]
 		players[tempPlayerID].player.permissions.muteReason = tempData[16]
 		players[tempPlayerID].player.permissions.groupInput = im.ArrayChar(128)
-		if tempData[20] then
+		players[tempPlayerID].player.includeInRace = tempData[19]
+		if tempData[21] then
 			players[tempPlayerID].player.vehicles = {}
-			if tempData[19] == "none" then
+			if tempData[20] == "none" then
 				playersCurrentVehicle[tempPlayerID] = nil
 			else
-				playersCurrentVehicle[tempPlayerID] = tempData[19]
+				playersCurrentVehicle[tempPlayerID] = tempData[20]
 			end
-			local vehString = string.sub(tempData[20], 2)
+			local vehString = string.sub(tempData[21], 2)
 			local vehiclesData = split(vehString,"$")
 			for i,v in pairs(vehiclesData) do
 				local tempVehicleData = split(v,"_")
@@ -522,9 +526,11 @@ local function drawCEOI(dt)
 			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.4, 0.0, 0.999))
 			if im.SmallButton("Race Countdown!") then
 				for k,v in pairs(players) do
-					for x,y in pairs(players[k].player.vehicles) do
-						TriggerServerEvent("CEIToggleLock", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
-						log('W', logTag, "CEIToggleLock Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+					if players[k].player.includeInRace == "true" then
+						for x,y in pairs(players[k].player.vehicles) do
+							TriggerServerEvent("CEIToggleLock", players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+							log('W', logTag, "CEIToggleLock Called: " .. players[k].player.playerID .. "|" .. players[k].player.vehicles[x].vehicleID .. "|true")
+						end
 					end
 				end
 				
@@ -533,6 +539,28 @@ local function drawCEOI(dt)
 				
 			end
 			im.PopStyleColor(3)
+			
+			
+			local includeMe = im.BoolPtr(includeForRace)
+			
+			im.SameLine()
+			if im.Checkbox("Include Me In Race", includeMe) then
+				if includeMe[0] then
+					if includeForRaceSent == false then
+						TriggerServerEvent("CEIRaceInclude", "true")
+						log('W', logTag, "CEIRaceInclude Called: true")
+						includeForRaceSent = true
+					end
+				else
+					if includeForRaceSent == true then
+						TriggerServerEvent("CEIRaceInclude", "false")
+						log('W', logTag, "CEIRaceInclude Called: false")
+						includeForRaceSent = false
+					end
+				end
+			end
+			includeForRace = includeMe[0]
+			
 			
 			im.Separator()
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
@@ -2611,6 +2639,26 @@ local function drawCEAI(dt)
 			end
 			im.PopStyleColor(3)
 			
+			local includeMe = im.BoolPtr(includeForRace)
+			
+			im.SameLine()
+			if im.Checkbox("Include Me In Race", includeMe) then
+				if includeMe[0] then
+					if includeForRaceSent == false then
+						TriggerServerEvent("CEIRaceInclude", "true")
+						log('W', logTag, "CEIRaceInclude Called: true")
+						includeForRaceSent = true
+					end
+				else
+					if includeForRaceSent == true then
+						TriggerServerEvent("CEIRaceInclude", "false")
+						log('W', logTag, "CEIRaceInclude Called: false")
+						includeForRaceSent = false
+					end
+				end
+			end
+			includeForRace = includeMe[0]
+			
 			im.Separator()
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
@@ -4687,6 +4735,26 @@ local function drawCEMI(dt)
 			end
 			im.PopStyleColor(3)
 
+			local includeMe = im.BoolPtr(includeForRace)
+			
+			im.SameLine()
+			if im.Checkbox("Include Me In Race", includeMe) then
+				if includeMe[0] then
+					if includeForRaceSent == false then
+						TriggerServerEvent("CEIRaceInclude", "true")
+						log('W', logTag, "CEIRaceInclude Called: true")
+						includeForRaceSent = true
+					end
+				else
+					if includeForRaceSent == true then
+						TriggerServerEvent("CEIRaceInclude", "false")
+						log('W', logTag, "CEIRaceInclude Called: false")
+						includeForRaceSent = false
+					end
+				end
+			end
+			includeForRace = includeMe[0]
+
 			im.Separator()
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
@@ -5478,6 +5546,27 @@ local function drawCEPI(dt)
 			im.Text("Current Players:")
 			im.SameLine()
 			im.Text(tostring(playersCounter))
+			
+			local includeMe = im.BoolPtr(includeForRace)
+			
+			im.SameLine()
+			if im.Checkbox("Include Me In Race", includeMe) then
+				if includeMe[0] then
+					if includeForRaceSent == false then
+						TriggerServerEvent("CEIRaceInclude", "true")
+						log('W', logTag, "CEIRaceInclude Called: true")
+						includeForRaceSent = true
+					end
+				else
+					if includeForRaceSent == true then
+						TriggerServerEvent("CEIRaceInclude", "false")
+						log('W', logTag, "CEIRaceInclude Called: false")
+						includeForRaceSent = false
+					end
+				end
+			end
+			includeForRace = includeMe[0]
+			
 			for k,v in pairs(players) do
 ----------------------------------------------------------------------------------PLAYER HEADER
 				
@@ -5670,6 +5759,27 @@ local function drawCEGI(dt)
 			im.Text("Current Players:")
 			im.SameLine()
 			im.Text(tostring(playersCounter))
+			
+			local includeMe = im.BoolPtr(includeForRace)
+			
+			im.SameLine()
+			if im.Checkbox("Include Me In Race", includeMe) then
+				if includeMe[0] then
+					if includeForRaceSent == false then
+						TriggerServerEvent("CEIRaceInclude", "true")
+						log('W', logTag, "CEIRaceInclude Called: true")
+						includeForRaceSent = true
+					end
+				else
+					if includeForRaceSent == true then
+						TriggerServerEvent("CEIRaceInclude", "false")
+						log('W', logTag, "CEIRaceInclude Called: false")
+						includeForRaceSent = false
+					end
+				end
+			end
+			includeForRace = includeMe[0]
+			
 			for k,v in pairs(players) do
 ----------------------------------------------------------------------------------PLAYER HEADER
 				
@@ -5822,6 +5932,27 @@ local function drawCESI(dt)
 			im.Text("Current Players:")
 			im.SameLine()
 			im.Text(tostring(playersCounter))
+			
+			local includeMe = im.BoolPtr(includeForRace)
+			
+			im.SameLine()
+			if im.Checkbox("Include Me In Race", includeMe) then
+				if includeMe[0] then
+					if includeForRaceSent == false then
+						TriggerServerEvent("CEIRaceInclude", "true")
+						log('W', logTag, "CEIRaceInclude Called: true")
+						includeForRaceSent = true
+					end
+				else
+					if includeForRaceSent == true then
+						TriggerServerEvent("CEIRaceInclude", "false")
+						log('W', logTag, "CEIRaceInclude Called: false")
+						includeForRaceSent = false
+					end
+				end
+			end
+			includeForRace = includeMe[0]
+			
 			for k,v in pairs(players) do
 ----------------------------------------------------------------------------------PLAYER HEADER
 				
