@@ -1,0 +1,117 @@
+<md-content style="width: 400px; height: 100%" bng-blur="true" class="transparency" layout="column" bng-frustum-mover="left" >
+  <time-settings></time-settings>
+
+  <div flex layout-padding style="overflow-y: auto">
+    <h3><b>{{:: 'ui.environment.timeOfDay' | translate}}</b></h3>
+    <md-list>
+      <md-list-item md-no-ink>
+        <p>{{:: 'ui.environment.play' | translate}}</p>
+        <md-checkbox ng-model="environment.service.state.play"
+                     ng-change="environment.service.submitState()"
+                     ng-disabled="environment.service.state.time < 0"
+                     class="md-secondary" aria-label="_">
+        </md-checkbox>
+      </md-list-item>
+
+      <md-list-item layout>
+        <div flex="30">{{:: 'ui.environment.time' | translate}}</div>
+
+          <span style="text-align: right" flex="10">{{ timeAsString(environment.service.state.time) }}</span>
+      </md-list-item>
+
+      <md-list-item layout>
+        <div flex="30">{{:: 'ui.environment.day' | translate}}{{:: 'ui.environment.scale' | translate}}</div>
+
+        <span style="text-align: right" flex="10">{{ environment.service.state.dayScale.toFixed(2) }}</span>
+      </md-list-item>
+
+      <md-list-item layout>
+        <div flex="30">{{:: 'ui.environment.night' | translate}}{{:: 'ui.environment.scale' | translate}}</div>
+
+        <span style="text-align: right" flex="10">{{ environment.service.state.nightScale.toFixed(2) }}</span>
+      </md-list-item>
+    </md-list>
+
+    <md-divider></md-divider>
+
+    <h3><b>{{:: 'ui.environment.weather' | translate}}</b></h3>
+    <md-list>
+      <md-list-item layout>
+        <span style="text-align: left" flex="80">{{:: 'ui.environment.environmentalTemperature' | translate}}</span>
+        <span style="text-align: right" flex="20">{{ environment.convertTemperature(environment.service.state.temperatureC)}} </span>
+      </md-list-item>
+
+      <md-list-item layout>
+        <div flex="30">{{:: 'ui.environment.windSpeed' | translate}}</div>
+        <md-slider ng-model="environment.service.state.windSpeed" min="0" max="10" step="0.1"
+                   ng-change="environment.service.submitState()"
+                   ng-disabled="environment.service.state.windSpeed === undefined"
+                   flex aria-label="_"></md-slider>
+      </md-list-item>
+
+      <md-list-item layout>
+        <div flex="30">{{:: 'ui.environment.cloudCover' | translate}}</div>
+        <md-slider  ng-model="environment.service.state.cloudCover" min="0" max="5" step="0.1"
+                    ng-change="environment.service.submitState()"
+                    ng-disabled="environment.service.state.cloudCover === undefined"
+                    flex aria-label="_">
+          </md-slider>
+      </md-list-item>
+
+      <md-list-item layout>
+        <div flex="30">{{:: 'ui.environment.fogDensity' | translate}}</div>
+
+        <span style="text-align: right" flex="10">{{ environment.service.state.fogDensity.toFixed(2) }}</span>
+
+      </md-list-item>
+
+      <!-- <md-list-item layout layout-wrap>
+        <md-button ng-repeat="weather in ::environment.weatherPresets"
+                   ng-click="environment.switchWeather(weather)"
+                   ng-disabled="weather === environment.currentWeatherPreset"
+                   class="md-primary md-raised" flex="30" style="margin: 5px; font-size: 12px;">
+          {{weather | translate}}
+        </md-button>
+      </md-list-item> -->
+    </md-list>
+
+    <md-divider></md-divider>
+
+    <h3><b>{{:: 'ui.environment.gravity' | translate}}</b></h3>
+    <md-list>
+      <md-list-item layout>
+
+        <span style="text-align: right" flex="20">{{ environment.service.state.gravity.toFixed(2) }}</span>
+      </md-list-item>
+
+    </md-list>
+    <md-divider></md-divider>
+
+    <h3><b>{{:: 'ui.environment.simulationSpeed' | translate}}</b></h3>
+    <md-list>
+      <md-list-item layout>
+
+        <span style="text-align: right" flex="20">{{ environment.service.simSpeed }}</span>
+      </md-list-item>
+
+    </md-list>
+
+    <h3><b>{{:: 'ui.environment.tireMarks' | translate}}</b></h3>
+    <md-list>
+      <md-list-item md-no-ink>
+        <md-button ng-click="environment.resetTireMarks()"
+                   class="md-primary md-raised" flex="30" style="margin: 4px; font-size: 12px;">
+          {{:: 'ui.environment.tireMarks.reset' | translate}}
+        </md-button>
+        <md-button ng-click="environment.saveTireMarks()"
+                   class="md-primary md-raised" flex="30" style="margin: 4px; font-size: 12px;">
+          {{:: 'ui.environment.tireMarks.save' | translate}}
+        </md-button>
+        <md-button ng-click="environment.loadTireMarks()"
+                   class="md-primary md-raised" flex="30" style="margin: 4px; font-size: 12px;">
+          {{:: 'ui.environment.tireMarks.load' | translate}}
+        </md-button>
+      </md-list-item>
+    </md-list>
+  </div>
+</md-content>
