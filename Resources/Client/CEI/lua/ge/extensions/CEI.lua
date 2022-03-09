@@ -57,6 +57,7 @@ config.cobalt.permissions.vehicleCaps = {}
 config.cobalt.vehicles = {}
 config.cobalt.vehicles.newVehicleInput = im.ArrayChar(128)
 config.cobalt.vehicles.vehiclePerms = {}
+config.cobalt.interface = {}
 config.nametags = {}
 config.nametags.settings = {}
 config.nametags.whitelistNameInput = im.ArrayChar(128)
@@ -363,13 +364,15 @@ local function rxConfigData(data)
 	
 	vehiclePermsFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 	
-	config.nametags.settings.blockingEnabled = configData[20]
-	config.nametags.settings.blockingTimeout = configData[21]
+	config.cobalt.interface.defaultState = configData[20]
+	
+	config.nametags.settings.blockingEnabled = configData[21]
+	config.nametags.settings.blockingTimeout = configData[22]
 	config.nametags.settings.blockingTimeoutInt = im.IntPtr(tonumber(config.nametags.settings.blockingTimeout))
 	
-	if configData[22] then
+	if configData[23] then
 		config.nametags.whitelistedPlayers = {}
-		tempString = configData[22]
+		tempString = configData[23]
 		tempData = string.sub(tempString, 2)
 		local tempNametagsWhitelistPlayers = split(tempData,"|")
 		for k,v in pairs(tempNametagsWhitelistPlayers) do
@@ -379,9 +382,9 @@ local function rxConfigData(data)
 		end
 	end
 	
-	if configData[23] then
+	if configData[24] then
 	config.cobalt.whitelistedPlayers = {}
-	tempString = configData[23]
+	tempString = configData[24]
 	tempData = string.sub(tempString, 2)
 	local tempWhitelistPlayers = split(tempData,"|")
 		for k,v in pairs(tempWhitelistPlayers) do
@@ -1457,6 +1460,22 @@ local function drawCEOI(dt)
 						log('W', logTag, "CEIWhitelist Called: disable")
 					end
 				end
+				
+				im.Separator()
+				im.Text('		Default CEI State:')
+				im.SameLine()
+				if config.cobalt.interface.defaultState == "true" then
+					if im.SmallButton("Shown##") then
+						TriggerServerEvent("CEISetDefaultState","false")
+						log('W', logTag, "CEISetDefaultState Called: false")
+					end
+				elseif config.cobalt.interface.defaultState == "false" then
+					if im.SmallButton("Hidden##") then
+						TriggerServerEvent("CEISetDefaultState","true")
+						log('W', logTag, "CEISetDefaultState Called: true")
+					end
+				end
+				
 				--[[im.Separator()
 				if im.TreeNode1("miscellaneous") then
 					im.Separator()
@@ -3571,6 +3590,22 @@ local function drawCEAI(dt)
 						log('W', logTag, "CEIWhitelist Called: disable")
 					end
 				end
+				
+				im.Separator()
+				im.Text('		Default CEI State: ')
+				im.SameLine()
+				if config.cobalt.interface.defaultState == "true" then
+					if im.SmallButton("Shown##") then
+						TriggerServerEvent("CEISetDefaultState","false")
+						log('W', logTag, "CEISetDefaultState Called: false")
+					end
+				elseif config.cobalt.interface.defaultState == "false" then
+					if im.SmallButton("Hidden##") then
+						TriggerServerEvent("CEISetDefaultState","true")
+						log('W', logTag, "CEISetDefaultState Called: true")
+					end
+				end
+				
 				--[[im.Separator()
 				if im.TreeNode1("miscellaneous") then
 					im.Separator()
