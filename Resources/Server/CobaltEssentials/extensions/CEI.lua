@@ -29,6 +29,8 @@ local nametagsConfig = {}
 nametagsConfig.whitelist = {}
 nametagsConfig.settings = {}
 
+local defaultInterfaceState = false
+
 local defaultNametagsBlockingEnabled = "false"
 local defaultNametagsBlockingTimeout = 300
 local defaultNametagsBlockingWhitelist = "exampleName"
@@ -221,11 +223,18 @@ local defaultNametagsSettings = {
 	nametagsWhitelist = {exampleName = defaultNametagsBlockingWhitelist, description = "Who is immune to nametag blocking?"}
 }
 
+local interface = CobaltDB.new("interface")
+local defaultInterfaceSettings = {
+	defaultCEIState = {value = defaultInterfaceState, description = "The state of the interface for new players."}
+}
+
+
 local raceCountdown
 local raceCountdownStarted
 
 local function onInit()
 	MP.RegisterEvent("onPlayerAuth", "onPlayerAuthHandler")
+	MP.RegisterEvent("CEISetDefaultState","CEISetDefaultState")
 	MP.RegisterEvent("CEISetCurVeh","CEISetCurVeh")
 	MP.RegisterEvent("CEIPreRace","CEIPreRace")
 	MP.RegisterEvent("CEIToggleIgnition","CEIToggleIgnition")
@@ -287,6 +296,7 @@ local function onInit()
 	M.applyStuff(environment, defaultEnvironment)
 	M.applyStuff(vehicles, defaultVehicles)
 	M.applyStuff(nametags, defaultNametagsSettings)
+	M.applyStuff(interface, defaultInterfaceSettings)
 	
 	nametagsConfig.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
 	nametagsConfig.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
@@ -320,6 +330,8 @@ local function onInit()
 	tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
 	tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
 	useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
+	
+	defaultInterfaceState = CobaltDB.query("interface", "defaultCEIState", "value")
 	
 	CElog("CEI Loaded!", "CEI")
 end
@@ -357,6 +369,19 @@ local function CEI(player)
 		state = "hide"
 	end
 	MP.TriggerClientEvent(player.playerID, "rxCEIstate", state)
+end
+
+function CEISetDefaultState(senderID, data)
+	CElog("CEISetDefaultState Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		if data == "true" then
+			CobaltDB.set("interface", "defaultCEIState", "value", true)
+			defaultInterfaceState = true
+		elseif data == "false" then
+			CobaltDB.set("interface", "defaultCEIState", "value", false)
+			defaultInterfaceState = false
+		end
+	end
 end
 
 local function round(num, numDecimalPlaces)
@@ -700,6 +725,12 @@ local function txConfigData(player)
 			data = data .. "," .. cobaltConfig.permissions.vehiclePerm[i].partLevel.name
 						.. "@" .. cobaltConfig.permissions.vehiclePerm[i].partLevel.level
 		end
+	end
+	
+	if defaultInterfaceState == true then
+		data = data .. "$" .. "true"
+	elseif defaultInterfaceState == false then
+		data = data .. "$" .. "false"
 	end
 	
 	data = data .. "$" .. nametagsConfig.settings.blockingEnabled
@@ -1836,9 +1867,13 @@ local function onPlayerJoin(player)
 	local tp
 	
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
-		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", true)
-		showCEI[player.name] = true
-		state = "show"
+		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", defaultInterfaceState)
+		showCEI[player.name] = defaultInterfaceState
+		if defaultInterfaceState == true then
+			state = "show"
+		elseif defaultInterfaceState == false then
+			state = "hide"
+		end
 	elseif CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == true then
 		showCEI[player.name] = true
 		state = "show"
