@@ -40,27 +40,6 @@ local self = {}
 local players = {}
 
 local config = {}
-config.server = {}
-config.server.nameInput = im.ArrayChar(128)
-config.server.mapInput = im.ArrayChar(128)
-config.server.descriptionInput = im.ArrayChar(256)
-config.cobalt = {}
-config.cobalt.newRCONport = im.ArrayChar(128)
-config.cobalt.newRCONpassword = im.ArrayChar(128)
-config.cobalt.newCobaltDBport = im.ArrayChar(128)
-config.cobalt.newGroupInput = im.ArrayChar(128)
-config.cobalt.whitelistNameInput = im.ArrayChar(128)
-config.cobalt.groups = {}
-config.cobalt.permissions = {}
-config.cobalt.permissions.newLevelInput = im.ArrayChar(128)
-config.cobalt.permissions.vehicleCaps = {}
-config.cobalt.vehicles = {}
-config.cobalt.vehicles.newVehicleInput = im.ArrayChar(128)
-config.cobalt.vehicles.vehiclePerms = {}
-config.cobalt.interface = {}
-config.nametags = {}
-config.nametags.settings = {}
-config.nametags.whitelistNameInput = im.ArrayChar(128)
 
 local stats = {}
 
@@ -262,6 +241,7 @@ end
 local function rxConfigData(data)
 	data = string.sub(data, 2)
 	local configData = split(data,"$")
+	config.server = {}
 	config.server.name = configData[1]
 	config.server.debug = configData[2]
 	config.server.private = configData[3]
@@ -269,8 +249,12 @@ local function rxConfigData(data)
 	config.server.maxPlayers = configData[5]
 	config.server.map = configData[6]
 	config.server.description = configData[7]
+	config.server.nameInput = im.ArrayChar(128)
+	config.server.mapInput = im.ArrayChar(128)
+	config.server.descriptionInput = im.ArrayChar(256)
 	config.server.maxCarsInt = im.IntPtr(tonumber(config.server.maxCars))
 	config.server.maxPlayersInt = im.IntPtr(tonumber(config.server.maxPlayers))
+	config.cobalt = {}
 	config.cobalt.maxActivePlayers = configData[8]
 	config.cobalt.enableWhitelist = configData[9]
 	config.cobalt.enableColors = configData[10]
@@ -278,9 +262,15 @@ local function rxConfigData(data)
 	config.cobalt.RCONenabled = configData[12]
 	config.cobalt.RCONkeepAliveTick = configData[13]
 	config.cobalt.RCONpassword = configData[14]
+	config.cobalt.newRCONpassword = im.ArrayChar(128)
 	config.cobalt.RCONport = configData[15]
+	config.cobalt.newRCONport = im.ArrayChar(128)
 	config.cobalt.CobaltDBport = configData[16]
+	config.cobalt.newCobaltDBport = im.ArrayChar(128)
+	config.cobalt.newGroupInput = im.ArrayChar(128)
+	config.cobalt.whitelistNameInput = im.ArrayChar(128)
 	config.cobalt.maxActivePlayersInt = im.IntPtr(tonumber(config.cobalt.maxActivePlayers))
+	config.cobalt.groups = {}
 	local tempString = configData[17]
 	local tempData = string.sub(tempString, 2)
 	local tempGroups = split(tempData,"|")
@@ -324,6 +314,9 @@ local function rxConfigData(data)
 		config.cobalt.groups[k].groupBanReasonInput = im.ArrayChar(128)
 		config.cobalt.groups[k].newGroupPlayerInput = im.ArrayChar(128)
 	end
+	config.cobalt.permissions = {} --TODO: Use spawnVehicles and sendMessage in permissions?
+	config.cobalt.permissions.newLevelInput = im.ArrayChar(128)
+	config.cobalt.permissions.vehicleCaps = {}
 	tempString = configData[18]
 	tempData = string.sub(tempString, 2)
 	local tempPermissions = split(tempData,"|")
@@ -335,6 +328,9 @@ local function rxConfigData(data)
 		config.cobalt.permissions.vehicleCaps[k].vehicles = permissionData[2]
 		config.cobalt.permissions.vehicleCaps[k].vehiclesInt = im.IntPtr(tonumber(config.cobalt.permissions.vehicleCaps[k].vehicles))
 	end
+	config.cobalt.vehicles = {}
+	config.cobalt.vehicles.newVehicleInput = im.ArrayChar(128)
+	config.cobalt.vehicles.vehiclePerms = {}
 	tempString = configData[19]
 	tempData = string.sub(tempString, 2)
 	local tempVehiclePerms = split(tempData,"|")
@@ -364,7 +360,12 @@ local function rxConfigData(data)
 	
 	vehiclePermsFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 	
+	config.cobalt.interface = {}
 	config.cobalt.interface.defaultState = configData[20]
+	
+	config.nametags = {}
+	config.nametags.settings = {}
+	config.nametags.whitelistNameInput = im.ArrayChar(128)
 	
 	config.nametags.settings.blockingEnabled = configData[21]
 	config.nametags.settings.blockingTimeout = configData[22]
