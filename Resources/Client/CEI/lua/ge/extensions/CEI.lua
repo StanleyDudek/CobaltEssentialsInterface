@@ -5741,23 +5741,25 @@ local function drawCEPI(dt)
 					
 					if vehiclesCounter > 0 then
 						im.Indent()
-						if im.SmallButton("Focus##" .. tostring(k)) then
-							MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
-						end
-						im.SameLine()
-						im.ShowHelpMarker("Cycle camera through this player's vehicles.")
-						
-						im.SameLine()
-						if im.SmallButton("Teleport To##" .. tostring(k)) then
-							if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
-								lastTeleport = 0
-								MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
-							else
-								lastTeleport = lastTeleport + dt
+						if canTeleport then
+							if im.SmallButton("Focus##" .. tostring(k)) then
+								MPVehicleGE.focusCameraOnPlayer(players[k].player.playerName)
 							end
+							im.SameLine()
+							im.ShowHelpMarker("Cycle camera through this player's vehicles.")
+							
+							im.SameLine()
+							if im.SmallButton("Teleport To##" .. tostring(k)) then
+								if lastTeleport + dt >= tonumber(environment.teleportTimeout) then
+									lastTeleport = 0
+									MPVehicleGE.teleportVehToPlayer(players[k].player.playerName)
+								else
+									lastTeleport = lastTeleport + dt
+								end
+							end
+							im.SameLine()
+							im.ShowHelpMarker("Teleport to this player's current vehicle.")
 						end
-						im.SameLine()
-						im.ShowHelpMarker("Teleport to this player's current vehicle.")
 						im.Unindent()
 					end
 				end
