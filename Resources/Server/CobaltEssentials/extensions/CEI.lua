@@ -35,96 +35,100 @@ local defaultNametagsBlockingEnabled = "false"
 local defaultNametagsBlockingTimeout = 300
 local defaultNametagsBlockingWhitelist = "exampleName"
 
-local defaultToD = 0.1
-local defaultTimePlay = "false"
-local defaultDayScale = 1
-local defaultNightScale = 2
-local defaultAzimuthOverride = 0
-local defaultSunSize = 1
-local defaultSkyBrightness = 40
-local defaultSunLightBrightness = 1
-local defaultExposure = 1
-local defaultShadowDistance = 1600
-local defaultShadowSoftness = 0.2
-local defaultShadowSplits = 4
-local defaultFogDensity = 0.0001
-local defaultFogDensityOffset = 8
-local defaultCloudCover = 0.08
-local defaultCloudSpeed = 0.2
-local defaultRainDrops = 0
-local defaultDropSize = 1
-local defaultDropMinSpeed = 0.1
-local defaultDropMaxSpeed = 0.2
-local defaultPrecipType = "rain_medium"
-local defaultTeleportTimeout = 5
-local defaultSimSpeed = 1
-local defaultGravity = -9.81
-local defaultTempCurveNoon = 38
-local defaultTempCurveDusk = 12
-local defaultTempCurveMidnight = -15
-local defaultTempCurveDawn = 12
-local defaultUseTempCurve = "false"
-local ToD
-local timePlay
-local dayScale
-local nightScale
-local azimuthOverride
-local sunSize
-local skyBrightness
-local sunLightBrightness
-local exposure
-local shadowDistance
-local shadowSoftness
-local shadowSplits
-local fogDensity
-local fogDensityOffset
-local cloudCover
-local cloudSpeed
-local rainDrops
-local dropSize
-local dropMinSpeed
-local dropMaxSpeed
-local precipType
-local teleportTimeout
-local simSpeed
-local gravity
-local tempCurveNoon
-local tempCurveDusk
-local tempCurveMidnight
-local tempCurveDawn
-local useTempCurve
+local environmentLogTimer = 0
+local environmentLogInterval = 60
+
+local environmentTable = {}
+environmentTable.defaultToD = 0.1
+environmentTable.defaultTimePlay = "false"
+environmentTable.defaultDayScale = 1
+environmentTable.defaultNightScale = 2
+environmentTable.defaultAzimuthOverride = 0
+environmentTable.defaultSunSize = 1
+environmentTable.defaultSkyBrightness = 40
+environmentTable.defaultSunLightBrightness = 1
+environmentTable.defaultExposure = 1
+environmentTable.defaultShadowDistance = 1600
+environmentTable.defaultShadowSoftness = 0.2
+environmentTable.defaultShadowSplits = 4
+environmentTable.defaultFogDensity = 0.0001
+environmentTable.defaultFogDensityOffset = 8
+environmentTable.defaultCloudCover = 0.08
+environmentTable.defaultCloudSpeed = 0.2
+environmentTable.defaultRainDrops = 0
+environmentTable.defaultDropSize = 1
+environmentTable.defaultDropMinSpeed = 0.1
+environmentTable.defaultDropMaxSpeed = 0.2
+environmentTable.defaultPrecipType = "rain_medium"
+environmentTable.defaultTeleportTimeout = 5
+environmentTable.defaultSimSpeed = 1
+environmentTable.defaultGravity = -9.81
+environmentTable.defaultTempCurveNoon = 38
+environmentTable.defaultTempCurveDusk = 12
+environmentTable.defaultTempCurveMidnight = -15
+environmentTable.defaultTempCurveDawn = 12
+environmentTable.defaultUseTempCurve = "false"
+environmentTable.ToD = ""
+environmentTable.timePlay = ""
+environmentTable.dayScale = ""
+environmentTable.nightScale = ""
+environmentTable.azimuthOverride = ""
+environmentTable.sunSize = ""
+environmentTable.skyBrightness = ""
+environmentTable.sunLightBrightness = ""
+environmentTable.exposure = ""
+environmentTable.shadowDistance = ""
+environmentTable.shadowSoftness = ""
+environmentTable.shadowSplits = ""
+environmentTable.fogDensity = ""
+environmentTable.fogDensityOffset = ""
+environmentTable.cloudCover = ""
+environmentTable.cloudSpeed = ""
+environmentTable.rainDrops = ""
+environmentTable.dropSize = ""
+environmentTable.dropMinSpeed = ""
+environmentTable.dropMaxSpeed = ""
+environmentTable.precipType = ""
+environmentTable.teleportTimeout = ""
+environmentTable.simSpeed = ""
+environmentTable.gravity = ""
+environmentTable.tempCurveNoon = ""
+environmentTable.tempCurveDusk = ""
+environmentTable.tempCurveMidnight = ""
+environmentTable.tempCurveDawn = ""
+environmentTable.useTempCurve = ""
 
 local environment = CobaltDB.new("environment")
 local defaultEnvironment = {
-	ToD = {value = defaultToD, description = "What is the Time of Day?"},
-	timePlay = {value = defaultTimePlay, description = "Does time progress?"},
-	dayScale = {value = defaultDayScale, description = "At what rate does daytime progress?"},
-	nightScale = {value = defaultNightScale, description = "At what rate does nighttime progress?"},
-	azimuthOverride = {value = defaultAzimuthOverride, description = "At what position on the horizon does the sun rise and set?"},
-	sunSize = {value = defaultSunSize, description = "How big is the sun?"},
-	skyBrightness = {value = defaultSkyBrightness, description = "How bright is the sky?"},
-	sunLightBrightness = {value = defaultSunLightBrightness, description = "How bright is the sunlight?"},
-	exposure = {value = defaultExposure, description = "How exposed is the environment?"},
-	shadowDistance = {value = defaultShadowDistance, description = "How far are the shadows?"},
-	shadowSoftness = {value = defaultShadowSoftness, description = "How soft are the shadows?"},
-	shadowSplits = {value = defaultShadowSplits, description = "How many splits are there for shadows?"},
-	fogDensity = {value = defaultFogDensity, description = "How thicc is the fog?"},
-	fogDensityOffset = {value = defaultFogDensityOffset, description = "How far away is the fog?"},
-	cloudCover = {value = defaultCloudCover, description = "How thicc are the clouds?"},
-	cloudSpeed = {value = defaultCloudSpeed, description = "How fast are the clouds?"},
-	rainDrops = {value = defaultRainDrops, description = "How many rain drops are there?"},
-	dropSize = {value = defaultDropSize, description = "What size are the drops of precipitation?"},
-	dropMinSpeed = {value = defaultDropMinSpeed, description = "What is the minimum speed of precipitation?"},
-	dropMaxSpeed = {value = defaultDropMaxSpeed, description = "What is the maximum speed of precipitation?"},
-	precipType = {value = defaultPrecipType, description = "What type of precipitation do we use?"},
-	teleportTimeout = {value = defaultTeleportTimeout, description = "How long between telports?"},
-	simSpeed = {value = defaultSimSpeed, description = "At what rate does the simulation run?"},
-	gravity = {value = defaultGravity, description = "At what rate do objects fall towards the ground?"},
-	tempCurveNoon = {value = defaultTempCurveNoon, description = "What is the custom temperature in C at noon?"},
-	tempCurveDusk = {value = defaultTempCurveDusk, description = "What is the custom temperature in C at dusk?"},
-	tempCurveMidnight = {value = defaultTempCurveMidnight, description = "What is the custom temperature in C at midnight?"},
-	tempCurveDawn = {value = defaultTempCurveDawn, description = "What is the custom temperature in C at dawn?"},
-	useTempCurve = {value = defaultUseTempCurve, description = "Do we use a custom temperature curve?"},
+	ToD = {value = environmentTable.defaultToD, description = "What is the Time of Day?"},
+	timePlay = {value = environmentTable.defaultTimePlay, description = "Does time progress?"},
+	dayScale = {value = environmentTable.defaultDayScale, description = "At what rate does daytime progress?"},
+	nightScale = {value = environmentTable.defaultNightScale, description = "At what rate does nighttime progress?"},
+	azimuthOverride = {value = environmentTable.defaultAzimuthOverride, description = "At what position on the horizon does the sun rise and set?"},
+	sunSize = {value = environmentTable.defaultSunSize, description = "How big is the sun?"},
+	skyBrightness = {value = environmentTable.defaultSkyBrightness, description = "How bright is the sky?"},
+	sunLightBrightness = {value = environmentTable.defaultSunLightBrightness, description = "How bright is the sunlight?"},
+	exposure = {value = environmentTable.defaultExposure, description = "How exposed is the environment?"},
+	shadowDistance = {value = environmentTable.defaultShadowDistance, description = "How far are the shadows?"},
+	shadowSoftness = {value = environmentTable.defaultShadowSoftness, description = "How soft are the shadows?"},
+	shadowSplits = {value = environmentTable.defaultShadowSplits, description = "How many splits are there for shadows?"},
+	fogDensity = {value = environmentTable.defaultFogDensity, description = "How thicc is the fog?"},
+	fogDensityOffset = {value = environmentTable.defaultFogDensityOffset, description = "How far away is the fog?"},
+	cloudCover = {value = environmentTable.defaultCloudCover, description = "How thicc are the clouds?"},
+	cloudSpeed = {value = environmentTable.defaultCloudSpeed, description = "How fast are the clouds?"},
+	rainDrops = {value = environmentTable.defaultRainDrops, description = "How many rain drops are there?"},
+	dropSize = {value = environmentTable.defaultDropSize, description = "What size are the drops of precipitation?"},
+	dropMinSpeed = {value = environmentTable.defaultDropMinSpeed, description = "What is the minimum speed of precipitation?"},
+	dropMaxSpeed = {value = environmentTable.defaultDropMaxSpeed, description = "What is the maximum speed of precipitation?"},
+	precipType = {value = environmentTable.defaultPrecipType, description = "What type of precipitation do we use?"},
+	teleportTimeout = {value = environmentTable.defaultTeleportTimeout, description = "How long between telports?"},
+	simSpeed = {value = environmentTable.defaultSimSpeed, description = "At what rate does the simulation run?"},
+	gravity = {value = environmentTable.defaultGravity, description = "At what rate do objects fall towards the ground?"},
+	tempCurveNoon = {value = environmentTable.defaultTempCurveNoon, description = "What is the custom temperature in C at noon?"},
+	tempCurveDusk = {value = environmentTable.defaultTempCurveDusk, description = "What is the custom temperature in C at dusk?"},
+	tempCurveMidnight = {value = environmentTable.defaultTempCurveMidnight, description = "What is the custom temperature in C at midnight?"},
+	tempCurveDawn = {value = environmentTable.defaultTempCurveDawn, description = "What is the custom temperature in C at dawn?"},
+	useTempCurve = {value = environmentTable.defaultUseTempCurve, description = "Do we use a custom temperature curve?"},
 }
 
 local vehicles = CobaltDB.new("vehicles")
@@ -301,35 +305,35 @@ local function onInit()
 	nametagsConfig.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
 	nametagsConfig.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
 	
-	ToD = CobaltDB.query("environment", "ToD", "value")
-	timePlay = CobaltDB.query("environment", "timePlay", "value")
-	dayScale = CobaltDB.query("environment", "dayScale", "value")
-	nightScale = CobaltDB.query("environment", "nightScale", "value")
-	azimuthOverride = CobaltDB.query("environment", "azimuthOverride", "value")
-	sunSize = CobaltDB.query("environment", "sunSize", "value")
-	skyBrightness = CobaltDB.query("environment", "skyBrightness", "value")
-	sunLightBrightness = CobaltDB.query("environment", "sunLightBrightness", "value")
-	exposure = CobaltDB.query("environment", "exposure", "value")
-	shadowDistance = CobaltDB.query("environment", "shadowDistance", "value")
-	shadowSoftness = CobaltDB.query("environment", "shadowSoftness", "value")
-	shadowSplits = CobaltDB.query("environment", "shadowSplits", "value")
-	fogDensity = CobaltDB.query("environment", "fogDensity", "value")
-	fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
-	cloudCover = CobaltDB.query("environment", "cloudCover", "value")
-	cloudSpeed = CobaltDB.query("environment", "cloudSpeed", "value")
-	rainDrops = CobaltDB.query("environment", "rainDrops", "value")
-	dropSize = CobaltDB.query("environment", "dropSize", "value")
-	dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
-	dropMaxSpeed = CobaltDB.query("environment", "dropMaxSpeed", "value")
-	precipType = CobaltDB.query("environment", "precipType", "value")
-	teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
-	simSpeed = CobaltDB.query("environment", "simSpeed", "value")
-	gravity = CobaltDB.query("environment", "gravity", "value")
-	tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
-	tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
-	tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
-	tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
-	useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
+	environmentTable.ToD = CobaltDB.query("environment", "ToD", "value")
+	environmentTable.timePlay = CobaltDB.query("environment", "timePlay", "value")
+	environmentTable.dayScale = CobaltDB.query("environment", "dayScale", "value")
+	environmentTable.nightScale = CobaltDB.query("environment", "nightScale", "value")
+	environmentTable.azimuthOverride = CobaltDB.query("environment", "azimuthOverride", "value")
+	environmentTable.sunSize = CobaltDB.query("environment", "sunSize", "value")
+	environmentTable.skyBrightness = CobaltDB.query("environment", "skyBrightness", "value")
+	environmentTable.sunLightBrightness = CobaltDB.query("environment", "sunLightBrightness", "value")
+	environmentTable.exposure = CobaltDB.query("environment", "exposure", "value")
+	environmentTable.shadowDistance = CobaltDB.query("environment", "shadowDistance", "value")
+	environmentTable.shadowSoftness = CobaltDB.query("environment", "shadowSoftness", "value")
+	environmentTable.shadowSplits = CobaltDB.query("environment", "shadowSplits", "value")
+	environmentTable.fogDensity = CobaltDB.query("environment", "fogDensity", "value")
+	environmentTable.fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
+	environmentTable.cloudCover = CobaltDB.query("environment", "cloudCover", "value")
+	environmentTable.cloudSpeed = CobaltDB.query("environment", "cloudSpeed", "value")
+	environmentTable.rainDrops = CobaltDB.query("environment", "rainDrops", "value")
+	environmentTable.dropSize = CobaltDB.query("environment", "dropSize", "value")
+	environmentTable.dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
+	environmentTable.dropMaxSpeed = CobaltDB.query("environment", "dropMaxSpeed", "value")
+	environmentTable.precipType = CobaltDB.query("environment", "precipType", "value")
+	environmentTable.teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
+	environmentTable.simSpeed = CobaltDB.query("environment", "simSpeed", "value")
+	environmentTable.gravity = CobaltDB.query("environment", "gravity", "value")
+	environmentTable.tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
+	environmentTable.tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
+	environmentTable.tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
+	environmentTable.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
+	environmentTable.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
 	
 	defaultInterfaceState = CobaltDB.query("interface", "defaultCEIState", "value")
 	
@@ -357,7 +361,7 @@ local CEICommands = {
 applyStuff(commands, CEICommands)
 
 local function CEI(player)
-	CElog("CEI Called by: " .. player.name, "CEI")
+	--CElog("CEI Called by: " .. player.name, "CEI")
 	local state 
 	if showCEI[player.name] == false then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", true)
@@ -372,7 +376,7 @@ local function CEI(player)
 end
 
 function CEISetDefaultState(senderID, data)
-	CElog("CEISetDefaultState Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetDefaultState Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		if data == "true" then
 			CobaltDB.set("interface", "defaultCEIState", "value", true)
@@ -431,35 +435,35 @@ end
 
 local function txEnvironment(player)
 	local data = ""
-	data = data .. "|" .. ToD
-				.. "$" .. timePlay
-				.. "$" .. dayScale
-				.. "$" .. nightScale
-				.. "$" .. azimuthOverride
-				.. "$" .. sunSize
-				.. "$" .. skyBrightness
-				.. "$" .. sunLightBrightness
-				.. "$" .. exposure
-				.. "$" .. shadowDistance
-				.. "$" .. shadowSoftness
-				.. "$" .. shadowSplits
-				.. "$" .. fogDensity
-				.. "$" .. fogDensityOffset
-				.. "$" .. cloudCover
-				.. "$" .. cloudSpeed
-				.. "$" .. rainDrops
-				.. "$" .. dropSize
-				.. "$" .. dropMinSpeed
-				.. "$" .. dropMaxSpeed
-				.. "$" .. precipType
-				.. "$" .. teleportTimeout
-				.. "$" .. simSpeed
-				.. "$" .. gravity
-				.. "$" .. tempCurveNoon
-				.. "$" .. tempCurveDusk
-				.. "$" .. tempCurveMidnight
-				.. "$" .. tempCurveDawn
-				.. "$" .. useTempCurve
+	data = data .. "|" .. environmentTable.ToD
+				.. "$" .. environmentTable.timePlay
+				.. "$" .. environmentTable.dayScale
+				.. "$" .. environmentTable.nightScale
+				.. "$" .. environmentTable.azimuthOverride
+				.. "$" .. environmentTable.sunSize
+				.. "$" .. environmentTable.skyBrightness
+				.. "$" .. environmentTable.sunLightBrightness
+				.. "$" .. environmentTable.exposure
+				.. "$" .. environmentTable.shadowDistance
+				.. "$" .. environmentTable.shadowSoftness
+				.. "$" .. environmentTable.shadowSplits
+				.. "$" .. environmentTable.fogDensity
+				.. "$" .. environmentTable.fogDensityOffset
+				.. "$" .. environmentTable.cloudCover
+				.. "$" .. environmentTable.cloudSpeed
+				.. "$" .. environmentTable.rainDrops
+				.. "$" .. environmentTable.dropSize
+				.. "$" .. environmentTable.dropMinSpeed
+				.. "$" .. environmentTable.dropMaxSpeed
+				.. "$" .. environmentTable.precipType
+				.. "$" .. environmentTable.teleportTimeout
+				.. "$" .. environmentTable.simSpeed
+				.. "$" .. environmentTable.gravity
+				.. "$" .. environmentTable.tempCurveNoon
+				.. "$" .. environmentTable.tempCurveDusk
+				.. "$" .. environmentTable.tempCurveMidnight
+				.. "$" .. environmentTable.tempCurveDawn
+				.. "$" .. environmentTable.useTempCurve
 				
 	if MP.IsPlayerConnected(player.playerID) then
 		MP.TriggerClientEvent(player.playerID,"rxEnvironment",data)
@@ -702,9 +706,11 @@ local function txConfigData(player)
 	data = data .. "$"
 	local vehiclePerms = CobaltDB.getTables("vehicles")
 	local vehiclePermsLength = 0
+	local vehiclePermsPartLevelsLength = 0
 	for k,v in pairs(vehiclePerms) do
 		vehiclePermsLength = vehiclePermsLength + 1
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength] = {}
+		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].name = v
 		local vehiclePerm = CobaltDB.getTable("vehicles",v)
 		for i,j in pairs(vehiclePerm) do
@@ -712,18 +718,21 @@ local function txConfigData(player)
 				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].level = j
 			end
 			if string.find(i,"partlevel") then
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel.name = i
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel.level = j
+				vehiclePermsPartLevelsLength = vehiclePermsPartLevelsLength + 1
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
+				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
 			end
 		end
 	end
 	for i = 1, vehiclePermsLength do
 		data = data .. "|" .. cobaltConfig.permissions.vehiclePerm[i].name
 					.. "#" .. cobaltConfig.permissions.vehiclePerm[i].level
-		if cobaltConfig.permissions.vehiclePerm[i].partLevel then
-			data = data .. "," .. cobaltConfig.permissions.vehiclePerm[i].partLevel.name
-						.. "@" .. cobaltConfig.permissions.vehiclePerm[i].partLevel.level
+		for p = 1, vehiclePermsPartLevelsLength do
+			if cobaltConfig.permissions.vehiclePerm[i].partLevel[p] then
+				data = data .. "," .. cobaltConfig.permissions.vehiclePerm[i].partLevel[p].name
+							.. "@" .. cobaltConfig.permissions.vehiclePerm[i].partLevel[p].level
+			end
 		end
 	end
 	
@@ -750,7 +759,7 @@ local function txConfigData(player)
 	for i = 1, whitelistLength do
 		data = data .. "|" .. cobaltConfig.whitelistedPlayers[i].name
 	end
-	
+
 	MP.TriggerClientEvent(player.playerID,"rxConfigData",data)
 end
 
@@ -783,7 +792,7 @@ function txNametagBlockerTimeout(player_id, data)
 end
 
 function CEIPreRace(senderID, data)
-	CElog("CEIStartRace Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIStartRace Called by: " .. senderID .. ": " .. data, "CEI")
 	if not raceCountdownStarted then
 		raceCountdownStarted = true
 		raceCountdown = 15
@@ -791,7 +800,7 @@ function CEIPreRace(senderID, data)
 end
 
 function CEISetNewVehiclePerm(senderID, data)
-	CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
 	local vehicleName = data
 	local vehiclePermLevel = 1
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
@@ -800,7 +809,7 @@ function CEISetNewVehiclePerm(senderID, data)
 end
 
 function CEISetVehiclePermLevel(senderID, data)
-	CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
 	local vehicleName = tempData[1]
 	local vehiclePermLevel = tonumber(tempData[2])
@@ -810,7 +819,7 @@ function CEISetVehiclePermLevel(senderID, data)
 end
 
 function CEIRemoveVehiclePerm(senderID, data)
-	CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
 	local vehicleName = data
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local removeVehicle = vehicleName
@@ -829,7 +838,7 @@ function CEIRemoveVehiclePerm(senderID, data)
 end
 
 function CEISetNewVehiclePart(senderID, data)
-	CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
 	local vehicleName = tempData[1]
 	local partName = "partlevel:" .. tempData[2]
@@ -840,7 +849,7 @@ function CEISetNewVehiclePart(senderID, data)
 end
 
 function CEISetVehiclePartLevel(senderID, data)
-	CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
 	local vehicleName = tempData[1]
 	local partLevel = tonumber(tempData[2])
@@ -850,7 +859,7 @@ function CEISetVehiclePartLevel(senderID, data)
 end
 
 function CEIRemoveVehiclePart(senderID, data)
-	CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
 	local vehicleName = tempData[1]
 	local partName = "partlevel:" .. tempData[2]
@@ -866,7 +875,7 @@ function CEIRemoveVehiclePart(senderID, data)
 end
 
 function CEISetVehiclePartLevel(senderID, data)
-	CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
 	local vehicleName = tempData[1]
 	local vehiclePartName = "partlevel:" .. tempData[2]
@@ -887,366 +896,248 @@ function CEISetTempBan(senderID, data)
 	end
 end
 
+function logEnvironment()
+	local environmentTables = CobaltDB.getTables("environment")
+	for k,v in pairs(environmentTables) do
+		local currentEnvironmentTable = CobaltDB.getTable("environment",v)
+		for x,y in pairs(currentEnvironmentTable) do
+			if x == "value" then
+				if environmentTable[k] ~= y then
+					CobaltDB.set("environment", k, "value", environmentTable[k])
+				end
+			end
+		end
+	end
+end
+
 function CEISetEnv(senderID, data)
 	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
 	local tempData = split(data,"|")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local key = tempData[1]
 		local value = tempData[2]
-		
 		if key == "allWeather" then
-			CobaltDB.set("environment", "fogDensity", "value", defaultFogDensity)
-			fogDensity = defaultFogDensity
-			CobaltDB.set("environment", "fogDensityOffset", "value", defaultFogDensityOffset)
-			fogDensityOffset = defaultFogDensityOffset
-			CobaltDB.set("environment", "cloudCover", "value", defaultCloudCover)
-			cloudCover = defaultCloudCover
-			CobaltDB.set("environment", "cloudSpeed", "value", defaultCloudSpeed)
-			cloudSpeed = defaultCloudSpeed
-			CobaltDB.set("environment", "rainDrops", "value", defaultRainDrops)
-			rainDrops = defaultRainDrops
-			CobaltDB.set("environment", "dropSize", "value", defaultDropSize)
-			dropSize = defaultDropSize
-			CobaltDB.set("environment", "dropMinSpeed", "value", defaultDropMinSpeed)
-			dropMinSpeed = defaultDropMinSpeed
-			CobaltDB.set("environment", "dropMaxSpeed", "value", defaultDropMaxSpeed)
-			dropMaxSpeed = defaultDropMaxSpeed
-			CobaltDB.set("environment", "precipType", "value", defaultPrecipType)
-			precipType = defaultPrecipType
+			environmentTable.fogDensity = environmentTable.defaultFogDensity
+			environmentTable.fogDensityOffset = environmentTable.defaultFogDensityOffset
+			environmentTable.cloudCover = environmentTable.defaultCloudCover
+			environmentTable.cloudSpeed = environmentTable.defaultCloudSpeed
+			environmentTable.rainDrops = environmentTable.defaultRainDrops
+			environmentTable.dropSize = environmentTable.defaultDropSize
+			environmentTable.dropMinSpeed = environmentTable.defaultDropMinSpeed
+			environmentTable.dropMaxSpeed = environmentTable.defaultDropMaxSpeed
+			environmentTable.precipType = environmentTable.defaultPrecipType
 		elseif key == "allSun" then
-			CobaltDB.set("environment", "ToD", "value", defaultToD)
-			ToD = defaultToD
-			CobaltDB.set("environment", "timePlay", "value", defaultTimePlay)
-			timePlay = defaultTimePlay
-			CobaltDB.set("environment", "dayScale", "value", defaultDayScale)
-			dayScale = defaultDayScale
-			CobaltDB.set("environment", "nightScale", "value", defaultNightScale)
-			nightScale = defaultNightScale
-			CobaltDB.set("environment", "azimuthOverride", "value", defaultAzimuthOverride)
-			azimuthOverride = defaultAzimuthOverride
-			CobaltDB.set("environment", "sunSize", "value", defaultSunSize)
-			sunSize = defaultSunSize
-			CobaltDB.set("environment", "skyBrightness", "value", defaultSkyBrightness)
-			skyBrightness = defaultSkyBrightness
-			CobaltDB.set("environment", "sunLightBrightness", "value", defaultSunLightBrightness)
-			sunLightBrightness = defaultSunLightBrightness
-			CobaltDB.set("environment", "exposure", "value", defaultExposure)
-			environment = defaultEnvironment
-			CobaltDB.set("environment", "shadowDistance", "value", defaultShadowDistance)
-			shadowDistance = defaultShadowDistance
-			CobaltDB.set("environment", "shadowSoftness", "value", defaultShadowSoftness)
-			shadowSoftness = defaultShadowSoftness
-			CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
-			shadowSplits = defaultShadowSplits
+			environmentTable.ToD = environmentTable.defaultToD
+			environmentTable.timePlay = environmentTable.defaultTimePlay
+			environmentTable.dayScale = environmentTable.defaultDayScale
+			environmentTable.nightScale = environmentTable.defaultNightScale
+			environmentTable.azimuthOverride = environmentTable.defaultAzimuthOverride
+			environmentTable.sunSize = environmentTable.defaultSunSize
+			environmentTable.skyBrightness = environmentTable.defaultSkyBrightness
+			environmentTable.sunLightBrightness = environmentTable.defaultSunLightBrightness
+			environmentTable.environment = environmentTable.defaultEnvironment
+			environmentTable.shadowDistance = environmentTable.defaultShadowDistance
+			environmentTable.shadowSoftness = environmentTable.defaultShadowSoftness
+			environmentTable.shadowSplits = environmentTable.defaultShadowSplits
 		elseif key == "all" then
-			CobaltDB.set("environment", "ToD", "value", defaultToD)
-			ToD = defaultToD
-			CobaltDB.set("environment", "timePlay", "value", defaultTimePlay)
-			timePlay = defaultTimePlay
-			CobaltDB.set("environment", "dayScale", "value", defaultDayScale)
-			dayScale = defaultDayScale
-			CobaltDB.set("environment", "nightScale", "value", defaultNightScale)
-			nightScale = defaultNightScale
-			CobaltDB.set("environment", "azimuthOverride", "value", defaultAzimuthOverride)
-			azimuthOverride = defaultAzimuthOverride
-			CobaltDB.set("environment", "sunSize", "value", defaultSunSize)
-			sunSize = defaultSunSize
-			CobaltDB.set("environment", "skyBrightness", "value", defaultSkyBrightness)
-			skyBrightness = defaultSkyBrightness
-			CobaltDB.set("environment", "sunLightBrightness", "value", defaultSunLightBrightness)
-			sunLightBrightness = defaultSunLightBrightness
-			CobaltDB.set("environment", "exposure", "value", defaultExposure)
-			environment = defaultEnvironment
-			CobaltDB.set("environment", "shadowDistance", "value", defaultShadowDistance)
-			shadowDistance = defaultShadowDistance
-			CobaltDB.set("environment", "shadowSoftness", "value", defaultShadowSoftness)
-			shadowSoftness = defaultShadowSoftness
-			CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
-			shadowSplits = defaultShadowSplits
-			CobaltDB.set("environment", "fogDensity", "value", defaultFogDensity)
-			fogDensity = defaultFogDensity
-			CobaltDB.set("environment", "fogDensityOffset", "value", defaultFogDensityOffset)
-			fogDensityOffset = defaultFogDensityOffset
-			CobaltDB.set("environment", "cloudCover", "value", defaultCloudCover)
-			cloudCover = defaultCloudCover
-			CobaltDB.set("environment", "cloudSpeed", "value", defaultCloudSpeed)
-			cloudSpeed = defaultCloudSpeed
-			CobaltDB.set("environment", "rainDrops", "value", defaultRainDrops)
-			rainDrops = defaultRainDrops
-			CobaltDB.set("environment", "dropSize", "value", defaultDropSize)
-			dropSize = defaultDropSize
-			CobaltDB.set("environment", "dropMinSpeed", "value", defaultDropMinSpeed)
-			dropMinSpeed = defaultDropMinSpeed
-			CobaltDB.set("environment", "dropMaxSpeed", "value", defaultDropMaxSpeed)
-			dropMaxSpeed = defaultDropMaxSpeed
-			CobaltDB.set("environment", "precipType", "value", defaultPrecipType)
-			precipType = defaultPrecipType
-			CobaltDB.set("environment", "teleportTimeout", "value", defaultTeleportTimeout)
-			teleportTimeout = defaultTeleportTimeout
-			CobaltDB.set("environment", "simSpeed", "value", defaultSimSpeed)
-			simSpeed = defaultSimSpeed
-			CobaltDB.set("environment", "gravity", "value", defaultGravity)
-			gravity = defaultGravity
-			CobaltDB.set("environment", "tempCurveNoon", "value", defaultTempCurveNoon)
-			tempCurveNoon = defaultTempCurveNoon
-			CobaltDB.set("environment", "tempCurveDusk", "value", defaultTempCurveDusk)
-			tempCurveDusk = defaultTempCurveDusk
-			CobaltDB.set("environment", "tempCurveMidnight", "value", defaultTempCurveMidnight)
-			tempCurveMidnight = defaultTempCurveMidnight
-			CobaltDB.set("environment", "tempCurveDawn", "value", defaultTempCurveDawn)
-			tempCurveDawn = defaultTempCurveDawn
-			CobaltDB.set("environment", "useTempCurve", "value", defaultUseTempCurve)
-			useTempCurve = defaultUseTempCurve
+			environmentTable.ToD = environmentTable.defaultToD
+			environmentTable.timePlay = environmentTable.defaultTimePlay
+			environmentTable.dayScale = environmentTable.defaultDayScale
+			environmentTable.nightScale = environmentTable.defaultNightScale
+			environmentTable.azimuthOverride = environmentTable.defaultAzimuthOverride
+			environmentTable.sunSize = environmentTable.defaultSunSize
+			environmentTable.skyBrightness = environmentTable.defaultSkyBrightness
+			environmentTable.sunLightBrightness = environmentTable.defaultSunLightBrightness
+			environmentTable.environment = environmentTable.defaultEnvironment
+			environmentTable.shadowDistance = environmentTable.defaultShadowDistance
+			environmentTable.shadowSoftness = environmentTable.defaultShadowSoftness
+			environmentTable.shadowSplits = environmentTable.defaultShadowSplits
+			environmentTable.fogDensity = environmentTable.defaultFogDensity
+			environmentTable.fogDensityOffset = environmentTable.defaultFogDensityOffset
+			environmentTable.cloudCover = environmentTable.defaultCloudCover
+			environmentTable.cloudSpeed = environmentTable.defaultCloudSpeed
+			environmentTable.rainDrops = environmentTable.defaultRainDrops
+			environmentTable.dropSize = environmentTable.defaultDropSize
+			environmentTable.dropMinSpeed = environmentTable.defaultDropMinSpeed
+			environmentTable.dropMaxSpeed = environmentTable.defaultDropMaxSpeed
+			environmentTable.precipType = environmentTable.defaultPrecipType
+			environmentTable.teleportTimeout = environmentTable.defaultTeleportTimeout
+			environmentTable.simSpeed = environmentTable.defaultSimSpeed
+			environmentTable.gravity = environmentTable.defaultGravity
+			environmentTable.tempCurveNoon = environmentTable.defaultTempCurveNoon
+			environmentTable.tempCurveDusk = environmentTable.defaultTempCurveDusk
+			environmentTable.tempCurveMidnight = environmentTable.defaultTempCurveMidnight
+			environmentTable.tempCurveDawn = environmentTable.defaultTempCurveDawn
+			environmentTable.useTempCurve = environmentTable.defaultUseTempCurve
 			
 		elseif key == "ToD" then
 			if value == "default" then
-				ToD = defaultToD
-				value = defaultToD
-				CobaltDB.set("environment", "ToD", "value", defaultToD)
+				environmentTable.ToD = environmentTable.defaultToD
 			else
-				ToD = tonumber(value)
-				CobaltDB.set("environment", "ToD", "value", ToD)
+				environmentTable.ToD = tonumber(value)
 			end
 		elseif key == "timePlay" then
-			timePlay = value
-			CobaltDB.set("environment", "timePlay", "value", timePlay)
+			environmentTable.timePlay = value
 		elseif key == "dayScale" then
 			if value == "default" then
-				dayScale = defaultDayScale
-				value = defaultDayScale
-				CobaltDB.set("environment", "dayScale", "value", defaultDayScale)
+				environmentTable.dayScale = environmentTable.defaultDayScale
 			else
-				dayScale = tonumber(value)
-				CobaltDB.set("environment", "dayScale", "value", dayScale)
+				environmentTable.dayScale = tonumber(value)
 			end
 		elseif key == "nightScale" then
 			if value == "default" then
-				nightScale = defaultNightScale
-				value = defaultNightScale
-				CobaltDB.set("environment", "nightScale", "value", defaultNightScale)
+				environmentTable.nightScale = environmentTable.defaultNightScale
 			else
-				nightScale = tonumber(value)
-				CobaltDB.set("environment", "nightScale", "value", nightScale)
+				environmentTable.nightScale = tonumber(value)
 			end
 		elseif key == "azimuthOverride" then
 			if value == "default" then
-				azimuthOverride = defaultAzimuthOverride
-				value = defaultAzimuthOverride
-				CobaltDB.set("environment", "azimuthOverride", "value", defaultAzimuthOverride)
+				environmentTable.azimuthOverride = environmentTable.defaultAzimuthOverride
 			else
-				azimuthOverride = tonumber(value)
-				CobaltDB.set("environment", "azimuthOverride", "value", azimuthOverride)
+				environmentTable.azimuthOverride = tonumber(value)
 			end
 		elseif key == "sunSize" then
 			if value == "default" then
-				sunSize = defaultSunSize
-				value = defaultSunSize
-				CobaltDB.set("environment", "sunSize", "value", defaultSunSize)
+				environmentTable.sunSize = environmentTable.defaultSunSize
 			else
-				sunSize = tonumber(value)
-				CobaltDB.set("environment", "sunSize", "value", sunSize)
+				environmentTable.sunSize = tonumber(value)
 			end
 		elseif key == "skyBrightness" then
 			if value == "default" then
-				skyBrightness = defaultSkyBrightness
-				value = defaultSkyBrightness
-				CobaltDB.set("environment", "skyBrightness", "value", defaultSkyBrightness)
+				environmentTable.skyBrightness = environmentTable.defaultSkyBrightness
 			else
-				skyBrightness = tonumber(value)
-				CobaltDB.set("environment", "skyBrightness", "value", skyBrightness)
+				environmentTable.skyBrightness = tonumber(value)
 			end
 		elseif key == "sunLightBrightness" then
 			if value == "default" then
-				sunLightBrightness = defaultSunLightBrightness
-				value = defaultSunLightBrightness
-				CobaltDB.set("environment", "sunLightBrightness", "value", defaultSunLightBrightness)
+				environmentTable.sunLightBrightness = environmentTable.defaultSunLightBrightness
 			else
-				sunLightBrightness = tonumber(value)
-				CobaltDB.set("environment", "sunLightBrightness", "value", sunLightBrightness)
+				environmentTable.sunLightBrightness = tonumber(value)
 			end
 		elseif key == "exposure" then
 			if value == "default" then
-				exposure = defaultExposure
-				value = defaultExposure
-				CobaltDB.set("environment", "exposure", "value", defaultExposure)
+				environmentTable.exposure = environmentTable.defaultExposure
 			else
-				exposure = tonumber(value)
-				CobaltDB.set("environment", "exposure", "value", exposure)
+				environmentTable.exposure = tonumber(value)
 			end
 		elseif key == "shadowDistance" then
 			if value == "default" then
-				shadowDistance = defaultShadowDistance
-				value = defaultShadowDistance
-				CobaltDB.set("environment", "shadowDistance", "value", defaultShadowDistance)
+				environmentTable.shadowDistance = environmentTable.defaultShadowDistance
 			else
-				shadowDistance = tonumber(value)
-				CobaltDB.set("environment", "shadowDistance", "value", shadowDistance)
+				environmentTable.shadowDistance = tonumber(value)
 			end
 		elseif key == "shadowSoftness" then
 			if value == "default" then
-				shadowSoftness = defaultShadowSoftness
-				value = defaultShadowSoftness
-				CobaltDB.set("environment", "shadowSoftness", "value", defaultShadowSoftness)
+				environmentTable.shadowSoftness = environmentTable.defaultShadowSoftness
 			else
-				shadowSoftness = tonumber(value)
-				CobaltDB.set("environment", "shadowSoftness", "value", shadowSoftness)
+				environmentTable.shadowSoftness = tonumber(value)
 			end
 		elseif key == "shadowSplits" then
 			if value == "default" then
-				shadowSplits = defaultShadowSplits
-				value = defaultShadowSplits
-				CobaltDB.set("environment", "shadowSplits", "value", defaultShadowSplits)
+				environmentTable.shadowSplits = environmentTable.defaultShadowSplits
 			else
-				shadowSplits = tonumber(value)
-				CobaltDB.set("environment", "shadowSplits", "value", shadowSplits)
+				environmentTable.shadowSplits = tonumber(value)
 			end
 		elseif key == "fogDensity" then
 			if value == "default" then
-				fogDensity = defaultFogDensity
-				value = defaultFogDensity
-				CobaltDB.set("environment", "fogDensity", "value", defaultFogDensity)
+				environmentTable.fogDensity = environmentTable.defaultFogDensity
 			else
-				fogDensity = tonumber(value)
-				CobaltDB.set("environment", "fogDensity", "value", fogDensity)
+				environmentTable.fogDensity = tonumber(value)
 			end
 		elseif key == "fogDensityOffset" then
 			if value == "default" then
-				fogDensityOffset = defaultFogDensityOffset
-				value = defaultFogDensityOffset
-				CobaltDB.set("environment", "fogDensityOffset", "value", defaultFogDensityOffset)
+				environmentTable.fogDensityOffset = environmentTable.defaultFogDensityOffset
 			else
-				fogDensityOffset = tonumber(value)
-				CobaltDB.set("environment", "fogDensityOffset", "value", fogDensityOffset)
+				environmentTable.fogDensityOffset = tonumber(value)
 			end
 		elseif key == "cloudCover" then
 			if value == "default" then
-				cloudCover = defaultCloudCover
-				value = defaultCloudCover
-				CobaltDB.set("environment", "cloudCover", "value", defaultCloudCover)
+				environmentTable.cloudCover = environmentTable.defaultCloudCover
 			else
-				cloudCover = tonumber(value)
-				CobaltDB.set("environment", "cloudCover", "value", cloudCover)
+				environmentTable.cloudCover = tonumber(value)
 			end
 		elseif key == "cloudSpeed" then
 			if value == "default" then
-				cloudSpeed = defaultCloudSpeed
-				value = defaultCloudSpeed
-				CobaltDB.set("environment", "cloudSpeed", "value", defaultCloudSpeed)
+				environmentTable.cloudSpeed = environmentTable.defaultCloudSpeed
 			else
-				cloudSpeed = tonumber(value)
-				CobaltDB.set("environment", "cloudSpeed", "value", cloudSpeed)
+				environmentTable.cloudSpeed = tonumber(value)
 			end
 		elseif key == "rainDrops" then
 			if value == "default" then
-				rainDrops = defaultRainDrops
-				value = defaultRainDrops
-				CobaltDB.set("environment", "rainDrops", "value", defaultRainDrops)
+				environmentTable.rainDrops = environmentTable.defaultRainDrops
 			else
-				rainDrops = tonumber(value)
-				CobaltDB.set("environment", "rainDrops", "value", rainDrops)
+				environmentTable.rainDrops = tonumber(value)
 			end
 		elseif key == "dropSize" then
 			if value == "default" then
-				dropSize = defaultDayScale
-				value = defaultDayScale
-				CobaltDB.set("environment", "dropSize", "value", defaultDropSize)
+				environmentTable.dropSize = environmentTable.defaultDayScale
 			else
-				dropSize = tonumber(value)
-				CobaltDB.set("environment", "dropSize", "value", dropSize)
+				environmentTable.dropSize = tonumber(value)
 			end
 		elseif key == "dropMinSpeed" then
 			if value == "default" then
-				dropMinSpeed = defaultDropMinSpeed
-				value = defaultDropMinSpeed
-				CobaltDB.set("environment", "dropMinSpeed", "value", defaultDropMinSpeed)
+				environmentTable.dropMinSpeed = environmentTable.defaultDropMinSpeed
 			else
-				dropMinSpeed = tonumber(value)
-				CobaltDB.set("environment", "dropMinSpeed", "value", dropMinSpeed)
+				environmentTable.dropMinSpeed = tonumber(value)
 			end
 		elseif key == "dropMaxSpeed" then
 			if value == "default" then
-				dropMaxSpeed = defaultDropMaxSpeed
-				value = defaultDropMaxSpeed
-				CobaltDB.set("environment", "dropMaxSpeed", "value", defaultDropMaxSpeed)
+				environmentTable.dropMaxSpeed = environmentTable.defaultDropMaxSpeed
 			else
-				dropMaxSpeed = tonumber(value)
-				CobaltDB.set("environment", "dropMaxSpeed", "value", dropMaxSpeed)
+				environmentTable.dropMaxSpeed = tonumber(value)
 			end
 		elseif key == "precipType" then
 			precipType = value
-			CobaltDB.set("environment", "precipType", "value", precipType)
 		elseif key == "teleportTimeout" then
 			if value == "default" then
-				teleportTimeout = defaultTeleportTimeout
-				value = defaultTeleportTimeout
-				CobaltDB.set("environment", "teleportTimeout", "value", defaultTeleportTimeout)
+				environmentTable.teleportTimeout = environmentTable.defaultTeleportTimeout
 			else
-				teleportTimeout = tonumber(value)
-				CobaltDB.set("environment", "teleportTimeout", "value", teleportTimeout)
+				environmentTable.teleportTimeout = tonumber(value)
 			end
 		elseif key == "simSpeed" then
 			if value == "default" then
-				simSpeed = defaultSimSpeed
-				value = defaultSimSpeed
-				CobaltDB.set("environment", "simSpeed", "value", defaultSimSpeed)
+				environmentTable.simSpeed = environmentTable.defaultSimSpeed
 			else
-				simSpeed = tonumber(value)
-				CobaltDB.set("environment", "simSpeed", "value", simSpeed)
+				environmentTable.simSpeed = tonumber(value)
 			end
 		elseif key == "gravity" then
 			if value == "default" then
-				gravity = defaultGravity
-				value = defaultGravity
-				CobaltDB.set("environment", "gravity", "value", defaultGravity)
+				environmentTable.gravity = environmentTable.defaultGravity
 			else
-				gravity = tonumber(value)
-				CobaltDB.set("environment", "gravity", "value", gravity)
+				environmentTable.gravity = tonumber(value)
 			end
 		elseif key == "tempCurveNoon" then
 			if value == "default" then
-				tempCurveNoon = defaultTempCurveNoon
-				value = defaultTempCurveNoon
-				CobaltDB.set("environment", "tempCurveNoon", "value", defaultTempCurveNoon)
+				environmentTable.tempCurveNoon = environmentTable.defaultTempCurveNoon
 			else
-				tempCurveNoon = tonumber(value)
-				CobaltDB.set("environment", "tempCurveNoon", "value", tempCurveNoon)
+				environmentTable.tempCurveNoon = tonumber(value)
 			end
 		elseif key == "tempCurveDusk" then
 			if value == "default" then
-				tempCurveDusk = defaultTempCurveDusk
-				value = defaultTempCurveDusk
-				CobaltDB.set("environment", "tempCurveDusk", "value", defaultTempCurveDusk)
+				environmentTable.tempCurveDusk = environmentTable.defaultTempCurveDusk
 			else
-				tempCurveDusk = tonumber(value)
-				CobaltDB.set("environment", "tempCurveDusk", "value", tempCurveDusk)
+				environmentTable.tempCurveDusk = tonumber(value)
 			end
 		elseif key == "tempCurveMidnight" then
 			if value == "default" then
-				tempCurveMidnight = defaultTempCurveMidnight
-				value = defaultTempCurveMidnight
-				CobaltDB.set("environment", "tempCurveMidnight", "value", defaultTempCurveMidnight)
+				environmentTable.tempCurveMidnight = environmentTable.defaultTempCurveMidnight
 			else
-				tempCurveMidnight = tonumber(value)
-				CobaltDB.set("environment", "tempCurveMidnight", "value", tempCurveMidnight)
+				environmentTable.tempCurveMidnight = tonumber(value)
 			end
 		elseif key == "tempCurveDawn" then
 			if value == "default" then
-				tempCurveDawn = defaultTempCurveDawn
-				value = defaultTempCurveDawn
-				CobaltDB.set("environment", "tempCurveDawn", "value", defaultTempCurveDawn)
+				environmentTable.tempCurveDawn = environmentTable.defaultTempCurveDawn
 			else
-				tempCurveDawn = tonumber(value)
-				CobaltDB.set("environment", "tempCurveDawn", "value", tempCurveDawn)
+				environmentTable.tempCurveDawn = tonumber(value)
 			end
 		elseif key == "useTempCurve" then
-			useTempCurve = value
-			CobaltDB.set("environment", "useTempCurve", "value", useTempCurve)
+			environmentTable.seTempCurve = value
 		end
 	end
 end
 
 function CEIToggleIgnition(senderID, data)
-	CElog("CEIToggleIgnition Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIToggleIgnition Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
@@ -1258,7 +1149,7 @@ function CEIToggleIgnition(senderID, data)
 end
 
 function CEIToggleLock(senderID, data)
-	CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
@@ -1270,13 +1161,13 @@ function CEIToggleLock(senderID, data)
 end
 
 function CEISetCurVeh(senderID, data)
-	CElog("CEISetCurVeh Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetCurVeh Called by: " .. senderID .. ": " .. data, "CEI")
 	MP.TriggerClientEvent(-1, "CEISetCurVeh", senderID .. "|" .. data)
 	tempPCV[players[senderID].name] = data
 end
 
 function CEIStop(senderID, data)
-	CElog("CEIStop Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIStop Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		MP.SendChatMessage(-1, "Good-bye!")
 		exit()
@@ -1284,7 +1175,7 @@ function CEIStop(senderID, data)
 end
 
 function CEISetNewGroup(senderID, data)
-	CElog("CEISetNewGroup Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetNewGroup Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local group = data
 		local newGroup = "group:" .. group
@@ -1294,7 +1185,7 @@ function CEISetNewGroup(senderID, data)
 end
 
 function CEIRemoveGroup(senderID, data)
-	CElog("CEIRemoveGroup Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRemoveGroup Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local group = data
 		local removeGroup = "group:" .. group
@@ -1311,7 +1202,7 @@ function CEIRemoveGroup(senderID, data)
 end
 
 function CEISetNewVehiclePermsLevel(senderID, data)
-	CElog("CEISetNewVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetNewVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local targetLevel = data
 		if CobaltDB.query("permissions", "vehicleCap", targetLevel) then
@@ -1323,7 +1214,7 @@ function CEISetNewVehiclePermsLevel(senderID, data)
 end
 
 function CEIRemoveVehiclePermsLevel(senderID, data)
-	CElog("CEIRemoveVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRemoveVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local targetLevel = data
 		if CobaltDB.query("permissions", "vehicleCap", targetLevel) then
@@ -1335,7 +1226,7 @@ function CEIRemoveVehiclePermsLevel(senderID, data)
 end
 
 function CEISetVehiclePerms(senderID, data)
-	CElog("CEISetVehiclePerms Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetVehiclePerms Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local targetLevel = tempData[1]
@@ -1345,7 +1236,7 @@ function CEISetVehiclePerms(senderID, data)
 end
 
 function CEISetGroup(senderID, data)
-	CElog("CEISetGroup Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetGroup Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local name
@@ -1383,7 +1274,7 @@ function CEISetGroup(senderID, data)
 end
 
 function CEISetGroupPerms(senderID, data)
-	CElog("CEISetGroupPerms Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetGroupPerms Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local group = tempData[1]
@@ -1410,7 +1301,7 @@ function CEISetGroupPerms(senderID, data)
 end
 
 function CEISetPerm(senderID, data)
-	CElog("CEISetPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local targetID = tonumber(tempData[1])
@@ -1426,7 +1317,7 @@ function CEISetPerm(senderID, data)
 end
 
 function CEISetTempPerm(senderID, data)
-	CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local targetID = tonumber(tempData[1])
@@ -1437,7 +1328,7 @@ function CEISetTempPerm(senderID, data)
 end
 
 function CEISetCfg(senderID, data)
-	CElog("CEISetCfg Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetCfg Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local key = tempData[1]
@@ -1507,7 +1398,7 @@ function CEISetCfg(senderID, data)
 end
 
 function CEISetMaxActivePlayers(senderID, data)
-	CElog("CEISetMaxActivePlayers Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetMaxActivePlayers Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = tonumber(data)
 		CobaltDB.set("config", "maxActivePlayers", "value", data)
@@ -1515,7 +1406,7 @@ function CEISetMaxActivePlayers(senderID, data)
 end
 
 function CEIRemoveVehicle(senderID, data)
-	CElog("CEIRemoveVehicle Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRemoveVehicle Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local tempPlayerID = tonumber(tempData[1])
@@ -1527,7 +1418,7 @@ function CEIRemoveVehicle(senderID, data)
 end
 
 function CEIKick(senderID, data)
-	CElog("CEIKick Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIKick Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local playerID = tonumber(tempData[1])
@@ -1538,7 +1429,7 @@ function CEIKick(senderID, data)
 end
 
 function CEIBan(senderID, data)
-	CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local playerID = tonumber(tempData[1])
@@ -1549,7 +1440,7 @@ function CEIBan(senderID, data)
 end
 
 function CEITempBan(senderID, data)
-	CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local playerID = tonumber(tempData[1])
@@ -1562,7 +1453,7 @@ function CEITempBan(senderID, data)
 end
 
 function CEIMute(senderID, data)
-	CElog("CEIMute Called by: " .. senderID, "CEI")
+	--CElog("CEIMute Called by: " .. senderID, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local playerID = tonumber(tempData[1])
@@ -1573,7 +1464,7 @@ function CEIMute(senderID, data)
 end
 
 function CEIUnmute(senderID, data)
-	CElog("CEIMute Called by: " .. senderID, "CEI")
+	--CElog("CEIMute Called by: " .. senderID, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = tonumber(data)
 		local targetName = players[data].name
@@ -1582,7 +1473,7 @@ function CEIUnmute(senderID, data)
 end
 
 function CEIWhitelist(senderID, data)
-	CElog("CEIWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		local arguments
@@ -1605,7 +1496,7 @@ function CEIWhitelist(senderID, data)
 end
 
 function CEIRaceInclude(senderID, data)
-	CElog("CEIRaceInclude Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRaceInclude Called by: " .. senderID .. ": " .. data, "CEI")
 		playerName = players[senderID].name
 	if data == "true" then
 		tempPlayers[playerName].includeInRace = "true"
@@ -1615,7 +1506,7 @@ function CEIRaceInclude(senderID, data)
 end
 
 function CEISetNametagWhitelist(senderID, data)
-	CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		CobaltDB.set("nametags", "nametagsWhitelist", data, data)
 		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
@@ -1631,7 +1522,7 @@ function CEISetNametagWhitelist(senderID, data)
 end
 
 function CEIRemoveNametagWhitelist(senderID, data)
-	CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		CobaltDB.set("nametags", "nametagsWhitelist", data, nil)
 		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
@@ -1647,7 +1538,7 @@ function CEIRemoveNametagWhitelist(senderID, data)
 end
 
 function CEINametagSetting(senderID, data)
-	CElog("CEINametagSetting Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEINametagSetting Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or player.permissions.group == "mod" then
 		if tonumber(data) then
 			CobaltDB.set("nametags", "blockingTimeout", "value", tonumber(data))
@@ -1660,14 +1551,14 @@ function CEINametagSetting(senderID, data)
 end
 
 function CEINametagBlockingTimer(senderID, data)
-	CElog("CEINametagBlockingTimer Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEINametagBlockingTimer Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or player.permissions.group == "mod" then
 		MP.TriggerClientEvent("","")
 	end
 end
 
 function CEIConfig(senderID, data)
-	CElog("CEIConfig Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEIConfig Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		local tempData = split(data,"|")
 		local key = tempData[1]
@@ -1693,7 +1584,7 @@ function CEIConfig(senderID, data)
 end
 
 function CEITeleportFrom(senderID, data)
-	CElog("CEITeleportFrom Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEITeleportFrom Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local targetID = tonumber(data)
 		MP.TriggerClientEvent(targetID, "rxTeleportFrom", players[senderID].name)
@@ -1701,7 +1592,7 @@ function CEITeleportFrom(senderID, data)
 end
 
 function CEISetTeleportPerm(senderID, data)
-	CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	--CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		local tempData = split(data,"|")
 		playerID = tonumber(tempData[1])
@@ -1739,6 +1630,13 @@ local function onTick(age)
 				end
 			end
 		end
+	end
+	
+	environmentLogTimer = environmentLogTimer + 1
+	
+	if environmentLogTimer >= environmentLogInterval then
+		logEnvironment()
+		environmentLogTimer = 0
 	end
 	
 	if raceCountdown ~= nil then
