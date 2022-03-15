@@ -52,7 +52,8 @@ environment.useTempCurveSent = false
 local defaultTempCurve
 local defaultTempCurveSet = false
 
-local envReportRate = 3
+local randomEnvSeed = math.randomseed(os.time())
+local envReportRate = 1
 local lastEnvReport = 0
 local firstReport = false
 local envObjectIdCache = {}
@@ -314,7 +315,7 @@ local function rxConfigData(data)
 		config.cobalt.groups[k].groupBanReasonInput = im.ArrayChar(128)
 		config.cobalt.groups[k].newGroupPlayerInput = im.ArrayChar(128)
 	end
-	config.cobalt.permissions = {} --TODO: Use spawnVehicles and sendMessage in permissions?
+	config.cobalt.permissions = {}
 	config.cobalt.permissions.newLevelInput = im.ArrayChar(128)
 	config.cobalt.permissions.vehicleCaps = {}
 	tempString = configData[18]
@@ -338,6 +339,7 @@ local function rxConfigData(data)
 		local tempVehiclePerm = tempVehiclePerms[k]
 		local tempVehiclePermData = split(tempVehiclePerm,",")
 		config.cobalt.vehicles.vehiclePerms[k] = {}
+		config.cobalt.vehicles.vehiclePerms[k].partLevels = {}
 		local vehiclePermData = split(tempVehiclePermData[1],"#")
 		config.cobalt.vehicles.vehiclePerms[k].name = vehiclePermData[1]
 		config.cobalt.vehicles.vehiclePerms[k].nameInput = im.ArrayChar(128)
@@ -345,11 +347,13 @@ local function rxConfigData(data)
 		config.cobalt.vehicles.vehiclePerms[k].levelInt = im.IntPtr(tonumber(config.cobalt.vehicles.vehiclePerms[k].level))
 		config.cobalt.vehicles.vehiclePerms[k].partLevelnameInput = im.ArrayChar(128)
 		if tempVehiclePermData[2] then
-			local tempVehiclePartLevel = split(tempVehiclePermData[2], "@")
-			config.cobalt.vehicles.vehiclePerms[k].partLevel = {}
-			config.cobalt.vehicles.vehiclePerms[k].partLevel.name = tempVehiclePartLevel[1]
-			config.cobalt.vehicles.vehiclePerms[k].partLevel.level = tempVehiclePartLevel[2]
-			config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt = im.IntPtr(tonumber(config.cobalt.vehicles.vehiclePerms[k].partLevel.level))
+			for i = 2, #tempVehiclePermData do
+				local tempVehiclePartLevels = split(tempVehiclePermData[i], "@")
+					config.cobalt.vehicles.vehiclePerms[k].partLevels[i] = {}
+					config.cobalt.vehicles.vehiclePerms[k].partLevels[i].name = tempVehiclePartLevels[1]
+					config.cobalt.vehicles.vehiclePerms[k].partLevels[i].level = tempVehiclePartLevels[2]
+					config.cobalt.vehicles.vehiclePerms[k].partLevels[i].levelInt = im.IntPtr(tonumber(config.cobalt.vehicles.vehiclePerms[k].partLevels[i].level))
+			end
 		end
 	end
 	
@@ -1014,6 +1018,7 @@ local function drawCEOI(dt)
 			
 				local vehiclePerms = config.cobalt.vehicles.vehiclePerms
 				local vehiclePermsCounter = 0
+				
 				for a,b in pairs(vehiclePerms) do
 					vehiclePermsCounter = vehiclePermsCounter + 1
 				end
@@ -1039,6 +1044,8 @@ local function drawCEOI(dt)
 					im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter[0])
 					
 					for k,v in pairs(vehiclePerms) do
+					
+						local vehiclePermsPartLevels = config.cobalt.vehicles.vehiclePerms[k].partLevels
 						
 						for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
 						
@@ -1079,19 +1086,18 @@ local function drawCEOI(dt)
 										im.SameLine()
 										im.ShowHelpMarker("Enter new part and press Apply")
 										
-										if config.cobalt.vehicles.vehiclePerms[k].partLevel then
-										
+										for a,b in pairs(vehiclePermsPartLevels) do
 											
-											local partName = string.gsub(config.cobalt.vehicles.vehiclePerms[k].partLevel.name, "partlevel:", "")
+											local partName = string.gsub(config.cobalt.vehicles.vehiclePerms[k].partLevels[a].name, "partlevel:", "")
 											if im.TreeNode1(partName .. ":") then
 												im.SameLine()
-												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
+												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevels[a].level)
 												im.Text("	")
 												im.SameLine()
 												im.PushItemWidth(100)
-												if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt, 1) then
-													TriggerServerEvent("CEISetVehiclePartLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
-													log('W', logTag, "CEISetVehiclePartLevel Called: " ..  config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevel.levelInt[0]))
+												if im.InputInt("", config.cobalt.vehicles.vehiclePerms[k].partLevels[a].levelInt, 1) then
+													TriggerServerEvent("CEISetVehiclePartLevel", config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevels[a].levelInt[0]))
+													log('W', logTag, "CEISetVehiclePartLevel Called: " .. config.cobalt.vehicles.vehiclePerms[k].name .. "|" .. partName .. "|" .. tostring(config.cobalt.vehicles.vehiclePerms[k].partLevels[a].levelInt[0]))
 												end
 												im.PopItemWidth()
 												
@@ -1106,7 +1112,7 @@ local function drawCEOI(dt)
 												im.TreePop()
 											else
 												im.SameLine()
-												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevel.level)
+												im.Text("level: " .. config.cobalt.vehicles.vehiclePerms[k].partLevels[a].level)
 											end
 										end
 										im.TreePop()
@@ -6215,6 +6221,7 @@ local function onUpdate(dt)
 				drawCESI(dt)
 			end
 		end
+		
 		checkVehicleState()
 		
 		M.onTimePlay(environment.timePlay)
@@ -6227,17 +6234,20 @@ local function onUpdate(dt)
 		end
 		
 		if lastEnvReport + dt > envReportRate then
-			lastEnvReport = 0
+			lastEnvReport = 0 + math.random() / 10
 			core_environment.reset()
 			local timeOfDay = core_environment.getTimeOfDay()
-			if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
-				TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+			if environment.ToD then
+				if string.format("%.3f",timeOfDay.time) ~= string.format("%.3f",environment.ToD) then
+					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+						TriggerServerEvent("CEISetEnv", "ToD|" .. tostring(timeOfDay.time))
+					end
+					
+				end
 			end
 		else
 			lastEnvReport = lastEnvReport + dt
 		end
-		
-		lastTeleport = lastTeleport + dt
 		
 		M.onDayScale(environment.dayScale)
 		M.onNightScale(environment.nightScale)
@@ -6260,6 +6270,9 @@ local function onUpdate(dt)
 		M.onSimSpeed(environment.simSpeed)
 		M.onTempCurve()
 		M.onGravity(environment.gravity)
+		
+		lastTeleport = lastTeleport + dt
+		
 	end
 end
 
@@ -6524,7 +6537,7 @@ local function onTempCurve()
 		elseif defaultTempCurveSet == false then
 			defaultTempCurve = levelInfo:getTemperatureCurveC()
 			if type(defaultTempCurve) == "table" then
-				print("GOT TEMP CURVE TABLE!")
+
 				defaultTempCurveSet = true
 			end
 		elseif defaultTempCurveSet == true then
