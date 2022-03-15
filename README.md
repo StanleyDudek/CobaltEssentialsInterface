@@ -1,7 +1,7 @@
 # CobaltEssentialsInterface
 A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
-![image](https://user-images.githubusercontent.com/49531350/155204810-f3db38e7-42b9-45a4-981d-f3df916f38be.png)
+![image](https://user-images.githubusercontent.com/49531350/158417299-c2b3168d-e3b9-47d4-9c22-068679853464.png)
 
 ## Features:
 
@@ -18,22 +18,22 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
 ## Installation:
 
-**UNTIL FURTHER NOTICE, THIS COMES WITH PATCHED FILES FOR CE 1.6.0 [BETA5] TO MAKE INSTALLATION EASIER**
-
 1. Grab the latest release from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
 2. Unpack it somewhere.
-3. Drag the folder `Resources` into the directory where your server is installed, accept the overwrites.
+3. Drag the folder `Resources` into the directory where your server is installed, accept the overwrites if updating.
 4. Edit LoadExtensions.cfg in `...\Resources\Server\CobaltEssentials\` to add the following line: `CEI = "CEI"`.
 5. Start the server, and join.
-6. Once joined, the interface should be active by default. In the chat, enter the command /CEI to toggle the interface
+6. Once joined, the interface should be disabled by default. In the chat, enter the command /CEI to toggle the interface
 
 ## How it looks:
 
-![image](https://user-images.githubusercontent.com/49531350/155205263-c93be992-7aa5-4f02-93a0-ad9332513dab.png)
-![image](https://user-images.githubusercontent.com/49531350/155205362-88ca41c0-125e-4c75-bfa1-f49ac5b97e15.png)
-![image](https://user-images.githubusercontent.com/49531350/155205446-eee99b86-d767-4c95-aa1e-88c49a5341c5.png)
-![image](https://user-images.githubusercontent.com/49531350/155205510-17560041-90c2-47f2-a4be-3e80803cc0da.png)
-![image](https://user-images.githubusercontent.com/49531350/155205566-7aba0f35-452e-4870-aef7-ace892b1802c.png)
+![image](https://user-images.githubusercontent.com/49531350/158418129-5e165ad8-b11a-4596-8e8e-002ead2b027b.png)
+![image](https://user-images.githubusercontent.com/49531350/158417770-439511b4-d382-4343-a334-39037a81f051.png)
 
-![image](https://user-images.githubusercontent.com/49531350/155206227-60f029a9-b26f-4717-8850-29a4284284cb.png)
-![image](https://user-images.githubusercontent.com/49531350/155206270-b2b01437-8eb8-42f1-a01d-6a52cab361e1.png)
+![image](https://user-images.githubusercontent.com/49531350/158418623-af96cd8e-87d7-43ce-8cf3-d70659699f48.png)
+
+![image](https://user-images.githubusercontent.com/49531350/158418747-62afe261-af52-476e-802d-d5d7143d648d.png)
+![image](https://user-images.githubusercontent.com/49531350/158418876-f8e3e10e-0895-447f-aa09-b18d0209a9f2.png)
+
+![image](https://user-images.githubusercontent.com/49531350/158419418-8dbba6e4-4b18-49dd-9979-47f2cd1d42ba.png)
+![image](https://user-images.githubusercontent.com/49531350/158420977-c2947fba-cc36-40a7-a968-c8d8f90fdd89.png)
