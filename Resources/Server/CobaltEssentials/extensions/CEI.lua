@@ -1131,7 +1131,7 @@ function CEISetEnv(senderID, data)
 				environmentTable.tempCurveDawn = tonumber(value)
 			end
 		elseif key == "useTempCurve" then
-			environmentTable.seTempCurve = value
+			environmentTable.useTempCurve = value
 		end
 	end
 end
