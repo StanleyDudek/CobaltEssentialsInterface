@@ -48,6 +48,7 @@ vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 
 local environment = {}
 environment.useTempCurveSent = false
+environment.physmult = 1
 
 local defaultTempCurve
 local defaultTempCurveSet = false
@@ -6194,6 +6195,10 @@ local function checkVehicleState(gameVehicleID, argument)
 	end
 end
 
+local function setPhysicsSpeed(physmult)
+	environment.physmult = physmult
+end
+
 local function onUpdate(dt)
 	if worldReadyState == 2 then
 		if currentRole == "owner" then
@@ -6279,6 +6284,9 @@ end
 local function onVehicleSpawned(gameVehicleID)
 	local veh = be:getObjectByID(gameVehicleID)
 	if veh then
+	
+		veh:queueLuaCommand('extensions.CEI_CEIPhysics.update()')
+	
 		if isFrozen[gameVehicleID] == "false" then
 			veh:queueLuaCommand('controller.setFreeze(0)')
 		elseif isFrozen[gameVehicleID] == "true" then
@@ -6389,20 +6397,24 @@ local function onTimePlay(value)
 	elseif value == "false" or value == "False" then
 		value = false
 	end
+
 	local timeOfDay = core_environment.getTimeOfDay()
 	timeOfDay.play = value
 	core_environment.setTimeOfDay(timeOfDay)
+
 end
 
 local function onDayScale(value)
+	local value2 = value / environment.physmult
 	local timeOfDay = core_environment.getTimeOfDay()
-	timeOfDay.dayScale = value
+	timeOfDay.dayScale = value2
 	core_environment.setTimeOfDay(timeOfDay)
 end
 
 local function onNightScale(value)
+	local value2 = value / environment.physmult
 	local timeOfDay = core_environment.getTimeOfDay()
-	timeOfDay.nightScale = value
+	timeOfDay.nightScale = value2
 	core_environment.setTimeOfDay(timeOfDay)
 end
 
@@ -6527,17 +6539,23 @@ local function onDropMaxSpeed(value)
 end
 
 local function onTempCurve()
-
 	local tempCurve
-	
-	if environment.useTempCurveVal == false then
+	if environment.useTempCurveVal == true and defaultTempCurveSet == false then
+		local levelInfo = M.getObject("LevelInfo")
+		if not levelInfo then
+			return
+		end
+		defaultTempCurve = levelInfo:getTemperatureCurveC()
+		if type(defaultTempCurve) == "table" then
+			defaultTempCurveSet = true
+		end
+	elseif environment.useTempCurveVal == false or environment.useTempCurveVal == nil then
 		local levelInfo = M.getObject("LevelInfo")
 		if not levelInfo then
 			return
 		elseif defaultTempCurveSet == false then
 			defaultTempCurve = levelInfo:getTemperatureCurveC()
 			if type(defaultTempCurve) == "table" then
-
 				defaultTempCurveSet = true
 			end
 		elseif defaultTempCurveSet == true then
@@ -6549,7 +6567,6 @@ local function onTempCurve()
 		if not levelInfo then
 			return
 		end
-	
 		tempCurve = { 
 			{ 0, environment.tempCurveNoonInt[0] },
 			{ 0.25, environment.tempCurveDuskInt[0] },
@@ -6557,11 +6574,8 @@ local function onTempCurve()
 			{ 0.75, environment.tempCurveDawnInt[0] },
 			{ 1, environment.tempCurveNoonInt[0] } 
 		}
-	
 		levelInfo:setTemperatureCurveC(tempCurve)
-		
 	end
-	
 end
 
 local function onSimSpeed(value)
@@ -6728,6 +6742,8 @@ M.onVehicleSpawned = onVehicleSpawned
 M.onVehicleDestroyed = onVehicleDestroyed
 M.onVehicleSwitched = onVehicleSwitched
 M.onVehicleResetted = onVehicleResetted
+
+M.setPhysicsSpeed = setPhysicsSpeed
 
 M.onTime = onTime
 M.onTimePlay = onTimePlay
