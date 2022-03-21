@@ -1610,6 +1610,22 @@ function CEISetTeleportPerm(senderID, data)
 end
 
 local function onTick(age)
+
+	local playerCount = MP.GetPlayerCount()
+
+	if playerCount == 0 then
+		if environmentTable.timePlay == "true" then
+			if environmentTable.ToD >= 0.25 and environmentTable.ToD <= 0.75 then
+				environmentTable.ToD = environmentTable.ToD + (environmentTable.nightScale * 0.000555)
+			else
+				environmentTable.ToD = environmentTable.ToD + (environmentTable.dayScale * 0.000555)
+			end
+			if environmentTable.ToD > 1 then
+				environmentTable.ToD = environmentTable.ToD % 1
+			end
+		end
+	end
+	
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			if MP.IsPlayerConnected(player.playerID) then
