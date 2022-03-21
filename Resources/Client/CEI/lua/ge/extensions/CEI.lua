@@ -6405,17 +6405,23 @@ local function onTimePlay(value)
 end
 
 local function onDayScale(value)
-	local value2 = value / environment.physmult
-	local timeOfDay = core_environment.getTimeOfDay()
-	timeOfDay.dayScale = value2
-	core_environment.setTimeOfDay(timeOfDay)
+	if value == nil then
+	else
+		local value2 = value / environment.physmult
+		local timeOfDay = core_environment.getTimeOfDay()
+		timeOfDay.dayScale = value2
+		core_environment.setTimeOfDay(timeOfDay)
+	end
 end
 
 local function onNightScale(value)
-	local value2 = value / environment.physmult
-	local timeOfDay = core_environment.getTimeOfDay()
-	timeOfDay.nightScale = value2
-	core_environment.setTimeOfDay(timeOfDay)
+	if value == nil then
+	else
+		local value2 = value / environment.physmult
+		local timeOfDay = core_environment.getTimeOfDay()
+		timeOfDay.nightScale = value2
+		core_environment.setTimeOfDay(timeOfDay)
+	end
 end
 
 local function onAzimuthOverride(value)
