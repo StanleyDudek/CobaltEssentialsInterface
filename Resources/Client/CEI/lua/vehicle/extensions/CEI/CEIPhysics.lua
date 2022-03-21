@@ -9,6 +9,9 @@ local physmult = 1
 local physHandlerAdded = false
 
 local function update(dtSim)
+	if not playerInfo.firstPlayerSeated then
+		return
+	end
 	if counter == 0 then 
 		physstart = os.clock()
 	end
@@ -18,7 +21,6 @@ local function update(dtSim)
 		local physend = os.clock()
 		local physdiff = physend - physstart
 		physmult = 1 / physdiff
-		--print(tostring(physmult*100) .. "% realtime")
 		obj:queueGameEngineLua("CEI.setPhysicsSpeed("..physmult..")")
 	end
 end
