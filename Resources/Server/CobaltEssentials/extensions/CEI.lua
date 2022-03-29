@@ -707,13 +707,13 @@ local function txConfigData(player)
 	local vehiclePerms = CobaltDB.getTables("vehicles")
 	local vehiclePermsLength = 0
 	local vehiclePermsPartLevelsLength = 0
-	for k,v in pairs(vehiclePerms) do
+	for k,v in pairsByKeys(vehiclePerms) do
 		vehiclePermsLength = vehiclePermsLength + 1
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength] = {}
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
 		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].name = v
 		local vehiclePerm = CobaltDB.getTable("vehicles",v)
-		for i,j in pairs(vehiclePerm) do
+		for i,j in pairsByKeys(vehiclePerm) do
 			if i == "level" then
 				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].level = j
 			end
@@ -735,31 +735,25 @@ local function txConfigData(player)
 			end
 		end
 	end
-	
 	if defaultInterfaceState == true then
 		data = data .. "$" .. "true"
 	elseif defaultInterfaceState == false then
 		data = data .. "$" .. "false"
 	end
-	
 	data = data .. "$" .. nametagsConfig.settings.blockingEnabled
 	data = data .. "$" .. nametagsConfig.settings.blockingTimeout
-	
 	local nametagWhitelistLength = 0
 	for k,v in pairs(nametagsConfig.whitelist) do
 		nametagWhitelistLength = nametagWhitelistLength + 1
 	end
-	
 	data = data .. "$"
 	for i = 1, nametagWhitelistLength do
 		data = data .. "|" .. nametagsConfig.whitelist[i]
 	end
-	
 	data = data .. "$"
 	for i = 1, whitelistLength do
 		data = data .. "|" .. cobaltConfig.whitelistedPlayers[i].name
 	end
-
 	MP.TriggerClientEvent(player.playerID,"rxConfigData",data)
 end
 
@@ -1862,6 +1856,24 @@ function writeCfg(path, key, value)
 		tomlFile:write(tomlText)
 	end
 	tomlFile:close()
+end
+
+function pairsByKeys(t, f)
+	local a = {}
+	for n in pairs(t) do
+		table.insert(a, n)
+	end
+	table.sort(a, f)
+	local i = 0
+	local iter = function ()
+		i = i + 1
+		if a[i] == nil then
+			return nil
+		else
+			return a[i], t[a[i]]
+		end
+	end
+	return iter
 end
 
 M.applyStuff = applyStuff
