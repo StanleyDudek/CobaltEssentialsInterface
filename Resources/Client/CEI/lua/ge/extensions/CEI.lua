@@ -6284,8 +6284,8 @@ end
 local function onVehicleSpawned(gameVehicleID)
 	local veh = be:getObjectByID(gameVehicleID)
 	if veh then
-	
-		veh:queueLuaCommand('extensions.CEI_CEIPhysics.update()')
+		-- not sure what this line does
+		-- veh:queueLuaCommand('extensions.CEI_CEIPhysics.update()')
 	
 		if isFrozen[gameVehicleID] == "false" then
 			veh:queueLuaCommand('controller.setFreeze(0)')

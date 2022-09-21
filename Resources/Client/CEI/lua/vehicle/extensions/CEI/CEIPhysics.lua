@@ -1,12 +1,9 @@
-
 local M = {}
 
 local counter = 0
 local physstart = 0
 
 local physmult = 1
-
-local physHandlerAdded = false
 
 local function update(dtSim)
 	if not playerInfo.firstPlayerSeated then
@@ -25,14 +22,6 @@ local function update(dtSim)
 	end
 end
 
-local function updateGFX(dt)
-	if not physHandlerAdded and MPVehicleVE then
-		MPVehicleVE.AddPhysUpdateHandler('CEIPhysics', M.update)
-		physHandlerAdded = true
-	end
-end
-
-M.update = update
-M.updateGFX = updateGFX
+M.onPhysicsStep = update
 
 return M
