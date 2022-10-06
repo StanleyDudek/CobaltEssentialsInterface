@@ -842,16 +842,26 @@ function CEIRemoveGroup(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local group = data[1]
-		local removeGroup = "group:" .. group
 		loadedDatabases["playerPermissions"] = {}
 		for k,v in pairs(players.database) do
-			if k == removeGroup then
+			if k == group then
 			else
 				loadedDatabases["playerPermissions"][k] = v
 			end
 		end
 		M.updateCobaltDatabase("playerPermissions")
 		playerPermissions = CobaltDB.new("playerPermissions")
+		for k,v in pairs(cobaltConfig.groups) do
+			if cobaltConfig.groups[k].groupName == group then
+				cobaltConfig.groups[k] = nil
+				for playerID, player in pairs(players) do
+					if type(playerID) == "number" then
+						txConfigData(player)
+					end
+				end
+				
+			end
+		end
 	end
 end
 
