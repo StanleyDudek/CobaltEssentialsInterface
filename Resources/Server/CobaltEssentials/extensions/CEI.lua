@@ -507,18 +507,7 @@ local function txConfigData(player)
 				whitelistLength = whitelistLength + 1
 				cobaltConfig.whitelistedPlayers[whitelistLength] = k
 			end
-		
-			local playerGroup = players.database[k].group
-
-			if playerGroup then
-				if players.database["group:"..playerGroup].whitelisted == true then
-					whitelistLength = whitelistLength + 1
-					cobaltConfig.whitelistedPlayers[whitelistLength] = k
-				end
-			end
-		
 		end
-		
 	end
 	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
 	local vehicleCapsLength = 0
@@ -962,14 +951,14 @@ function CEISetPerm(senderID, data)
 	--CElog("CEISetPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
-		local targetID = tonumber(data[1])
-		local name = players[targetID].name
+		local targetName = data[1]
+		local player = players.getPlayerByName(targetName)
 		local permLvl = tonumber(data[2])
 		if players[senderID].permissions.level <= permLvl then
-			MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s level to " .. permLvl .. " because it exceeds your own!")
+			MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s level to " .. permLvl .. " because it exceeds your own!")
 		else
-			CC.setperm(players[senderID], name, permLvl)
-			tempPlayers[name].tempPermLevel = players[targetID].permissions.level
+			CC.setperm(players[senderID], targetName, permLvl)
+			tempPlayers[targetName].tempPermLevel = players[player.playerID].permissions.level
 		end
 	end
 end
@@ -978,10 +967,9 @@ function CEISetTempPerm(senderID, data)
 	--CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
-		local targetID = tonumber(data[1])
-		local name = players[targetID].name
+		local targetName = data[1]
 		local permLvl = tonumber(data[2])
-		tempPlayers[name].tempPermLevel = permLvl
+		tempPlayers[targetName].tempPermLevel = permLvl
 	end
 end
 
@@ -1086,10 +1074,10 @@ end
 function CEIVoteKick(senderID, data)
 	--CElog("CEIVoteKick Called by: " .. senderID .. ": " .. data, "CEI")
 	data = Util.JsonDecode(data)
-	local playerID = tonumber(data[1])
-	local targetName = players[playerID].name
+	local targetName = data[1]
+	local player = players.getPlayerByName(targetName)
 	local voter = players[tonumber(senderID)].name
-	if players[tonumber(senderID)].permissions.level < players[playerID].permissions.level then
+	if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
 		MP.SendChatMessage(senderID, "You cannot vote for " ..  targetName .. "!")
 	else
 		if tempPlayers[voter].votedFor[targetName] == false or tempPlayers[voter].votedFor[targetName] == nil then
@@ -1129,11 +1117,11 @@ function CEIBan(senderID, data)
 	--CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
-		local playerID = tonumber(data[1])
+		local targetName = data[1]
+		local player = players.getPlayerByName(targetName)
 		local reason = data[2]
-		local targetName = players[playerID].name
-		if players[tonumber(senderID)].permissions.level < players[tonumber(data[1])].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data[1])].name .. "!")
+		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+			MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
 		else
 			CC.ban(players[senderID], targetName, reason)
 			MP.SendChatMessage(-1, targetName .. " was banned for: " .. reason)
@@ -1145,15 +1133,15 @@ function CEITempBan(senderID, data)
 	--CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
-		local playerID = tonumber(data[1])
+		local targetName = data[1]
+		local player = players.getPlayerByName(targetName)
 		local length = data[2]
 		local reason = data[3]
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
-		local targetName = players[playerID].name
-		if players[tonumber(senderID)].permissions.level < players[tonumber(data[1])].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data[1])].name .. "!")
+		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+			MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
 		else
 			CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
 			CC.kick(players[senderID], targetName, "tempBan for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
@@ -1166,14 +1154,14 @@ function CEIMute(senderID, data)
 	--CElog("CEIMute Called by: " .. senderID, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
-		local playerID = tonumber(data[1])
+		local targetName = data[1]
+		local player = players.getPlayerByName(targetName)
 		local reason = data[2]
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
-		local targetName = players[playerID].name
-		if players[tonumber(senderID)].permissions.level < players[tonumber(data[1])].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data[1])].name .. "!")
+		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+			MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
 		else
 			CC.mute(players[senderID], targetName, reason)
 			MP.SendChatMessage(-1, targetName .. " was muted for: " .. reason)
@@ -1185,7 +1173,7 @@ function CEIUnmute(senderID, data)
 	--CElog("CEIMute Called by: " .. senderID, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
-		local targetName = players[data[1]].name
+		local targetName = data[1]
 		CC.unmute(players[senderID], targetName)
 		MP.SendChatMessage(-1, targetName .. " was unmuted")
 	end
