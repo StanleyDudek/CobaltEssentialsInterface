@@ -25,7 +25,6 @@ local kickThresh
 local serverConfig = {}
 local cobaltConfig = {}
 cobaltConfig.whitelistedPlayers = {}
-cobaltConfig.groups = {}
 cobaltConfig.permissions = {}
 cobaltConfig.permissions.vehiclePerm = {}
 cobaltConfig.interface = {}
@@ -477,6 +476,7 @@ end
 local function txConfigData(player)
 	cobaltConfig.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
 	cobaltConfig.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
+	cobaltConfig.groups = {}
 	local playerGroupsLength = 0
 	local whitelistLength = 0
 	local groupPlayerLength = 0
@@ -854,12 +854,6 @@ function CEIRemoveGroup(senderID, data)
 		for k,v in pairs(cobaltConfig.groups) do
 			if cobaltConfig.groups[k].groupName == group then
 				cobaltConfig.groups[k] = nil
-				for playerID, player in pairs(players) do
-					if type(playerID) == "number" then
-						txConfigData(player)
-					end
-				end
-				
 			end
 		end
 	end
