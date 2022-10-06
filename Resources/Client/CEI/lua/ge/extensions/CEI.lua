@@ -417,14 +417,14 @@ local function drawCEI(dt)
 					im.PopStyleColor(4)
 					im.Indent()
 					if im.SmallButton("Vote Kick##"..tostring(k)) then
-					local data = jsonEncode( { players[k].playerID } )
+					local data = jsonEncode( { players[k].playerName } )
 						TriggerServerEvent("CEIVoteKick", data)
 						log('W', logTag, "CEIVoteKick Called: " .. data)
 					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
-						local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
+						local data = jsonEncode( { players[k].playerName, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIKick", data)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
@@ -432,13 +432,13 @@ local function drawCEI(dt)
 					if currentRole == "owner" or currentRole == "admin" then
 						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
-							local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
+							local data = jsonEncode( { players[k].playerName, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIBan", data)
 							log('W', logTag, "CEIBan Called: " .. data)
 						end
 						im.SameLine()
 						if im.SmallButton("TempBan##"..tostring(k)) then
-							local data = jsonEncode( { players[k].playerID, players[k].tempBanLength[0], ffi.string(players[k].kickBanMuteReason) } )
+							local data = jsonEncode( { players[k].playerName, players[k].tempBanLength[0], ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEITempBan", data)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
@@ -447,13 +447,13 @@ local function drawCEI(dt)
 						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
-								local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
+								local data = jsonEncode( { players[k].playerName, ffi.string(players[k].kickBanMuteReason) } )
 								TriggerServerEvent("CEIMute", data)
 								log('W', logTag, "CEIMute Called: " .. data)
 							end
 						elseif players[k].permissions.muted == true then
 							if im.SmallButton("Unmute##"..tostring(k)) then
-								local data = jsonEncode( { players[k].playerID } )
+								local data = jsonEncode( { players[k].playerName } )
 								TriggerServerEvent("CEIUnmute", data)
 								log('W', logTag, "CEIUnmute Called: " .. data)
 							end
@@ -461,13 +461,13 @@ local function drawCEI(dt)
 						im.SameLine()
 						if players[k].permissions.whitelisted == false then
 							if im.SmallButton("Whitelist##" .. tostring(k)) then
-								local data = jsonEncode( { "add", players[k].playerID } )
+								local data = jsonEncode( { "add", players[k].playerName } )
 								TriggerServerEvent("CEIWhitelist", data)
 								log('W', logTag, "CEIWhitelist Called: " .. data)
 							end
 						elseif players[k].permissions.whitelisted == true then
 							if im.SmallButton("Unwhitelist##" .. tostring(k)) then
-								local data = jsonEncode( { "remove", players[k].playerID } )
+								local data = jsonEncode( { "remove", players[k].playerName } )
 								TriggerServerEvent("CEIWhitelist", data)
 								log('W', logTag, "CEIWhitelist Called: " .. data)
 							end
@@ -526,7 +526,7 @@ local function drawCEI(dt)
 							elseif players[k].tempBanLength[0] > 3650 then
 								players[k].tempBanLength = im.FloatPtr(3650)
 							end
-							local data = jsonEncode( { players[k].playerID, tostring(players[k].tempBanLength[0]) } )
+							local data = jsonEncode( { players[k].playerName, tostring(players[k].tempBanLength[0]) } )
 							TriggerServerEvent("CEISetTempBan", data)
 							log('W', logTag, "CEISetTempBan Called: " .. data)
 						end
@@ -648,14 +648,14 @@ local function drawCEI(dt)
 										im.SameLine()
 										im.PushItemWidth(100)
 										if im.InputInt("", players[k].permissions.levelInt, 1) then
-											local data = jsonEncode( { tostring(players[k].playerID), tostring(players[k].permissions.levelInt[0]) } )
+											local data = jsonEncode( { players[k].playerName, tostring(players[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetTempPerm", data)
 											log('W', logTag, "CEISetTempPerm Called: " .. data)
 										end
 										im.PopItemWidth()
 										im.SameLine()
 										if im.Button("Apply##level"..tostring(x)) then
-											local data = jsonEncode( { tostring(players[k].playerID), tostring(players[k].permissions.levelInt[0]) } )
+											local data = jsonEncode( { players[k].playerName, tostring(players[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetPerm", data)
 											log('W', logTag, "CEISetPerm Called: " .. data)
 										end
@@ -720,14 +720,14 @@ local function drawCEI(dt)
 					im.PopStyleColor(4)
 					im.Indent()
 					if im.SmallButton("Vote Kick##"..tostring(k)) then
-					local data = jsonEncode( { players[k].playerID } )
+					local data = jsonEncode( { players[k].playerName } )
 						TriggerServerEvent("CEIVoteKick", data)
 						log('W', logTag, "CEIVoteKick Called: " .. data)
 					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
-						local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
+						local data = jsonEncode( { players[k].playerName, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIKick", data)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
@@ -735,13 +735,13 @@ local function drawCEI(dt)
 					if currentRole == "owner" or currentRole == "admin" then
 						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
-							local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
+							local data = jsonEncode( { players[k].playerName, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIBan", data)
 							log('W', logTag, "CEIBan Called: " .. data)
 						end
 						im.SameLine()
 						if im.SmallButton("TempBan##"..tostring(k)) then
-							local data = jsonEncode( { players[k].playerID, players[k].tempBanLength[0], ffi.string(players[k].kickBanMuteReason) } )
+							local data = jsonEncode( { players[k].playerName, players[k].tempBanLength[0], ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEITempBan", data)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
@@ -750,13 +750,13 @@ local function drawCEI(dt)
 						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
-								local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
+								local data = jsonEncode( { players[k].playerName, ffi.string(players[k].kickBanMuteReason) } )
 								TriggerServerEvent("CEIMute", data)
 								log('W', logTag, "CEIMute Called: " .. data)
 							end
 						elseif players[k].permissions.muted == true then
 							if im.SmallButton("Unmute##"..tostring(k)) then
-								local data = jsonEncode( { players[k].playerID } )
+								local data = jsonEncode( { players[k].playerName } )
 								TriggerServerEvent("CEIUnmute", data)
 								log('W', logTag, "CEIUnmute Called: " .. data)
 							end
@@ -764,13 +764,13 @@ local function drawCEI(dt)
 						im.SameLine()
 						if players[k].permissions.whitelisted == false then
 							if im.SmallButton("Whitelist##" .. tostring(k)) then
-								local data = jsonEncode( { "add", players[k].playerID } )
+								local data = jsonEncode( { "add", players[k].playerName } )
 								TriggerServerEvent("CEIWhitelist", data)
 								log('W', logTag, "CEIWhitelist Called: " .. data)
 							end
 						elseif players[k].permissions.whitelisted == true then
 							if im.SmallButton("Unwhitelist##" .. tostring(k)) then
-								local data = jsonEncode( { "remove", players[k].playerID } )
+								local data = jsonEncode( { "remove", players[k].playerName } )
 								TriggerServerEvent("CEIWhitelist", data)
 								log('W', logTag, "CEIWhitelist Called: " .. data)
 							end
