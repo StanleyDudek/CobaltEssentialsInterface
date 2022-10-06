@@ -12,16 +12,13 @@ local ffi = require('ffi')
 
 local canTeleport
 
-local includeForRace = false
-local includeForRaceSent = false
+local includeInRace = false
 
 local nametagWhitelisted = false
 local nametagBlockerActive = false
 local nametagBlockerTimeout
 
-local useTempCurveSent = false
-
-local originalMpLayout
+local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 
 local ignitionEnabled = {}
 local isFrozen = {}
@@ -46,13 +43,19 @@ local config = {}
 local vehiclePermsFiltering = {}
 vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 
-
 local environment = {}
+
+local timeUpdateQueued = false
+local timeUpdateTimer = 0
+local timeUpdateTimeout = 0.05
+
 local physics = {}
 physics.physmult = 1
 
 local defaultTempCurve
 local defaultTempCurveSet = false
+
+local defaultSimSpeedSet = false
 
 local randomEnvSeed = math.randomseed(os.time())
 local envReportRate = 1
@@ -100,7 +103,7 @@ end
 
 local function rxEnvironment(data)
 	environment = jsonDecode(data)
-	environment.todVal = im.FloatPtr(tonumber(environment.ToD))
+	environment.ToDVal = im.FloatPtr(tonumber(environment.ToD))
 	environment.dayScaleVal = im.FloatPtr(tonumber(environment.dayScale))
 	environment.nightScaleVal = im.FloatPtr(tonumber(environment.nightScale))
 	environment.azimuthOverrideVal = im.FloatPtr(tonumber(environment.azimuthOverride))
@@ -126,7 +129,11 @@ local function rxEnvironment(data)
 	environment.tempCurveDuskInt = im.IntPtr(tonumber(environment.tempCurveDusk))
 	environment.tempCurveMidnightInt = im.IntPtr(tonumber(environment.tempCurveMidnight))
 	environment.tempCurveDawnInt = im.IntPtr(tonumber(environment.tempCurveDawn))
-	environment.useTempCurveVal = environment.useTempCurve
+	if environment.useTempCurve == true then
+		environment.useTempCurveVal = true
+	else
+		environment.useTempCurveVal = false
+	end
 end
 
 local function rxPlayerRole(data)
@@ -263,14 +270,16 @@ local function drawCEI(dt)
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.5, 0.0, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.6, 0.0, 0.5))
 			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.4, 0.0, 0.999))
-			if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+			if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" or currentRole == "default" then
 				if im.SmallButton("Race Countdown!") then
 					for k,v in pairs(players) do
 						if players[k].includeInRace == true then
-							for x,y in pairs(players[k].vehicles) do
-								local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
-								TriggerServerEvent("CEIToggleRaceLock", data)
-								log('W', logTag, "CEIToggleRaceLock Called: " .. data)
+							if players[k].vehicles then
+								for x,y in pairs(players[k].vehicles) do
+									local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
+									TriggerServerEvent("CEIToggleRaceLock", data)
+									log('W', logTag, "CEIToggleRaceLock Called: " .. data)
+								end
 							end
 						end
 					end
@@ -280,24 +289,30 @@ local function drawCEI(dt)
 				end
 			end
 			im.PopStyleColor(3)
-			local includeMe = im.BoolPtr(includeForRace)
 			im.SameLine()
-			if im.Checkbox("Include Me In Race", includeMe) then
-				if includeMe[0] then
-					local dataTable = {}
-					if includeForRaceSent == false then
-						dataTable = { true }
-						includeForRaceSent = true
-					else
-						dataTable = { false }
-						includeForRaceSent = false
-					end
-					local data = jsonEncode(dataTable)
+			if includeInRace == false then
+				im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.55, 0.05, 0.333))
+				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.55, 0.09, 0.5))
+				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.55, 0.05, 0.999))
+				if im.SmallButton("Join Race") then
+					local data = jsonEncode( { true } )
 					TriggerServerEvent("CEIRaceInclude", data)
 					log('W', logTag, "CEIRaceInclude Called: " .. data)
+					includeInRace = true
 				end
+				im.PopStyleColor(3)
+			else
+				im.PushStyleColor2(im.Col_Button, im.ImVec4(0.77, 0.15, 0.05, 0.333))
+				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.1, 0.09, 0.5))
+				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.05, 0.05, 0.999))
+				if im.SmallButton("Leave Race") then
+					local data = jsonEncode( { false } )
+					TriggerServerEvent("CEIRaceInclude", data)
+					log('W', logTag, "CEIRaceInclude Called: " .. data)
+					includeInRace = false
+				end
+				im.PopStyleColor(3)
 			end
-			includeForRace = includeMe[0]
 			im.Separator()
 			if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 				im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
@@ -393,20 +408,29 @@ local function drawCEI(dt)
 					im.PushStyleColor2(im.Col_HeaderHovered, im.ImVec4(0.33, 0.33, 0.66, 0.5))
 					im.PushStyleColor2(im.Col_HeaderActive, im.ImVec4(0.4, 0.4, 0.77, 0.5))
 				end
+				if players[k].includeInRace == true then
+					im.PushStyleColor2(im.Col_Text, im.ImVec4(0.1, 1, 0.1, 1))
+				else
+					im.PushStyleColor2(im.Col_Text, im.ImVec4(1, 1, 1, 1))
+				end
 				if im.CollapsingHeader1(players[k].playerName) then
-					im.PopStyleColor(3)
+					im.PopStyleColor(4)
 					im.Indent()
+					if im.SmallButton("Vote Kick##"..tostring(k)) then
+					local data = jsonEncode( { players[k].playerID } )
+						TriggerServerEvent("CEIVoteKick", data)
+						log('W', logTag, "CEIVoteKick Called: " .. data)
+					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
-						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIKick", data)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
-						im.SameLine()
 					end
 					if currentRole == "owner" or currentRole == "admin" then
+						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
 							local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIBan", data)
@@ -418,9 +442,9 @@ local function drawCEI(dt)
 							TriggerServerEvent("CEITempBan", data)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
-						im.SameLine()
 					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
 								local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
@@ -451,8 +475,10 @@ local function drawCEI(dt)
 					end
 					if vehiclesCounter > 0 then
 						if canTeleport then
-							im.Text("		")
-							im.SameLine()
+							if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+							else
+								im.SameLine()
+							end
 							if im.SmallButton("Focus##" .. tostring(k)) then
 								MPVehicleGE.focusCameraOnPlayer(players[k].playerName)
 							end
@@ -582,12 +608,13 @@ local function drawCEI(dt)
 								end
 							end
 							im.TreePop()
+							im.Separator()
 						else
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
+							im.Separator()
 						end
 					end
-					im.Separator()
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 						if im.TreeNode1("info##"..tostring(k)) then
 							im.Text("		playerID: " .. players[k].playerID)
@@ -690,19 +717,23 @@ local function drawCEI(dt)
 					end
 					im.Unindent()
 				else
-					im.PopStyleColor(3)
+					im.PopStyleColor(4)
 					im.Indent()
+					if im.SmallButton("Vote Kick##"..tostring(k)) then
+					local data = jsonEncode( { players[k].playerID } )
+						TriggerServerEvent("CEIVoteKick", data)
+						log('W', logTag, "CEIVoteKick Called: " .. data)
+					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
-						im.Text("		")
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIKick", data)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
-						im.SameLine()
 					end
 					if currentRole == "owner" or currentRole == "admin" then
+						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
 							local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIBan", data)
@@ -714,9 +745,9 @@ local function drawCEI(dt)
 							TriggerServerEvent("CEITempBan", data)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
-						im.SameLine()
 					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
 								local data = jsonEncode( { players[k].playerID, ffi.string(players[k].kickBanMuteReason) } )
@@ -747,8 +778,10 @@ local function drawCEI(dt)
 					end
 					if vehiclesCounter > 0 then
 						if canTeleport then
-							im.Text("		")
-							im.SameLine()
+							if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+							else
+								im.SameLine()
+							end
 							if im.SmallButton("Focus##" .. tostring(k)) then
 								MPVehicleGE.focusCameraOnPlayer(players[k].playerName)
 							end
@@ -803,7 +836,7 @@ local function drawCEI(dt)
 							im.Text("	")
 							im.SameLine()
 							if im.SmallButton("Apply##newVehPerm") then
-								local data = jsonEncode( { ffi.string(config.cobalt.vehicles.newVehicleInput) } )
+								local data = jsonEncode( { ffi.string(config.cobalt.permissions.newVehicleInput) } )
 								TriggerServerEvent("CEISetNewVehiclePerm", data)
 								log('W', logTag, "CEISetNewVehiclePerm Called: " .. data)
 							end
@@ -1218,23 +1251,35 @@ local function drawCEI(dt)
 						im.Separator()
 					end
 					if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
-						local whitePlayers = config.cobalt.whitelistedPlayers
-						local whitePlayersCounter = 0
-						for a,b in pairs(whitePlayers) do
-							whitePlayersCounter = whitePlayersCounter + 1
+						local whitelistPlayersCounter = 0
+						if config.cobalt.whitelistedPlayers then
+							for a,b in pairs(config.cobalt.whitelistedPlayers) do
+								whitelistPlayersCounter = whitelistPlayersCounter + 1
+							end
+							for k,v in pairs(config.cobalt.groups) do
+								if config.cobalt.groups[k].whitelisted then
+									if config.cobalt.groups[k].groupPlayers then
+										for c,d in pairs(config.cobalt.groups[k].groupPlayers) do
+											whitelistPlayersCounter = whitelistPlayersCounter + 1
+										end
+									end
+								end
+							end
 						end
 						if im.TreeNode1("whitelisted players:") then
 							im.SameLine()
-							im.Text(tostring(whitePlayersCounter))
-							for x,y in pairs(whitePlayers) do
-								im.Text("		")
-								im.SameLine()
-								im.Text(config.cobalt.whitelistedPlayers[x].name)
-								im.SameLine()
-								if im.SmallButton("Remove##"..tostring(x)) then
-									local data = jsonEncode( { "remove", config.cobalt.whitelistedPlayers[x].name } )
-									TriggerServerEvent("CEIWhitelist", data)
-									log('W', logTag, "CEIWhitelist Called: " .. data)
+							im.Text(tostring(whitelistPlayersCounter))
+							if config.cobalt.whitelistedPlayers then
+								for x,y in pairs(config.cobalt.whitelistedPlayers) do
+									im.Text("		")
+									im.SameLine()
+									im.Text(config.cobalt.whitelistedPlayers[x])
+									im.SameLine()
+									if im.SmallButton("Remove##"..tostring(x)) then
+										local data = jsonEncode( { "remove", config.cobalt.whitelistedPlayers[x] } )
+										TriggerServerEvent("CEIWhitelist", data)
+										log('W', logTag, "CEIWhitelist Called: " .. data)
+									end
 								end
 							end
 							im.Text("		Add Name to Whitelist: ")
@@ -1254,7 +1299,7 @@ local function drawCEI(dt)
 							im.TreePop()
 						else
 							im.SameLine()
-							im.Text(tostring(whitePlayersCounter))
+							im.Text(tostring(whitelistPlayersCounter))
 						end
 						im.Text("		")
 						im.SameLine()
@@ -1266,7 +1311,7 @@ local function drawCEI(dt)
 							end
 						elseif config.cobalt.enableWhitelist == true then
 							if im.SmallButton("Disable Whitelist##"..tostring(k)) then
-								local data = jsonEncode( { "enable" } )
+								local data = jsonEncode( { "disable" } )
 								TriggerServerEvent("CEIWhitelist", data)
 								log('W', logTag, "CEIWhitelist Called: " .. data)
 							end
@@ -1292,7 +1337,7 @@ local function drawCEI(dt)
 					end
 					im.Unindent()
 				end
-	----------------------------------------------------------------------------------SERVER HEADER
+----------------------------------------------------------------------------------SERVER HEADER
 				if currentRole == "owner" or currentRole == "admin" then
 					if im.CollapsingHeader1("Server") then
 						im.Indent()
@@ -1446,7 +1491,7 @@ local function drawCEI(dt)
 						im.Unindent()
 					end
 				end
-	----------------------------------------------------------------------------------NAMETAGS HEADER
+----------------------------------------------------------------------------------NAMETAGS HEADER
 				if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 					if im.CollapsingHeader1("Nametags") then
 						local nametagWhitelist = config.nametags.whitelist
@@ -1543,6 +1588,136 @@ local function drawCEI(dt)
 						end
 						im.Unindent()
 					end
+				end
+----------------------------------------------------------------------------------EXTRAS HEADER
+				if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+					if im.CollapsingHeader1("Extras") then
+						im.Indent()
+						if im.TreeNode1("Simulation Speed") then
+							im.SameLine()
+							if im.SmallButton("Reset##SIM") then
+								local data = jsonEncode( { "simSpeed", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "controlSimSpeed", false } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.Indent()
+							if environment.controlSimSpeed == false then
+								im.Text("Sim Speed Control Disabled: ")
+								im.SameLine()
+								if im.SmallButton("Enable") then
+									local data = jsonEncode( { "controlSimSpeed", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+							else
+								im.Text("Sim Speed Control Enabled: ")
+								im.SameLine()
+								if im.SmallButton("Disable") then
+									local data = jsonEncode( { "controlSimSpeed", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+							end
+							im.Text("Simulation: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##simSpeed", environment.simSpeedVal, 0.001, 0.1) then
+								if environment.simSpeedVal[0] < 0.01 then
+									environment.simSpeedVal = im.FloatPtr(0.01)
+								elseif environment.simSpeedVal[0] > 5 then
+									environment.simSpeedVal = im.FloatPtr(5)
+								end
+								environment.simSpeedVal = im.FloatPtr(environment.simSpeedVal)
+								local data = jsonEncode( { "simSpeed", tostring(environment.simSpeedVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							if im.SmallButton("0.5X") then
+								local data = jsonEncode( { "simSpeed", 2 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							if im.SmallButton("Real") then
+								local data = jsonEncode( { "simSpeed", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							if im.SmallButton("2X") then
+								local data = jsonEncode( { "simSpeed", 0.5 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							if im.SmallButton("4X") then
+								local data = jsonEncode( { "simSpeed", 0.25 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							if im.SmallButton("10X") then
+								local data = jsonEncode( { "simSpeed", 0.1 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							if im.SmallButton("100X") then
+								local data = jsonEncode( { "simSpeed", 0.01 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.TreePop()
+							im.Unindent()
+						else
+							im.SameLine()
+							if im.SmallButton("Reset##SIM") then
+								local data = jsonEncode( { "simSpeed", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "controlSimSpeed", false } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+						end
+						im.Separator()
+						if im.TreeNode1("Teleportation") then
+							im.SameLine()
+							if im.SmallButton("Reset##TLPT") then
+								local data = jsonEncode( { "teleportTimeout", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.Indent()
+							im.Text("Teleport Timeout: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
+								if environment.teleportTimeoutInt[0] < 0 then
+									environment.teleportTimeoutInt = im.IntPtr(0)
+								elseif environment.teleportTimeoutInt[0] > 60 then
+									environment.teleportTimeoutInt = im.IntPtr(60)
+								end
+								local data = jsonEncode( { "teleportTimeout", tostring(environment.teleportTimeoutInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.TreePop()
+						else
+							im.SameLine()
+							if im.SmallButton("Reset##TLPT") then
+								local data = jsonEncode( { "teleportTimeout", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+						end
+						im.Unindent()
+					end
 					im.EndTabItem()
 				end
 			end
@@ -1576,10 +1751,10 @@ local function drawCEI(dt)
 					elseif timePlay == true then
 						if im.SmallButton("Stop") then
 							local timeOfDay = core_environment.getTimeOfDay()
-							local data = jsonEncode( { "ToD", tostring(timeOfDay.time) } )
+							local data = jsonEncode( { "timePlay", false } )
 							TriggerServerEvent("CEISetEnv", data)
 							log('W', logTag, "CEISetEnv Called: " .. data)
-							data = jsonEncode( { "timePlay", false } )
+							data = jsonEncode( { "ToD", tostring(timeOfDay.time) } )
 							TriggerServerEvent("CEISetEnv", data)
 							log('W', logTag, "CEISetEnv Called: " .. data)
 						end
@@ -1587,16 +1762,17 @@ local function drawCEI(dt)
 					im.Text("Time of Day: ")
 					im.SameLine()
 					im.PushItemWidth(100)
-					if im.InputFloat("##ToD", environment.todVal, 0.001, 0.01) then
-						if environment.todVal[0] < 0 then
-							environment.todVal = im.FloatPtr(1)
-						elseif environment.todVal[0] > 1 then
-							environment.todVal = im.FloatPtr(0)
+					if im.InputFloat("##ToD", environment.ToDVal, 0.001, 0.01) then
+						if environment.ToDVal[0] < 0 then
+							environment.ToDVal = im.FloatPtr(1)
+						elseif environment.ToDVal[0] > 1 then
+							environment.ToDVal = im.FloatPtr(0)
 						end
-						environment.todVal = im.FloatPtr(environment.todVal)
-						local data = jsonEncode( { "ToD", tostring(environment.todVal[0]) } )
+						environment.ToDVal = im.FloatPtr(environment.ToDVal)
+						local data = jsonEncode( { "ToD", tostring(environment.ToDVal[0]) } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
+						timeUpdateQueued = true
 					end
 					im.PopItemWidth()
 					im.SameLine()
@@ -1604,6 +1780,7 @@ local function drawCEI(dt)
 						local data = jsonEncode( { "ToD", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
+						timeUpdateQueued = true
 					end
 					im.Text("Day Scale: ")
 					im.SameLine()
@@ -1836,6 +2013,7 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 				end
+				im.Separator()
 				if im.TreeNode1("Weather") then
 					im.SameLine()
 					if im.SmallButton("Reset##WET") then
@@ -2039,94 +2217,7 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 				end
-				if im.TreeNode1("Simulation") then
-					im.SameLine()
-					if im.SmallButton("Reset##SIM") then
-						local data = jsonEncode( { "simSpeed", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Indent()
-					im.Text("Teleport Timeout: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##teleportTimeout", environment.teleportTimeoutInt, 1, 10) then
-						if environment.teleportTimeoutInt[0] < 0 then
-							environment.teleportTimeoutInt = im.IntPtr(0)
-						elseif environment.teleportTimeoutInt[0] > 60 then
-							environment.teleportTimeoutInt = im.IntPtr(60)
-						end
-						local data = jsonEncode( { "teleportTimeout", tostring(environment.teleportTimeoutInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##TLPT") then
-						local data = jsonEncode( { "teleportTimeout", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Simulation Speed: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##simSpeed", environment.simSpeedVal, 0.001, 0.1) then
-						if environment.simSpeedVal[0] < 0.01 then
-							environment.simSpeedVal = im.FloatPtr(0.01)
-						elseif environment.simSpeedVal[0] > 5 then
-							environment.simSpeedVal = im.FloatPtr(5)
-						end
-						environment.simSpeedVal = im.FloatPtr(environment.simSpeedVal)
-						local data = jsonEncode( { "simSpeed", tostring(environment.simSpeedVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					if im.SmallButton("0.5X") then
-						local data = jsonEncode( { "simSpeed", 2 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("Real") then
-						local data = jsonEncode( { "simSpeed", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("2X") then
-						local data = jsonEncode( { "simSpeed", 0.5 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("4X") then
-						local data = jsonEncode( { "simSpeed", 0.25 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("10X") then
-						local data = jsonEncode( { "simSpeed", 0.1 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("100X") then
-						local data = jsonEncode( { "simSpeed", 0.01 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##SIM") then
-						local data = jsonEncode( { "simSpeed", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-				end
+				im.Separator()
 				if im.TreeNode1("Gravity") then
 					im.SameLine()
 					if im.SmallButton("Reset##GRV") then
@@ -2150,65 +2241,98 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 					if im.SmallButton("Zero") then
 						local data = jsonEncode( { "gravity", 0 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
 					if im.SmallButton("Earth") then
 						local data = jsonEncode( { "gravity", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 					if im.SmallButton("Moon") then
 						local data = jsonEncode( { "gravity", -1.62 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
 					if im.SmallButton("Mars") then
 						local data = jsonEncode( { "gravity", -3.71 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.68, 0.69, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.75, 0.78, 0.05, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.85, 0.84, 0.05, 0.999))
 					if im.SmallButton("Sun") then
 						local data = jsonEncode( { "gravity", -274 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.50, 0.21, 0.15, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
 					if im.SmallButton("Jupiter") then
 						local data = jsonEncode( { "gravity", -24.92 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					
+					im.PopStyleColor(3)
 					if im.SmallButton("Neptune") then
 						local data = jsonEncode( { "gravity", -11.15 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.50, 0.21, 0.15, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
 					if im.SmallButton("Saturn") then
 						local data = jsonEncode( { "gravity", -10.44 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.SameLine()
 					if im.SmallButton("Uranus") then
 						local data = jsonEncode( { "gravity", -8.87 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.55, 0.50, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.66, 0.64, 0.05, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.74, 0.05, 0.999))
 					if im.SmallButton("Venus") then
 						local data = jsonEncode( { "gravity", -8.87 } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 					if im.SmallButton("Mercury") then
 						local data = jsonEncode( { "gravity", -3.7 } )
 						TriggerServerEvent("CEISetEnv", data)
@@ -2220,6 +2344,7 @@ local function drawCEI(dt)
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.PopStyleColor(3)
 					im.TreePop()
 					im.Unindent()
 				else
@@ -2230,116 +2355,132 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 				end
+				im.Separator()
 				if im.TreeNode1("Temperature") then
 					im.SameLine()
 					if im.SmallButton("Reset##TMP") then
 						local data = jsonEncode( { "useTempCurve", false } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
-						useTempCurveSent = false
+						data = jsonEncode( { "tempCurveNoon", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveDusk", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveMidnight", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveDawn", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.Indent()
-					local useTempCurve = im.BoolPtr(environment.useTempCurveVal)
-					if im.Checkbox("Use Custom Temperature Curve", useTempCurve) then
-						if useTempCurve[0] then
-							if useTempCurveSent == false then
-								local data = jsonEncode( { "useTempCurve", true } )
-								TriggerServerEvent("CEISetEnv", data)
-								log('W', logTag, "CEISetEnv Called: " .. data)
-								useTempCurveSent = true
-							end
-						else
-							if useTempCurveSent == true then
-								local data = jsonEncode( { "useTempCurve", false } )
-								TriggerServerEvent("CEISetEnv", data)
-								log('W', logTag, "CEISetEnv Called: " .. data)
-								useTempCurveSent = false
-							end
+					if environment.useTempCurve == false then
+						im.Text("Temperature Curve Control: ")
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+						if im.SmallButton("Disabled") then
+							local data = jsonEncode( { "useTempCurve", true } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
 						end
+						im.PopStyleColor(3)
+					else
+						im.Text("Temperature Curve Control: ")
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+						if im.SmallButton("Enabled") then
+							local data = jsonEncode( { "useTempCurve", false } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
 					end
-					environment.useTempCurveVal = useTempCurve[0]
-					if environment.useTempCurveVal == true then
-						im.Text("Custom Temperature Curve:")
-						im.SameLine()
-						if im.SmallButton("Reset##TCV") then
-							local data = jsonEncode( { "tempCurveNoon", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-							data = jsonEncode( { "tempCurveDusk", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-							data = jsonEncode( { "tempCurveMidnight", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-							data = jsonEncode( { "tempCurveDawn", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.Text("		")
-						im.SameLine()
-						im.Text("Noon")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##tempCurveNoon", environment.tempCurveNoonInt, 1, 2) then
-							if environment.tempCurveNoonInt[0] < -50 then
-								environment.tempCurveNoonInt = im.IntPtr(-50)
-							elseif environment.tempCurveNoonInt[0] > 50 then
-								environment.tempCurveNoonInt = im.IntPtr(50)
-							end
-							local data = jsonEncode( { "tempCurveNoon", tostring(environment.tempCurveNoonInt[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
-						im.Text("		")
-						im.SameLine()
-						im.Text("Dusk")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##tempCurveDusk", environment.tempCurveDuskInt, 1, 2) then
-							if environment.tempCurveDuskInt[0] < -50 then
-								environment.tempCurveDuskInt = im.IntPtr(-50)
-							elseif environment.tempCurveDuskInt[0] > 50 then
-								environment.tempCurveDuskInt = im.IntPtr(50)
-							end
-							local data = jsonEncode( { "tempCurveDusk", tostring(environment.tempCurveDuskInt[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
-						im.Text("		")
-						im.SameLine()
-						im.Text("Midnight")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##tempCurveMidnight", environment.tempCurveMidnightInt, 1, 2) then
-							if environment.tempCurveMidnightInt[0] < -50 then
-								environment.tempCurveMidnightInt = im.IntPtr(-50)
-							elseif environment.tempCurveMidnightInt[0] > 50 then
-								environment.tempCurveMidnightInt = im.IntPtr(50)
-							end
-							local data = jsonEncode( { "tempCurveMidnight", tostring(environment.tempCurveMidnightInt[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
-						im.Text("		")
-						im.SameLine()
-						im.Text("Dawn")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##tempCurveDawn", environment.tempCurveDawnInt, 1, 2) then
-							if environment.tempCurveDawnInt[0] < -50 then
-								environment.tempCurveDawnInt = im.IntPtr(-50)
-							elseif environment.tempCurveDawnInt[0] > 50 then
-								environment.tempCurveDawnInt = im.IntPtr(50)
-							end
-							local data = jsonEncode( { "tempCurveDawn", tostring(environment.tempCurveDawnInt[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
+					im.Text("Custom Temperature Curve:")
+					im.SameLine()
+					if im.SmallButton("Reset##TCV") then
+						local data = jsonEncode( { "tempCurveNoon", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveDusk", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveMidnight", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveDawn", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
+					im.Text("		")
+					im.SameLine()
+					im.Text("Noon")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveNoon", environment.tempCurveNoonInt, 1, 2) then
+						if environment.tempCurveNoonInt[0] < -50 then
+							environment.tempCurveNoonInt = im.IntPtr(-50)
+						elseif environment.tempCurveNoonInt[0] > 50 then
+							environment.tempCurveNoonInt = im.IntPtr(50)
+						end
+						local data = jsonEncode( { "tempCurveNoon", tostring(environment.tempCurveNoonInt[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.Text("		")
+					im.SameLine()
+					im.Text("Dusk")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveDusk", environment.tempCurveDuskInt, 1, 2) then
+						if environment.tempCurveDuskInt[0] < -50 then
+							environment.tempCurveDuskInt = im.IntPtr(-50)
+						elseif environment.tempCurveDuskInt[0] > 50 then
+							environment.tempCurveDuskInt = im.IntPtr(50)
+						end
+						local data = jsonEncode( { "tempCurveDusk", tostring(environment.tempCurveDuskInt[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.Text("		")
+					im.SameLine()
+					im.Text("Midnight")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveMidnight", environment.tempCurveMidnightInt, 1, 2) then
+						if environment.tempCurveMidnightInt[0] < -50 then
+							environment.tempCurveMidnightInt = im.IntPtr(-50)
+						elseif environment.tempCurveMidnightInt[0] > 50 then
+							environment.tempCurveMidnightInt = im.IntPtr(50)
+						end
+						local data = jsonEncode( { "tempCurveMidnight", tostring(environment.tempCurveMidnightInt[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.Text("		")
+					im.SameLine()
+					im.Text("Dawn")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputInt("##tempCurveDawn", environment.tempCurveDawnInt, 1, 2) then
+						if environment.tempCurveDawnInt[0] < -50 then
+							environment.tempCurveDawnInt = im.IntPtr(-50)
+						elseif environment.tempCurveDawnInt[0] > 50 then
+							environment.tempCurveDawnInt = im.IntPtr(50)
+						end
+						local data = jsonEncode( { "tempCurveDawn", tostring(environment.tempCurveDawnInt[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
 					im.TreePop()
 					im.Unindent()
 				else
@@ -2348,7 +2489,6 @@ local function drawCEI(dt)
 						local data = jsonEncode( { "useTempCurve", false } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
-						useTempCurveSent = false
 					end
 				end
 				im.EndTabItem()
@@ -2434,33 +2574,34 @@ end
 
 local function onUpdate(dt)
 	if worldReadyState == 2 then
+		local levelInfo = M.getObject("LevelInfo")
+		if not levelInfo then
+			return
+		end
 		if windowOpen[0] == true then
 			drawCEI(dt)
 		end
 		checkVehicleState()
+		lastTeleport = lastTeleport + dt
 		M.onTimePlay(environment.timePlay)
-		if environment.timePlay == false then
-			M.onTime(environment.ToD)
-		elseif firstReport == false then
-			M.onTime(environment.ToD)
-			firstReport = true
-		end
-		if lastEnvReport + dt > envReportRate then
-			lastEnvReport = 0 + math.random() / 10
-			core_environment.reset()
-			local timeOfDay = core_environment.getTimeOfDay()
-			if environment.ToD then
-				if string.format("%.3f",timeOfDay.time) ~= string.format("%.3f",environment.ToD) then
-					if currentRole == "owner" or currentRole == "admin" then
-						local data = jsonEncode( { "ToD", tostring(timeOfDay.time) } )
-						TriggerServerEvent("CEISetEnv", data)
-						--log('W', logTag, "CEISetEnv Called: " .. data)
+		if environment.ToD then
+			if firstReport == true then
+				if environment.timePlay == false or environment.timePlay == nil then
+					M.onTime(environment.ToD)
+				elseif timeUpdateQueued == true then
+					if timeUpdateTimer + dt > timeUpdateTimeout then
+						M.onTime(environment.ToD)
+						timeUpdateQueued = false
+						timeUpdateTimer = 0
+						core_environment.reset()
+					else
+						timeUpdateTimer = timeUpdateTimer + dt
 					end
-					
 				end
+			else
+				M.onTime(environment.ToD)
+				firstReport = true
 			end
-		else
-			lastEnvReport = lastEnvReport + dt
 		end
 		M.onDayScale(environment.dayScale)
 		M.onNightScale(environment.nightScale)
@@ -2483,7 +2624,13 @@ local function onUpdate(dt)
 		M.onSimSpeed(environment.simSpeed)
 		M.onTempCurve()
 		M.onGravity(environment.gravity)
-		lastTeleport = lastTeleport + dt
+		if lastEnvReport + dt > envReportRate then
+			lastEnvReport = 0
+			core_environment.reset()
+		else
+			lastEnvReport = lastEnvReport + dt
+		end
+		
 	end
 end
 
@@ -2753,8 +2900,13 @@ local function onSimSpeed(value)
 	if value == nil then
 		value = 1
 	end
-	if worldReadyState == 2 then
+	if environment.controlSimSpeed == true and defaultSimSpeedSet == true then
+		defaultSimSpeedSet = false
+	elseif environment.controlSimSpeed == true and defaultSimSpeedSet == false then
 		be:setSimulationTimeScale(value)
+	elseif environment.controlSimSpeed == false and defaultSimSpeedSet == false then
+		be:setSimulationTimeScale(1)
+		defaultSimSpeedSet = true
 	end
 end
 
@@ -2799,8 +2951,8 @@ local function onPreRender(dt)
 end
 
 local function onExtensionLoaded()
+	log('W', logTag, "-=$=- INJECTING UI APPS -=$=-")
 	local currentMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
-	originalMpLayout = currentMpLayout
 	local found
 	if currentMpLayout then 
 		for k,v in pairs(currentMpLayout.apps) do
@@ -2821,8 +2973,8 @@ local function onExtensionLoaded()
 			raceCountdown.placement.top = "40px"
 			raceCountdown.placement.width = "690px"
 			table.insert(currentMpLayout.apps, raceCountdown)
-			jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json",currentMpLayout)
-			reloadUI()
+			jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", currentMpLayout)
+			currentMpLayout = nil
 		end
 	end
 	AddEventHandler("rxPlayerRole", rxPlayerRole)
@@ -2846,8 +2998,8 @@ local function onExtensionLoaded()
 end
 
 local function onExtensionUnloaded()
-	jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json",originalMpLayout)
-	Lua:requestReload()
+	log('W', logTag, "-=$=- RESETTING UI APPS -=$=-")
+	jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", originalMpLayout)
 	log('W', logTag, "-=$=- CEI UNLOADED -=$=-")
 end
 
@@ -2917,7 +3069,5 @@ M.onTempCurve = onTempCurve
 
 M.onSimSpeed = onSimSpeed
 M.onGravity = onGravity
-
-M.players = players
 
 return M
