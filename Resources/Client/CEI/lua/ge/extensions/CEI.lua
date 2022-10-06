@@ -1000,15 +1000,14 @@ local function drawCEI(dt)
 							im.Text(config.cobalt.maxActivePlayers)
 						end
 						im.Separator()
-						local groups = config.cobalt.groups
 						local groupCounter = 0
-						for a,b in pairs(groups) do
+						for a,b in pairs(config.cobalt.groups) do
 							groupCounter = groupCounter + 1
 						end
 						if im.TreeNode1("groups:") then
 							im.SameLine()
 							im.Text(tostring(groupCounter))
-							for k,v in pairs(groups) do
+							for k,v in pairs(config.cobalt.groups) do
 								im.Separator()
 								local groupName = ( string.gsub(config.cobalt.groups[k].groupName, "group:", "") .. ":")
 								if im.TreeNode1(groupName) then
@@ -2493,8 +2492,24 @@ local function drawCEI(dt)
 				end
 				im.EndTabItem()
 			end
+		end
+----------------------------------------------------------------------------------DATABASE TAB
+		if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
+			if im.BeginTabItem("Database") then
+
+
+
+
+
+
+
+
+
+				im.EndTabItem()
+			end
 			im.EndTabBar()
 		end
+		
 	end
 	im.PopStyleColor(22)
 	im.End()
