@@ -639,29 +639,33 @@ end
 
 function CEISetNewVehiclePerm(senderID, data)
 	--CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
-	local vehiclePermLevel = 1
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
-		CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
+		local vehiclePermLevel = 1
+		if vehicleName == nil or vehicleName == "" then
+			MP.SendChatMessage(senderID, "Vehicle name cannot be blank!")
+		else
+			CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
+		end
 	end
 end
 
 function CEISetVehiclePermLevel(senderID, data)
 	--CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
-	local vehiclePermLevel = tonumber(data[2])
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
+		local vehiclePermLevel = tonumber(data[2])
 		CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
 	end
 end
 
 function CEIRemoveVehiclePerm(senderID, data)
 	--CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
 		local removeVehicle = vehicleName
 		loadedDatabases["vehicles"] = {}
 		local currentVehiclesList = CobaltDB.getTables("vehicles")
@@ -679,32 +683,37 @@ end
 
 function CEISetNewVehiclePart(senderID, data)
 	--CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
-	local partName = "partlevel:" .. data[2]
-	local partLevel = 1
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
-		CobaltDB.set("vehicles", vehicleName, partName, partLevel)
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
+		local partName = data[2]
+		if partName == nil or partName == "" then
+			MP.SendChatMessage(senderID, "Part name cannot be blank!")
+		else
+			local partName = "partlevel:" .. data[2]
+			local partLevel = 1
+			CobaltDB.set("vehicles", vehicleName, partName, partLevel)
+		end
 	end
 end
 
 function CEISetVehiclePartLevel(senderID, data)
 	--CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
-	local partName = "partlevel:" .. data[2]
-	local partLevel = tonumber(data[3])
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
+		local partName = "partlevel:" .. data[2]
+		local partLevel = tonumber(data[3])
 		CobaltDB.set("vehicles", vehicleName, partName, partLevel)
 	end
 end
 
 function CEIRemoveVehiclePart(senderID, data)
 	--CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
-	local partName = "partlevel:" .. data[2]
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
+		local partName = "partlevel:" .. data[2]
 		local targetLevel = data
 		if CobaltDB.query("vehicles", vehicleName, partName) then
 			CobaltDB.set("vehicles", vehicleName, partName, nil)
@@ -716,22 +725,22 @@ end
 
 function CEISetVehiclePartLevel(senderID, data)
 	--CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local vehicleName = data[1]
-	local vehiclePartName = "partlevel:" .. data[2]
-	local vehiclePartLevel = tonumber(data[3])
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local vehicleName = data[1]
+		local vehiclePartName = "partlevel:" .. data[2]
+		local vehiclePartLevel = tonumber(data[3])
 		CobaltDB.set("vehicles", vehicleName, vehiclePartName, vehiclePartLevel)
 	end
 end
 
 function CEISetTempBan(senderID, data)
 	--CElog("CEISetTempBan Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
-	local targetID = tonumber(data[1])
-	local name = players[targetID].name
-	local playerTempBanLength = tonumber(data[2])
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local targetID = tonumber(data[1])
+		local name = players[targetID].name
+		local playerTempBanLength = tonumber(data[2])
 		tempPlayers[name].tempBanLength = playerTempBanLength
 	end
 end
@@ -752,8 +761,8 @@ end
 
 function CEISetEnv(senderID, data)
 	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
-	data = Util.JsonDecode(data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
 		if key == "allWeather" then
@@ -882,9 +891,13 @@ function CEISetNewGroup(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local group = data[1]
-		local newGroup = "group:" .. group
-		local applyGroup = { [newGroup] = { level = 1 } }
-		applyStuff(players.database, applyGroup)
+		if group == nil or group == "" then
+			MP.SendChatMessage(senderID, "Group name cannot be blank!")
+		else
+			local newGroup = "group:" .. group
+			local applyGroup = { [newGroup] = { level = 1 } }
+			applyStuff(players.database, applyGroup)
+		end
 	end
 end
 
