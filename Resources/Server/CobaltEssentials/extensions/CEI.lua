@@ -40,6 +40,7 @@ local environmentLogTimer = 0
 local environmentLogInterval = 10
 
 local environmentTable = {}
+environmentTable.controlSun_default = false
 environmentTable.ToD_default = 0.1
 environmentTable.timePlay_default = false
 environmentTable.dayScale_default = 1
@@ -52,11 +53,13 @@ environmentTable.exposure_default = 1
 environmentTable.shadowDistance_default = 1600
 environmentTable.shadowSoftness_default = 0.2
 environmentTable.shadowSplits_default = 4
+environmentTable.controlWeather_default = false
+environmentTable.fogDensity_default = 0.0001
 environmentTable.fogDensity_default = 0.0001
 environmentTable.fogDensityOffset_default = 8
 environmentTable.cloudCover_default = 0.08
 environmentTable.cloudSpeed_default = 0.2
-environmentTable.dainDrops_default = 0
+environmentTable.rainDrops_default = 0
 environmentTable.dropSize_default = 1
 environmentTable.dropMinSpeed_default = 0.1
 environmentTable.dropMaxSpeed_default = 0.2
@@ -65,11 +68,13 @@ environmentTable.teleportTimeout_default = 5
 environmentTable.simSpeed_default = 1
 environmentTable.controlSimSpeed_default = false
 environmentTable.gravity_default = -9.81
+environmentTable.controlGravity_default = false
 environmentTable.tempCurveNoon_default = 38
 environmentTable.tempCurveDusk_default = 12
 environmentTable.tempCurveMidnight_default = -15
 environmentTable.tempCurveDawn_default = 12
 environmentTable.useTempCurve_default = false
+environmentTable.controlSun = ""
 environmentTable.ToD = ""
 environmentTable.timePlay = ""
 environmentTable.dayScale = ""
@@ -82,6 +87,7 @@ environmentTable.exposure = ""
 environmentTable.shadowDistance = ""
 environmentTable.shadowSoftness = ""
 environmentTable.shadowSplits = ""
+environmentTable.controlWeather = ""
 environmentTable.fogDensity = ""
 environmentTable.fogDensityOffset = ""
 environmentTable.cloudCover = ""
@@ -95,6 +101,7 @@ environmentTable.teleportTimeout = ""
 environmentTable.simSpeed = ""
 environmentTable.controlSimSpeed = ""
 environmentTable.gravity = ""
+environmentTable.controlGravity = ""
 environmentTable.tempCurveNoon = ""
 environmentTable.tempCurveDusk = ""
 environmentTable.tempCurveMidnight = ""
@@ -103,6 +110,7 @@ environmentTable.useTempCurve = ""
 
 local environment = CobaltDB.new("environment")
 local defaultEnvironment = {
+	controlSun = {value = environmentTable.controlSun_default, description = "Do we control everyone's sun?"},
 	ToD = {value = environmentTable.ToD_default, description = "What is the Time of Day?"},
 	timePlay = {value = environmentTable.timePlay_default, description = "Does time progress?"},
 	dayScale = {value = environmentTable.dayScale_default, description = "At what rate does daytime progress?"},
@@ -115,6 +123,7 @@ local defaultEnvironment = {
 	shadowDistance = {value = environmentTable.shadowDistance_default, description = "How far are the shadows?"},
 	shadowSoftness = {value = environmentTable.shadowSoftness_default, description = "How soft are the shadows?"},
 	shadowSplits = {value = environmentTable.shadowSplits_default, description = "How many splits are there for shadows?"},
+	controlWeather = {value = environmentTable.controlWeather_default, description = "Do we control everyone's weather?"},
 	fogDensity = {value = environmentTable.fogDensity_default, description = "How thicc is the fog?"},
 	fogDensityOffset = {value = environmentTable.fogDensityOffset_default, description = "How far away is the fog?"},
 	cloudCover = {value = environmentTable.cloudCover_default, description = "How thicc are the clouds?"},
@@ -128,6 +137,7 @@ local defaultEnvironment = {
 	simSpeed = {value = environmentTable.simSpeed_default, description = "At what rate does the simulation run?"},
 	controlSimSpeed = {value = environmentTable.controlSimSpeed_default, description = "Do we control everyone's sim speed?"},
 	gravity = {value = environmentTable.gravity_default, description = "At what rate do objects fall towards the ground?"},
+	controlGravity = {value = environmentTable.controlGravity_default, description = "Do we control everyone's gravity?"},
 	tempCurveNoon = {value = environmentTable.tempCurveNoon_default, description = "What is the custom temperature in C at noon?"},
 	tempCurveDusk = {value = environmentTable.tempCurveDusk_default, description = "What is the custom temperature in C at dusk?"},
 	tempCurveMidnight = {value = environmentTable.tempCurveMidnight_default, description = "What is the custom temperature in C at midnight?"},
@@ -314,6 +324,7 @@ local function onInit()
 	nametagsConfig.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
 	nametagsConfig.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
 	
+	environmentTable.controlSun = CobaltDB.query("environment", "controlSun", "value")
 	environmentTable.ToD = CobaltDB.query("environment", "ToD", "value")
 	environmentTable.timePlay = CobaltDB.query("environment", "timePlay", "value")
 	environmentTable.dayScale = CobaltDB.query("environment", "dayScale", "value")
@@ -326,6 +337,7 @@ local function onInit()
 	environmentTable.shadowDistance = CobaltDB.query("environment", "shadowDistance", "value")
 	environmentTable.shadowSoftness = CobaltDB.query("environment", "shadowSoftness", "value")
 	environmentTable.shadowSplits = CobaltDB.query("environment", "shadowSplits", "value")
+	environmentTable.controlWeather = CobaltDB.query("environment", "controlWeather", "value")
 	environmentTable.fogDensity = CobaltDB.query("environment", "fogDensity", "value")
 	environmentTable.fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
 	environmentTable.cloudCover = CobaltDB.query("environment", "cloudCover", "value")
@@ -339,6 +351,7 @@ local function onInit()
 	environmentTable.simSpeed = CobaltDB.query("environment", "simSpeed", "value")
 	environmentTable.controlSimSpeed = CobaltDB.query("environment", "controlSimSpeed", "value")
 	environmentTable.gravity = CobaltDB.query("environment", "gravity", "value")
+	environmentTable.controlGravity = CobaltDB.query("environment", "controlGravity", "value")
 	environmentTable.tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
 	environmentTable.tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
 	environmentTable.tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
@@ -437,6 +450,9 @@ local function txPlayersDatabase(player)
 		playersDatabase[k].banReason = players.database[playerName].banReason
 		if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
 			playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+			if playersDatabase[k].tempBanRemaining < 0 then
+				playersDatabase[k].tempBanRemaining = nil
+			end
 		end
 	end
 	
@@ -741,6 +757,7 @@ function CEISetEnv(senderID, data)
 		local key = data[1]
 		local value = data[2]
 		if key == "allWeather" then
+			environmentTable.controlWeather = environmentTable.controlWeather_default
 			environmentTable.fogDensity = environmentTable.fogDensity_default
 			environmentTable.fogDensityOffset = environmentTable.fogDensityOffset_default
 			environmentTable.cloudCover = environmentTable.cloudCover_default
@@ -751,6 +768,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.dropMaxSpeed = environmentTable.dropMaxSpeed_default
 			environmentTable.precipType = environmentTable.precipType_default
 		elseif key == "allSun" then
+			environmentTable.controlSun = environmentTable.controlSun_default
 			environmentTable.ToD = environmentTable.ToD_default
 			environmentTable.timePlay = environmentTable.timePlay_default
 			environmentTable.dayScale = environmentTable.dayScale_default
@@ -764,6 +782,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.shadowSoftness = environmentTable.shadowSoftness_default
 			environmentTable.shadowSplits = environmentTable.shadowSplits_default
 		elseif key == "all" then
+			environmentTable.controlSun = environmentTable.controlSun_default
 			environmentTable.ToD = environmentTable.ToD_default
 			environmentTable.timePlay = environmentTable.timePlay_default
 			environmentTable.dayScale = environmentTable.dayScale_default
@@ -776,6 +795,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.shadowDistance = environmentTable.shadowDistance_default
 			environmentTable.shadowSoftness = environmentTable.shadowSoftness_default
 			environmentTable.shadowSplits = environmentTable.shadowSplits_default
+			environmentTable.controlWeather = environmentTable.controlWeather_default
 			environmentTable.fogDensity = environmentTable.fogDensity_default
 			environmentTable.fogDensityOffset = environmentTable.fogDensityOffset_default
 			environmentTable.cloudCover = environmentTable.cloudCover_default
@@ -789,6 +809,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.simSpeed = environmentTable.simSpeed_default
 			environmentTable.simSpeed = environmentTable.controlSimSpeed_default
 			environmentTable.gravity = environmentTable.gravity_default
+			environmentTable.controlGravity = environmentTable.controlGravity_default
 			environmentTable.tempCurveNoon = environmentTable.tempCurveNoon_default
 			environmentTable.tempCurveDusk = environmentTable.tempCurveDusk_default
 			environmentTable.tempCurveMidnight = environmentTable.tempCurveMidnight_default
@@ -1152,10 +1173,10 @@ function CEIUnban(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
-		local reason = data[2]
-			MP.SendChatMessage(-1, targetName .. " was unbanned")
-			players.database[targetName].banned = false
-			players.database[targetName].banReason = reason or ""
+		local reason = data[2] or "No reason specified"
+		MP.SendChatMessage(-1, targetName .. " was unbanned for: " .. reason)
+		players.database[targetName].banned = false
+		players.database[targetName].banReason = reason
 	end
 end
 
@@ -1176,6 +1197,7 @@ function CEIBan(senderID, data)
 		else
 			players.database[targetName].banned = true
 			players.database[targetName].banReason = reason
+			MP.SendChatMessage(-1, targetName .. " was banned for: " .. reason)
 		end
 	end
 end
