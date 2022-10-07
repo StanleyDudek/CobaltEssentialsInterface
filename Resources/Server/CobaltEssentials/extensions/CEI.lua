@@ -1320,14 +1320,19 @@ function CEISetNametagWhitelist(senderID, data)
 	--CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
-		CobaltDB.set("nametags", "nametagsWhitelist", data[1], data[1])
-		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
-		local nametagWhitelistIterator = 0
-		nametagsConfig.whitelist = {}
-		for k,v in pairs(nametagsBlockingWhitelist) do
-			if k ~= "description" then
-				nametagWhitelistIterator = nametagWhitelistIterator + 1
-				nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+		local targetName = data[1]
+		if targetName == nil or targetName == "" then
+			MP.SendChatMessage(senderID, "Whitelist Name cannot be blank!")
+		else
+			CobaltDB.set("nametags", "nametagsWhitelist", targetName, targetName)
+			local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
+			local nametagWhitelistIterator = 0
+			nametagsConfig.whitelist = {}
+			for k,v in pairs(nametagsBlockingWhitelist) do
+				if k ~= "description" then
+					nametagWhitelistIterator = nametagWhitelistIterator + 1
+					nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+				end
 			end
 		end
 	end
@@ -1337,7 +1342,8 @@ function CEIRemoveNametagWhitelist(senderID, data)
 	--CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
-		CobaltDB.set("nametags", "nametagsWhitelist", data[1], nil)
+		local targetName = data[1]
+		CobaltDB.set("nametags", "nametagsWhitelist", targetName, nil)
 		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 		local nametagWhitelistIterator = 0
 		nametagsConfig.whitelist = {}
