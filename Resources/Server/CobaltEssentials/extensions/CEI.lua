@@ -348,6 +348,13 @@ local function onInit()
 	
 	cobaltConfig.interface.defaultState = CobaltDB.query("interface", "defaultCEIState", "value")
 	
+	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	
+	for k,v in pairs(playersDatabase) do
+		local playerName = string.gsub(v, ".json", "")
+		CobaltDB.new("playersDB/" .. playerName)
+	end
+		
 	CElog("CEI Loaded!", "CEI")
 end
 
@@ -422,6 +429,17 @@ end
 local function txPlayersDatabase(player)
 	
 	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	
+	for k,v in pairs(playersDatabase) do
+		local playerName = string.gsub(v, ".json", "")
+		playersDatabase[k] = {}
+		playersDatabase[k].playerName = playerName
+		playersDatabase[k].banned = players.database[playerName].banned
+		playersDatabase[k].banReason = players.database[playerName].banReason
+		if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+			playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+		end
+	end
 	
 	local data = Util.JsonEncode(playersDatabase)
 	
@@ -1135,13 +1153,18 @@ function CEIBan(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
-		local player = players.getPlayerByName(targetName)
 		local reason = data[2]
-		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+		local player = players.getPlayerByName(targetName)
+		if player then
+			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+				MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+			else
+				CC.ban(players[senderID], targetName, reason)
+				MP.SendChatMessage(-1, targetName .. " was banned for: " .. reason)
+			end
 		else
-			CC.ban(players[senderID], targetName, reason)
-			MP.SendChatMessage(-1, targetName .. " was banned for: " .. reason)
+			players.database[targetName].banned = true
+			players.database[targetName].banReason = reason
 		end
 	end
 end
@@ -1151,18 +1174,23 @@ function CEITempBan(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
-		local player = players.getPlayerByName(targetName)
 		local length = data[2]
 		local reason = data[3]
-		if reason == "" or reason == nil then
-			reason = "No reason specified"
-		end
-		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+		local player = players.getPlayerByName(targetName)
+		if player then
+			if reason == "" or reason == nil then
+				reason = "No reason specified"
+			end
+			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+				MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+			else
+				CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
+				CC.kick(players[senderID], targetName, "tempBan for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
+				MP.SendChatMessage(-1, targetName .. " was tempBanned for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
+			end
 		else
+			CobaltDB.new("playersDB/" .. targetName)
 			CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
-			CC.kick(players[senderID], targetName, "tempBan for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
-			MP.SendChatMessage(-1, targetName .. " was tempBanned for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
 		end
 	end
 end
