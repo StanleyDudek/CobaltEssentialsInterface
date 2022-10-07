@@ -6,8 +6,6 @@ M.COBALT_VERSION = "1.6.0"
 
 utils.setLogType("CEI",93)
 
-local CobaltDBport = 58933
-
 local tomlParser = require("toml")
 
 local loadedDatabases = {}
@@ -1157,8 +1155,7 @@ function CEIUnban(senderID, data)
 		local reason = data[2]
 			MP.SendChatMessage(-1, targetName .. " was unbanned")
 			players.database[targetName].banned = false
-			players.database[targetName].banReason = reason or ““
-		end
+			players.database[targetName].banReason = reason or ""
 	end
 end
 
