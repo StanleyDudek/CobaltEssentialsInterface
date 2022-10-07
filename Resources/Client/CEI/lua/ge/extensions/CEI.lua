@@ -2590,7 +2590,6 @@ local function drawCEI(dt)
 											im.Text("---> Banned, for: No reason specified")
 										end
 									end
-									im.PopStyleColor(3)
 									im.Separator()
 								end
 							end
