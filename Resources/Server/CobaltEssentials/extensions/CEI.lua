@@ -807,7 +807,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.precipType = environmentTable.precipType_default
 			environmentTable.teleportTimeout = environmentTable.teleportTimeout_default
 			environmentTable.simSpeed = environmentTable.simSpeed_default
-			environmentTable.simSpeed = environmentTable.controlSimSpeed_default
+			environmentTable.controlSimSpeed = environmentTable.controlSimSpeed_default
 			environmentTable.gravity = environmentTable.gravity_default
 			environmentTable.controlGravity = environmentTable.controlGravity_default
 			environmentTable.tempCurveNoon = environmentTable.tempCurveNoon_default
@@ -1176,7 +1176,8 @@ function CEIUnban(senderID, data)
 		local reason = data[2] or "No reason specified"
 		MP.SendChatMessage(-1, targetName .. " was unbanned for: " .. reason)
 		players.database[targetName].banned = false
-		players.database[targetName].banReason = reason
+		players.database[targetName].unbanReason = reason
+		players.database[targetName].banReason = nil
 	end
 end
 
@@ -1186,6 +1187,9 @@ function CEIBan(senderID, data)
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local reason = data[2]
+		if reason == "" or reason == nil then
+			reason = "No reason specified"
+		end
 		local player = players.getPlayerByName(targetName)
 		if player then
 			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
@@ -1209,11 +1213,11 @@ function CEITempBan(senderID, data)
 		local targetName = data[1]
 		local length = data[2]
 		local reason = data[3]
+		if reason == "" or reason == nil then
+			reason = "No reason specified"
+		end
 		local player = players.getPlayerByName(targetName)
 		if player then
-			if reason == "" or reason == nil then
-				reason = "No reason specified"
-			end
 			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
 				MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
 			else
@@ -1224,6 +1228,7 @@ function CEITempBan(senderID, data)
 		else
 			CobaltDB.new("playersDB/" .. targetName)
 			CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
+			players.database[targetName].banReason = reason
 		end
 	end
 end
