@@ -197,10 +197,11 @@ end
 
 local function rxPlayersDatabase(data)
 	playersDatabase = jsonDecode(data)
-	playersDatabase.input = {}	
+	
 	local tempFilterTable = {}
 	for k,v in pairs(playersDatabase) do
-		tempFilterTable[k] = v
+		local i = playersDatabase[k].playerName
+		tempFilterTable[k] = i
 	end
 	databaseInput.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 end
@@ -2539,8 +2540,8 @@ local function drawCEI(dt)
 					for i = 0, im.GetLengthArrayCharPtr(databaseInput.lines) - 1 do
 						if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], databaseInput.lines[i]) then
 							if type(k) == "number" then
-								local playerName = string.gsub(v, ".json", "")
-								if playerName == string.gsub(ffi.string(databaseInput.lines[i]), ".json", "") then
+								local playerName = playersDatabase[k].playerName
+								if playerName == ffi.string(databaseInput.lines[i]) then
 									im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
 									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
 									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
@@ -2555,12 +2556,27 @@ local function drawCEI(dt)
 									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
 									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
 									if im.SmallButton("Ban##" .. playerName) then
-										local data = jsonEncode( { playerName } )
+										local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
 										TriggerServerEvent("CEIBan", data)
 										log('W', logTag, "CEIBan Called: " .. data)
 									end
 									im.SameLine()
 									im.Text(playerName)
+									
+									if playersDatabase[k].tempBanRemaining then
+										im.SameLine()
+										im.Text("--- > tempBanned, " .. tostring(playersDatabase[k].tempBanRemaining) .. " seconds left")
+									end
+									
+									if playersDatabase[k].banned then
+										if playersDatabase[k].banReason then
+											im.SameLine()
+											im.Text("---> Banned, for: " .. playersDatabase[k].banReason)
+										else
+											im.SameLine()
+											im.Text("---> Banned, for: No reason specified")
+										end
+									end
 									im.PopStyleColor(3)
 									im.Separator()
 								end
