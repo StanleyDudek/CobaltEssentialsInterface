@@ -928,10 +928,14 @@ function CEISetNewVehiclePermsLevel(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
-		if CobaltDB.query("permissions", "vehicleCap", targetLevel) then
-			return
+		if targetLevel == nil or targetLevel == "" then
+			MP.SendChatMessage(senderID, "Level cannot be blank!")
 		else
-			CobaltDB.set("permissions", "vehicleCap", targetLevel, 1)
+			if CobaltDB.query("permissions", "vehicleCap", targetLevel) then
+				return
+			else
+				CobaltDB.set("permissions", "vehicleCap", targetLevel, 1)
+			end
 		end
 	end
 end
