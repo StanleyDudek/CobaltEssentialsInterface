@@ -26,6 +26,15 @@ local playersCurrentVehicle = {}
 
 local currentRole
 
+local playersDatabase
+
+local databaseInput = {}
+databaseInput.kickBanMuteReason = im.ArrayChar(128)
+databaseInput.tempBanLength = im.FloatPtr(1)
+
+local playersDatabaseFiltering = {}
+playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
+
 local roles = {}
 roles.owner = {}
 roles.admin = {}
@@ -136,11 +145,6 @@ local function rxEnvironment(data)
 	end
 end
 
-local function rxPlayerRole(data)
-	data = jsonDecode(data)
-	currentRole = data[1]
-end
-
 local function rxConfigData(data)
 	data = jsonDecode(data)
 	config.server = data[1]
@@ -184,6 +188,21 @@ local function rxConfigData(data)
 			end
 		end
 	end
+end
+
+local function rxPlayerRole(data)
+	data = jsonDecode(data)
+	currentRole = data[1]
+end
+
+local function rxPlayersDatabase(data)
+	playersDatabase = jsonDecode(data)
+	playersDatabase.input = {}	
+	local tempFilterTable = {}
+	for k,v in pairs(playersDatabase) do
+		tempFilterTable[k] = v
+	end
+	databaseInput.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 end
 
 local function rxPlayersData(data)
@@ -2496,20 +2515,64 @@ local function drawCEI(dt)
 ----------------------------------------------------------------------------------DATABASE TAB
 		if currentRole == "owner" or currentRole == "admin" or currentRole == "mod" then
 			if im.BeginTabItem("Database") then
-
-
-
-
-
-
-
-
-
+				im.Indent()
+		
+				im.Text("Reason:")
+				im.SameLine()
+				if im.InputTextWithHint("##", "Kick or (temp)Ban or Mute Reason", databaseInput.kickBanMuteReason, 128) then
+				end
+				im.Text("tempBan:")
+				im.SameLine()
+				im.PushItemWidth(120)
+				if im.InputFloat("##tempBanLength", databaseInput.tempBanLength, 0.001, 1) then
+					if databaseInput.tempBanLength[0] < 0.001 then
+						databaseInput.tempBanLength = im.FloatPtr(0.001)
+					elseif databaseInput.tempBanLength[0] > 3650 then
+						databaseInput.tempBanLength = im.FloatPtr(3650)
+					end
+				end
+				im.SameLine()
+				im.Text("days = " .. string.format("%.2f", (databaseInput.tempBanLength[0] * 1440)) .. " minutes")
+				im.PopItemWidth()
+				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+				for k,v in pairs(playersDatabase) do
+					for i = 0, im.GetLengthArrayCharPtr(databaseInput.lines) - 1 do
+						if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], databaseInput.lines[i]) then
+							if type(k) == "number" then
+								local playerName = string.gsub(v, ".json", "")
+								if playerName == string.gsub(ffi.string(databaseInput.lines[i]), ".json", "") then
+									im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
+									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
+									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
+									if im.SmallButton("TempBan##"..tostring(playerName)) then
+										local data = jsonEncode( { playerName, databaseInput.tempBanLength[0], ffi.string(databaseInput.kickBanMuteReason) } )
+										TriggerServerEvent("CEITempBan", data)
+										log('W', logTag, "CEITempBan Called: " .. data)
+									end
+									im.PopStyleColor(3)
+									im.SameLine()
+									im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
+									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
+									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
+									if im.SmallButton("Ban##" .. playerName) then
+										local data = jsonEncode( { playerName } )
+										TriggerServerEvent("CEIBan", data)
+										log('W', logTag, "CEIBan Called: " .. data)
+									end
+									im.SameLine()
+									im.Text(playerName)
+									im.PopStyleColor(3)
+									im.Separator()
+								end
+							end
+						end
+					end
+				end
+				im.Unindent()
 				im.EndTabItem()
 			end
 			im.EndTabBar()
 		end
-		
 	end
 	im.PopStyleColor(22)
 	im.End()
@@ -2992,8 +3055,9 @@ local function onExtensionLoaded()
 			currentMpLayout = nil
 		end
 	end
-	AddEventHandler("rxPlayerRole", rxPlayerRole)
 	AddEventHandler("rxPlayersData", rxPlayersData)
+	AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
+	AddEventHandler("rxPlayerRole", rxPlayerRole)
 	AddEventHandler("rxConfigData", rxConfigData)
 	AddEventHandler("rxEnvironment", rxEnvironment)
 	AddEventHandler("rxCEIstate", rxCEIstate)
