@@ -401,6 +401,7 @@ local function txData()
 			if MP.IsPlayerConnected(player.playerID) then
 				if player.permissions.group == "owner"  or player.permissions.group == "admin" or player.permissions.group == "mod" then
 					M.txPlayersData(player)
+					M.txPlayersDatabase(player)
 					M.txConfigData(player)
 					M.txPlayersRoles(player)
 					M.txEnvironment(player)
@@ -416,6 +417,16 @@ local function txData()
 			end
 		end
 	end
+end
+
+local function txPlayersDatabase(player)
+	
+	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	
+	local data = Util.JsonEncode(playersDatabase)
+	
+	MP.TriggerClientEvent(player.playerID, "rxPlayersDatabase", data)
+	
 end
 
 local function txEnvironment(player)
@@ -768,6 +779,8 @@ function CEISetEnv(senderID, data)
 			environmentTable.useTempCurve = environmentTable.useTempCurve_default
 		elseif value == "default" then
 			environmentTable[key] = environmentTable[key .. "_default"]
+		elseif tonumber(value) then
+			environmentTable[key] = tonumber(value)
 		else
 			environmentTable[key] = value
 		end
@@ -1294,10 +1307,10 @@ end
 
 local function onTick(age)
 	if environmentTable.timePlay == true then
-		if environmentTable.ToD >= 0.25 and environmentTable.ToD <= 0.75 then
-			environmentTable.ToD = environmentTable.ToD + (environmentTable.nightScale * 0.000555)
+		if tonumber(environmentTable.ToD) >= 0.25 and tonumber(environmentTable.ToD) <= 0.75 then
+			environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.nightScale * 0.000555)
 		else
-			environmentTable.ToD = environmentTable.ToD + (environmentTable.dayScale * 0.000555)
+			environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.dayScale * 0.000555)
 		end
 		if environmentTable.ToD > 1 then
 			environmentTable.ToD = environmentTable.ToD % 1
@@ -1500,6 +1513,7 @@ M.CEI = CEI
 M.cei = CEI
 
 M.txPlayersData = txPlayersData
+M.txPlayersDatabase = txPlayersDatabase
 M.txConfigData = txConfigData
 M.txPlayersRoles = txPlayersRoles
 M.txEnvironment = txEnvironment
