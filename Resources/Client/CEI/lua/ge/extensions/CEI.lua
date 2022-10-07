@@ -3,99 +3,52 @@
 local M = {}
 
 local logTag = "CEI"
-
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
 local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
-
+local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
+local currentRole
 local canTeleport
-
 local includeInRace = false
-
 local nametagWhitelisted = false
 local nametagBlockerActive = false
 local nametagBlockerTimeout
-
-local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
-
 local ignitionEnabled = {}
 local isFrozen = {}
-local playersCurrentVehicle = {}
-
-local currentRole
-
-local playersDatabase
-
 local databaseInput = {}
 databaseInput.kickBanMuteReason = im.ArrayChar(128)
 databaseInput.tempBanLength = im.FloatPtr(1)
 
+local environment = {}
+local players = {}
+local playersDatabase
 local playersDatabaseFiltering = {}
 playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 
-local roles = {}
-roles.owner = {}
-roles.admin = {}
-roles.mod = {}
-roles.player = {}
-roles.guest = {}
-roles.spectator = {}
-
-local self = {}
-
-local players = {}
-
 local config = {}
-
 local vehiclePermsFiltering = {}
 vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
-
-local environment = {}
-
-local timeUpdateQueued = false
-local timeUpdateTimer = 0
-local timeUpdateTimeout = 0.05
 
 local physics = {}
 physics.physmult = 1
 
+local timeUpdateQueued = false
+local timeUpdateTimer = 0
+local timeUpdateTimeout = 0.05
 local defaultTempCurve
 local defaultTempCurveSet = false
 local defaultSimSpeedSet = false
 local defaultGravitySet = false
 local defaultWeatherSet = false
 local defaultSunSet = false
-
-local randomEnvSeed = math.randomseed(os.time())
 local envReportRate = 1
 local lastEnvReport = 0
 local firstReport = false
-local envObjectIdCache = {}
-
 local lastTeleport = 0
-
 local worldReadyState = 0
-
-local function rxNametagWhitelisted(data)
-	data = jsonDecode(data)
-	nametagWhitelisted = data[1]
-end
-
-local function rxNametagBlockerActive(data)
-	data = jsonDecode(data)
-	nametagBlockerActive = data[1]
-end
-
-local function rxNametagBlockerTimeout(data)
-	data = jsonDecode(data)
-	if tonumber(data[1]) == 0 then
-		nametagBlockerTimeout = nil
-	else
-		nametagBlockerTimeout = tonumber(data[1])
-	end
-end
+local envObjectIdCache = {}
 
 local function rxCEIstate(data)
 	data = jsonDecode(data)
@@ -211,6 +164,25 @@ local function rxPlayersData(data)
 		players[playerID].vehDeleteReason = im.ArrayChar(128)
 		players[playerID].permissions.levelInt = im.IntPtr(tonumber(players[playerID].tempPermLevel))
 		players[playerID].permissions.groupInput = im.ArrayChar(128)
+	end
+end
+
+local function rxNametagWhitelisted(data)
+	data = jsonDecode(data)
+	nametagWhitelisted = data[1]
+end
+
+local function rxNametagBlockerActive(data)
+	data = jsonDecode(data)
+	nametagBlockerActive = data[1]
+end
+
+local function rxNametagBlockerTimeout(data)
+	data = jsonDecode(data)
+	if tonumber(data[1]) == 0 then
+		nametagBlockerTimeout = nil
+	else
+		nametagBlockerTimeout = tonumber(data[1])
 	end
 end
 
@@ -2108,8 +2080,8 @@ local function drawCEI(dt)
 					if im.InputFloat("##fogDensity", environment.fogDensityVal, 0.00001, 0.0001) then
 						if environment.fogDensityVal[0] < 0.00001 then
 							environment.fogDensityVal = im.FloatPtr(0.00001)
-						elseif environment.fogDensityVal[0] > 0.01 then
-							environment.fogDensityVal = im.FloatPtr(0.01)
+						elseif environment.fogDensityVal[0] > 0.2 then
+							environment.fogDensityVal = im.FloatPtr(0.2)
 						end
 						local data = jsonEncode( { "fogDensity", tostring(environment.fogDensityVal[0]) } )
 						TriggerServerEvent("CEISetEnv", data)
@@ -2644,17 +2616,29 @@ local function drawCEI(dt)
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								if playerName == ffi.string(databaseInput.lines[i]) then
-									im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
-									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
-									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
-									if im.SmallButton("TempBan##"..tostring(playerName)) then
-										local data = jsonEncode( { playerName, databaseInput.tempBanLength[0], ffi.string(databaseInput.kickBanMuteReason) } )
-										TriggerServerEvent("CEITempBan", data)
-										log('W', logTag, "CEITempBan Called: " .. data)
+									if playersDatabase[k].tempBanRemaining then
+										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
+										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
+										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
+										if im.SmallButton("UnTempBan##"..tostring(playerName)) then
+											local data = jsonEncode( { playerName, 0, ffi.string(databaseInput.kickBanMuteReason) } )
+											TriggerServerEvent("CEITempBan", data)
+											log('W', logTag, "CEITempBan Called: " .. data)
+										end
+										im.PopStyleColor(3)
+									else
+										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
+										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
+										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
+										if im.SmallButton("TempBan##"..tostring(playerName)) then
+											local data = jsonEncode( { playerName, databaseInput.tempBanLength[0], ffi.string(databaseInput.kickBanMuteReason) } )
+											TriggerServerEvent("CEITempBan", data)
+											log('W', logTag, "CEITempBan Called: " .. data)
+										end
+										im.PopStyleColor(3)
 									end
-									im.PopStyleColor(3)
-									im.SameLine()
 									if playersDatabase[k].banned then
+										im.SameLine()
 										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
 										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
@@ -2665,6 +2649,7 @@ local function drawCEI(dt)
 										end
 										im.PopStyleColor(3)
 									else
+										im.SameLine()
 										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
 										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
 										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
@@ -2677,19 +2662,32 @@ local function drawCEI(dt)
 									end
 									im.SameLine()
 									im.Text(playerName)
-									
 									if playersDatabase[k].tempBanRemaining then
 										im.SameLine()
-										im.Text("--- > tempBanned, " .. tostring(playersDatabase[k].tempBanRemaining) .. " seconds left")
-									end
-									
-									if playersDatabase[k].banned then
+										im.Text(">")
+										im.SameLine()
+										im.TextColored(im.ImVec4(0.9, 0.5, 0.0, 1.0), "TempBanned")
+										im.SameLine()
+										im.Text(tostring(string.format("%.0f",playersDatabase[k].tempBanRemaining)) .. " seconds left")
 										if playersDatabase[k].banReason then
 											im.SameLine()
-											im.Text("---> Banned, for: " .. playersDatabase[k].banReason)
+											im.Text("> Reason: " .. playersDatabase[k].banReason)
 										else
 											im.SameLine()
-											im.Text("---> Banned, for: No reason specified")
+											im.Text("> Reason: No reason specified")
+										end
+									end
+									if playersDatabase[k].banned then
+										im.SameLine()
+										im.Text(">")
+										im.SameLine()
+										im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Banned")
+										if playersDatabase[k].banReason then
+											im.SameLine()
+											im.Text("> Reason: " .. playersDatabase[k].banReason)
+										else
+											im.SameLine()
+											im.Text("> Reason: No reason specified")
 										end
 									end
 									im.Separator()
@@ -2794,7 +2792,7 @@ local function onUpdate(dt)
 		if environment.controlSun == true and defaultSunSet == true then
 			defaultSunSet = false
 		elseif environment.controlSun == true and defaultSunSet == false then
-			M.onTimePlay(environment.timePlay)
+			M.onTimePlay(environment.timePlay, dt)
 			if environment.ToD then
 				if firstReport == true then
 					if environment.timePlay == false or environment.timePlay == nil then
@@ -2964,8 +2962,15 @@ local function onTime(value)
 	core_environment.setTimeOfDay(timeOfDay)
 end
 
-local function onTimePlay(value)
+local function onTimePlay(value, dt)
 	local timeOfDay = core_environment.getTimeOfDay()
+	if dt then
+		if lastEnvReport + dt > envReportRate then
+			timeOfDay.play = false
+			core_environment.setTimeOfDay(timeOfDay)
+			M.onTime(environment.ToD)
+		end
+	end
 	timeOfDay.play = value
 	core_environment.setTimeOfDay(timeOfDay)
 end
