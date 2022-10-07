@@ -63,8 +63,10 @@ physics.physmult = 1
 
 local defaultTempCurve
 local defaultTempCurveSet = false
-
 local defaultSimSpeedSet = false
+local defaultGravitySet = false
+local defaultWeatherSet = false
+local defaultSunSet = false
 
 local randomEnvSeed = math.randomseed(os.time())
 local envReportRate = 1
@@ -138,11 +140,6 @@ local function rxEnvironment(data)
 	environment.tempCurveDuskInt = im.IntPtr(tonumber(environment.tempCurveDusk))
 	environment.tempCurveMidnightInt = im.IntPtr(tonumber(environment.tempCurveMidnight))
 	environment.tempCurveDawnInt = im.IntPtr(tonumber(environment.tempCurveDawn))
-	if environment.useTempCurve == true then
-		environment.useTempCurveVal = true
-	else
-		environment.useTempCurveVal = false
-	end
 end
 
 local function rxConfigData(data)
@@ -246,7 +243,6 @@ local function drawCEI(dt)
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
-	im.Begin("Cobalt Essentials Interface")
 	local tempToD = core_environment.getTimeOfDay()
 	local curSecs
 	if tempToD.time >= 0 and tempToD.time < 0.5 then
@@ -259,12 +255,13 @@ local function drawCEI(dt)
 	local curMins = math.floor(curSecs / 60) 
 	curSecs = curSecs - curMins * 60
 	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
-	im.Text("Current time: " .. currentTime)
-	im.SameLine()
 	local currentTempC = core_environment.getTemperatureK() - 273.15
 	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
 	local currentTempF = currentTempC * 9/5 + 32
 	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+	im.Begin("Cobalt Essentials Interface")
+	im.Text("Current time: " .. currentTime)
+	im.SameLine()
 	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	if nametagBlockerTimeout ~= nil then
 		im.Text("Nametags Blocked for:")
@@ -1523,8 +1520,11 @@ local function drawCEI(dt)
 							im.Text("		")
 							im.SameLine()
 							im.Text("Nametag Blocking: ")
-							if config.nametags.settings.blockingEnabled == true then
+							if config.nametags.settings.blockingEnabled then
 								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
 								if im.SmallButton("Enabled##NametagBlocking") then
 									local data = jsonEncode( { false } )
 									TriggerServerEvent("CEINametagSetting", data)
@@ -1533,13 +1533,18 @@ local function drawCEI(dt)
 									TriggerServerEvent("txNametagBlockerTimeout", data)
 									log('W', logTag, "txNametagBlockerTimeout Called: " .. data)
 								end
-							elseif config.nametags.settings.blockingEnabled == false then
+								im.PopStyleColor(3)
+							else
 								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
 								if im.SmallButton("Disabled##NametagBlocking") then
 								local data = jsonEncode( { true } )
 									TriggerServerEvent("CEINametagSetting", data)
 									log('W', logTag, "CEINametagSetting Called: " .. data)
 								end
+								im.PopStyleColor(3)
 							end
 							im.Text("		")
 							im.SameLine()
@@ -1623,22 +1628,29 @@ local function drawCEI(dt)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.Indent()
-							if environment.controlSimSpeed == false then
-								im.Text("Sim Speed Control Disabled: ")
+							im.Text("Sim Speed Control: ")
+							if environment.controlSimSpeed then
 								im.SameLine()
-								if im.SmallButton("Enable") then
-									local data = jsonEncode( { "controlSimSpeed", true } )
-									TriggerServerEvent("CEISetEnv", data)
-									log('W', logTag, "CEISetEnv Called: " .. data)
-								end
-							else
-								im.Text("Sim Speed Control Enabled: ")
-								im.SameLine()
-								if im.SmallButton("Disable") then
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled") then
 									local data = jsonEncode( { "controlSimSpeed", false } )
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
 								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled") then
+									local data = jsonEncode( { "controlSimSpeed", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
 							end
 							im.Text("Simulation: ")
 							im.SameLine()
@@ -1758,6 +1770,30 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.Indent()
+					im.Text("Sun Control: ")
+					if environment.controlSun then
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+						if im.SmallButton("Enabled") then
+							local data = jsonEncode( { "controlSun", false } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					else
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+						if im.SmallButton("Disabled") then
+							local data = jsonEncode( { "controlSun", true } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					end
 					im.Text("Time Play: ")
 					im.SameLine()
 					local timePlay = environment.timePlay
@@ -2041,6 +2077,31 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.Indent()
+					im.Text("Weather Control: ")
+					im.SameLine()
+					if environment.controlWeather then
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+						if im.SmallButton("Enabled") then
+							local data = jsonEncode( { "controlWeather", false } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					else
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+						if im.SmallButton("Disabled") then
+							local data = jsonEncode( { "controlWeather", true } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					end
 					im.Text("Fog Density: ")
 					im.SameLine()
 					im.PushItemWidth(100)
@@ -2243,8 +2304,35 @@ local function drawCEI(dt)
 						local data = jsonEncode( { "gravity", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "gravityControl", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.Indent()
+					im.Text("Gravity Control: ")
+					if environment.controlGravity then
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+						if im.SmallButton("Enabled") then
+							local data = jsonEncode( { "controlGravity", false } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					else
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+						if im.SmallButton("Disabled") then
+							local data = jsonEncode( { "controlGravity", true } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					end
 					im.Text("		")
 					im.SameLine()
 					im.PushItemWidth(130)
@@ -2372,6 +2460,9 @@ local function drawCEI(dt)
 						local data = jsonEncode( { "gravity", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "gravityControl", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 				end
 				im.Separator()
@@ -2395,26 +2486,25 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.Indent()
-					if environment.useTempCurve == false then
-						im.Text("Temperature Curve Control: ")
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-						if im.SmallButton("Disabled") then
-							local data = jsonEncode( { "useTempCurve", true } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopStyleColor(3)
-					else
-						im.Text("Temperature Curve Control: ")
+					im.Text("Temperature Curve Control: ")
+					if environment.useTempCurve then
 						im.SameLine()
 						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
 						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
 						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
 						if im.SmallButton("Enabled") then
 							local data = jsonEncode( { "useTempCurve", false } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopStyleColor(3)
+					else
+						im.SameLine()
+						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+						if im.SmallButton("Disabled") then
+							local data = jsonEncode( { "useTempCurve", true } )
 							TriggerServerEvent("CEISetEnv", data)
 							log('W', logTag, "CEISetEnv Called: " .. data)
 						end
@@ -2506,6 +2596,18 @@ local function drawCEI(dt)
 					im.SameLine()
 					if im.SmallButton("Reset##TMP") then
 						local data = jsonEncode( { "useTempCurve", false } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveNoon", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveDusk", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveMidnight", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "tempCurveDawn", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
@@ -2689,44 +2791,76 @@ local function onUpdate(dt)
 		end
 		checkVehicleState()
 		lastTeleport = lastTeleport + dt
-		M.onTimePlay(environment.timePlay)
-		if environment.ToD then
-			if firstReport == true then
-				if environment.timePlay == false or environment.timePlay == nil then
-					M.onTime(environment.ToD)
-				elseif timeUpdateQueued == true then
-					if timeUpdateTimer + dt > timeUpdateTimeout then
+		if environment.controlSun == true and defaultSunSet == true then
+			defaultSunSet = false
+		elseif environment.controlSun == true and defaultSunSet == false then
+			M.onTimePlay(environment.timePlay)
+			if environment.ToD then
+				if firstReport == true then
+					if environment.timePlay == false or environment.timePlay == nil then
 						M.onTime(environment.ToD)
-						timeUpdateQueued = false
-						timeUpdateTimer = 0
-						core_environment.reset()
-					else
-						timeUpdateTimer = timeUpdateTimer + dt
+					elseif timeUpdateQueued == true then
+						if timeUpdateTimer + dt > timeUpdateTimeout then
+							M.onTime(environment.ToD)
+							timeUpdateQueued = false
+							timeUpdateTimer = 0
+							core_environment.reset()
+						else
+							timeUpdateTimer = timeUpdateTimer + dt
+						end
 					end
+				else
+					M.onTime(environment.ToD)
+					firstReport = true
 				end
-			else
-				M.onTime(environment.ToD)
-				firstReport = true
 			end
+			M.onDayScale(environment.dayScale)
+			M.onNightScale(environment.nightScale)
+			M.onAzimuthOverride(environment.azimuthOverride)
+			M.onSunSize(environment.sunSize)
+			M.onSkyBrightness(environment.skyBrightness)
+			M.onSunLightBrightness(environment.sunLightBrightness)
+			M.onExposure(environment.exposure)
+			M.onShadowDistance(environment.shadowDistance)
+			M.onShadowSoftness(environment.shadowSoftness)
+			M.onShadowSplits(environment.shadowSplits)
+		elseif environment.controlSun == false and defaultSunSet == false then
+			M.onTimePlay(environment.timePlay_default)
+			M.onTime(environment.ToD_default)
+			M.onDayScale(environment.dayScale_default)
+			M.onNightScale(environment.nightScale_default)
+			M.onAzimuthOverride(environment.azimuthOverride_default)
+			M.onSunSize(environment.sunSize_default)
+			M.onSkyBrightness(environment.skyBrightness_default)
+			M.onSunLightBrightness(environment.sunLightBrightness_default)
+			M.onExposure(environment.exposure_default)
+			M.onShadowDistance(environment.shadowDistance_default)
+			M.onShadowSoftness(environment.shadowSoftness_default)
+			M.onShadowSplits(environment.shadowSplits_default)
+			defaultSunSet = true
 		end
-		M.onDayScale(environment.dayScale)
-		M.onNightScale(environment.nightScale)
-		M.onAzimuthOverride(environment.azimuthOverride)
-		M.onSunSize(environment.sunSize)
-		M.onSkyBrightness(environment.skyBrightness)
-		M.onSunLightBrightness(environment.sunLightBrightness)
-		M.onExposure(environment.exposure)
-		M.onShadowDistance(environment.shadowDistance)
-		M.onShadowSoftness(environment.shadowSoftness)
-		M.onShadowSplits(environment.shadowSplits)
-		M.onFogDensity(environment.fogDensity)
-		M.onFogDensityOffset(environment.fogDensityOffset)
-		M.onCloudCover(environment.cloudCover)
-		M.onCloudSpeed(environment.cloudSpeed)
-		M.onRainDrops(environment.rainDrops)
-		M.onDropSize(environment.dropSize)
-		M.onDropMinSpeed(environment.dropMinSpeed)
-		M.onDropMaxSpeed(environment.dropMaxSpeed)
+		if environment.controlWeather == true and defaultWeatherSet == true then
+			defaultWeatherSet = false
+		elseif environment.controlWeather == true and defaultWeatherSet == false then
+			M.onFogDensity(environment.fogDensity)
+			M.onFogDensityOffset(environment.fogDensityOffset)
+			M.onCloudCover(environment.cloudCover)
+			M.onCloudSpeed(environment.cloudSpeed)
+			M.onRainDrops(environment.rainDrops)
+			M.onDropSize(environment.dropSize)
+			M.onDropMinSpeed(environment.dropMinSpeed)
+			M.onDropMaxSpeed(environment.dropMaxSpeed)
+		elseif environment.controlWeather == false and defaultWeatherSet == false then
+			M.onFogDensity(environment.fogDensity_default)
+			M.onFogDensityOffset(environment.fogDensityOffset_default)
+			M.onCloudCover(environment.cloudCover_default)
+			M.onCloudSpeed(environment.cloudSpeed_default)
+			M.onRainDrops(environment.rainDrops_default)
+			M.onDropSize(environment.dropSize_default)
+			M.onDropMinSpeed(environment.dropMinSpeed_default)
+			M.onDropMaxSpeed(environment.dropMaxSpeed_default)
+			defaultWeatherSet = true
+		end
 		M.onSimSpeed(environment.simSpeed)
 		M.onTempCurve()
 		M.onGravity(environment.gravity)
@@ -2964,7 +3098,7 @@ end
 
 local function onTempCurve()
 	local tempCurve
-	if environment.useTempCurveVal == true and defaultTempCurveSet == false then
+	if environment.useTempCurve == true and defaultTempCurveSet == false then
 		local levelInfo = M.getObject("LevelInfo")
 		if not levelInfo then
 			return
@@ -2973,7 +3107,7 @@ local function onTempCurve()
 		if type(defaultTempCurve) == "table" then
 			defaultTempCurveSet = true
 		end
-	elseif environment.useTempCurveVal == false or environment.useTempCurveVal == nil then
+	elseif environment.useTempCurve == false or environment.useTempCurve == nil then
 		local levelInfo = M.getObject("LevelInfo")
 		if not levelInfo then
 			return
@@ -3003,9 +3137,6 @@ local function onTempCurve()
 end
 
 local function onSimSpeed(value)
-	if value == nil then
-		value = 1
-	end
 	if environment.controlSimSpeed == true and defaultSimSpeedSet == true then
 		defaultSimSpeedSet = false
 	elseif environment.controlSimSpeed == true and defaultSimSpeedSet == false then
@@ -3017,7 +3148,14 @@ local function onSimSpeed(value)
 end
 
 local function onGravity(value)
-	core_environment.setGravity(value)
+	if environment.controlGravity == true and defaultGravitySet == true then
+		defaultGravitySet = false
+	elseif environment.controlGravity == true and defaultGravitySet == false then
+		core_environment.setGravity(value)
+	elseif environment.controlGravity == false and defaultGravitySet == false then
+		core_environment.setGravity(-9.81)
+		defaultGravitySet = true
+	end
 end
 
 local function onWorldReadyState(state)
