@@ -2552,13 +2552,26 @@ local function drawCEI(dt)
 									end
 									im.PopStyleColor(3)
 									im.SameLine()
-									im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
-									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
-									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
-									if im.SmallButton("Ban##" .. playerName) then
-										local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
-										TriggerServerEvent("CEIBan", data)
-										log('W', logTag, "CEIBan Called: " .. data)
+									if playersDatabase[k].banned then
+										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
+										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
+										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
+										if im.SmallButton("Unban##" .. playerName) then
+											local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
+											TriggerServerEvent("CEIUnban", data)
+											log('W', logTag, "CEIUnban Called: " .. data)
+										end
+										im.PopStyleColor(3)
+									else
+										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
+										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
+										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
+										if im.SmallButton("Ban##" .. playerName) then
+											local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
+											TriggerServerEvent("CEIBan", data)
+											log('W', logTag, "CEIBan Called: " .. data)
+										end
+										im.PopStyleColor(3)
 									end
 									im.SameLine()
 									im.Text(playerName)
