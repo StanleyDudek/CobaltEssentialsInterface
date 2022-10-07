@@ -1372,14 +1372,16 @@ function CEISetTeleportPerm(senderID, data)
 end
 
 local function onTick(age)
-	if environmentTable.timePlay == true then
-		if tonumber(environmentTable.ToD) >= 0.25 and tonumber(environmentTable.ToD) <= 0.75 then
-			environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.nightScale * 0.000555)
-		else
-			environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.dayScale * 0.000555)
-		end
-		if environmentTable.ToD > 1 then
-			environmentTable.ToD = environmentTable.ToD % 1
+	if environmentTable.controlSun then
+		if environmentTable.timePlay == true then
+			if tonumber(environmentTable.ToD) >= 0.25 and tonumber(environmentTable.ToD) <= 0.75 then
+				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.nightScale * 0.000555)
+			else
+				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.dayScale * 0.000555)
+			end
+			if environmentTable.ToD > 1 then
+				environmentTable.ToD = environmentTable.ToD % 1
+			end
 		end
 	end
 	txData()
