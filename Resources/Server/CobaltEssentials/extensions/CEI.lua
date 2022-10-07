@@ -277,6 +277,7 @@ local function onInit()
 	MP.RegisterEvent("CEIVoteKick","CEIVoteKick")
 	MP.RegisterEvent("CEIKick","CEIKick")
 	MP.RegisterEvent("CEIBan","CEIBan")
+	MP.RegisterEvent("CEIUnban","CEIUnban")
 	MP.RegisterEvent("CEITempBan","CEITempBan")
 	MP.RegisterEvent("CEIMute","CEIMute")
 	MP.RegisterEvent("CEIUnmute","CEIUnmute")
@@ -1144,6 +1145,19 @@ function CEIKick(senderID, data)
 		else
 			CC.kick(players[senderID], targetName, reason)
 			MP.SendChatMessage(-1, targetName .. " was kicked for: " .. reason)
+		end
+	end
+end
+
+function CEIUnban(senderID, data)
+	--CElog("CEIUnban Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+		data = Util.JsonDecode(data)
+		local targetName = data[1]
+		local reason = data[2]
+			MP.SendChatMessage(-1, targetName .. " was unbanned")
+			players.database[targetName].banned = false
+			players.database[targetName].banReason = reason or ““
 		end
 	end
 end
