@@ -2615,82 +2615,101 @@ local function drawCEI(dt)
 						if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], databaseInput.lines[i]) then
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
-								if playerName == ffi.string(databaseInput.lines[i]) then
-									if playersDatabase[k].tempBanRemaining then
-										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
-										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
-										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
-										if im.SmallButton("UnTempBan##"..tostring(playerName)) then
-											local data = jsonEncode( { playerName, 0, ffi.string(databaseInput.kickBanMuteReason) } )
-											TriggerServerEvent("CEITempBan", data)
-											log('W', logTag, "CEITempBan Called: " .. data)
+								local playerBeammp = playersDatabase[k].beammp
+								if playerName ~= playerBeammp then
+									if playerName == ffi.string(databaseInput.lines[i]) then
+										if playersDatabase[k].tempBanRemaining then
+											im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
+											im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
+											im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
+											if im.SmallButton("UnTempBan##"..tostring(playerName)) then
+												local data = jsonEncode( { playerName, 0, ffi.string(databaseInput.kickBanMuteReason) } )
+												TriggerServerEvent("CEITempBan", data)
+												log('W', logTag, "CEITempBan Called: " .. data)
+											end
+											im.PopStyleColor(3)
+										else
+											im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
+											im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
+											im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
+											if im.SmallButton("TempBan##"..tostring(playerName)) then
+												local data = jsonEncode( { playerName, databaseInput.tempBanLength[0], ffi.string(databaseInput.kickBanMuteReason) } )
+												TriggerServerEvent("CEITempBan", data)
+												log('W', logTag, "CEITempBan Called: " .. data)
+											end
+											im.PopStyleColor(3)
 										end
-										im.PopStyleColor(3)
-									else
-										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
-										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
-										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
-										if im.SmallButton("TempBan##"..tostring(playerName)) then
-											local data = jsonEncode( { playerName, databaseInput.tempBanLength[0], ffi.string(databaseInput.kickBanMuteReason) } )
-											TriggerServerEvent("CEITempBan", data)
-											log('W', logTag, "CEITempBan Called: " .. data)
-										end
-										im.PopStyleColor(3)
-									end
-									if playersDatabase[k].banned then
-										im.SameLine()
-										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
-										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
-										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
-										if im.SmallButton("Unban##" .. playerName) then
-											local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
-											TriggerServerEvent("CEIUnban", data)
-											log('W', logTag, "CEIUnban Called: " .. data)
-										end
-										im.PopStyleColor(3)
-									else
-										im.SameLine()
-										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
-										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
-										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
-										if im.SmallButton("Ban##" .. playerName) then
-											local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
-											TriggerServerEvent("CEIBan", data)
-											log('W', logTag, "CEIBan Called: " .. data)
-										end
-										im.PopStyleColor(3)
-									end
-									im.SameLine()
-									im.Text(playerName)
-									if playersDatabase[k].tempBanRemaining then
-										im.SameLine()
-										im.Text(">")
-										im.SameLine()
-										im.TextColored(im.ImVec4(0.9, 0.5, 0.0, 1.0), "TempBanned")
-										im.SameLine()
-										im.Text(tostring(string.format("%.0f",playersDatabase[k].tempBanRemaining)) .. " seconds left")
-										if playersDatabase[k].banReason then
+										if playersDatabase[k].banned then
 											im.SameLine()
-											im.Text("> Reason: " .. playersDatabase[k].banReason)
+											im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
+											im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
+											im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
+											if im.SmallButton("Unban##" .. playerName) then
+												local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
+												TriggerServerEvent("CEIUnban", data)
+												log('W', logTag, "CEIUnban Called: " .. data)
+											end
+											im.PopStyleColor(3)
 										else
 											im.SameLine()
-											im.Text("> Reason: No reason specified")
+											im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
+											im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
+											im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
+											if im.SmallButton("Ban##" .. playerName) then
+												local data = jsonEncode( { playerName, ffi.string(databaseInput.kickBanMuteReason) } )
+												TriggerServerEvent("CEIBan", data)
+												log('W', logTag, "CEIBan Called: " .. data)
+											end
+											im.PopStyleColor(3)
 										end
-									end
-									if playersDatabase[k].banned then
 										im.SameLine()
-										im.Text(">")
-										im.SameLine()
-										im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Banned")
-										if playersDatabase[k].banReason then
-											im.SameLine()
-											im.Text("> Reason: " .. playersDatabase[k].banReason)
+										if playerBeammp then
+											if tonumber(playerBeammp) < 10 then
+												im.Text(playerBeammp .. "			 | " .. playerName)
+											elseif tonumber(playerBeammp) < 100 then
+												im.Text(playerBeammp .. "			| " .. playerName)
+											elseif tonumber(playerBeammp) < 1000 then
+												im.Text(playerBeammp .. "		 | " .. playerName)
+											elseif tonumber(playerBeammp) < 10000 then
+												im.Text(playerBeammp .. "		| " .. playerName)
+											elseif tonumber(playerBeammp) < 100000 then
+												im.Text(playerBeammp .. "	 | " .. playerName)
+											elseif tonumber(playerBeammp) < 1000000 then
+												im.Text(playerBeammp .. "	| " .. playerName)
+											end
 										else
-											im.SameLine()
-											im.Text("> Reason: No reason specified")
+											im.Text(tostring(playerBeammp) .. "			| " .. playerName)
 										end
+										if playersDatabase[k].tempBanRemaining then
+											im.SameLine()
+											im.Text(">")
+											im.SameLine()
+											im.TextColored(im.ImVec4(0.9, 0.5, 0.0, 1.0), "TempBanned")
+											im.SameLine()
+											im.Text(tostring(string.format("%.0f",playersDatabase[k].tempBanRemaining)) .. " seconds left")
+											if playersDatabase[k].banReason then
+												im.SameLine()
+												im.Text("> Reason: " .. playersDatabase[k].banReason)
+											else
+												im.SameLine()
+												im.Text("> Reason: No reason specified")
+											end
+										end
+										if playersDatabase[k].banned then
+											im.SameLine()
+											im.Text(">")
+											im.SameLine()
+											im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Banned")
+											if playersDatabase[k].banReason then
+												im.SameLine()
+												im.Text("> Reason: " .. playersDatabase[k].banReason)
+											else
+												im.SameLine()
+												im.Text("> Reason: No reason specified")
+											end
+										end
+										im.Separator()
 									end
-									im.Separator()
 								end
 							end
 						end
@@ -2768,6 +2787,7 @@ local function checkVehicleState(gameVehicleID, argument)
 	end
 	for k,v in pairs(isFrozen) do
 		if v == true then
+			local veh = be:getObjectByID(k)
 			local veh = be:getObjectByID(k)
 			veh:queueLuaCommand('controller.setFreeze(1)')
 		end
