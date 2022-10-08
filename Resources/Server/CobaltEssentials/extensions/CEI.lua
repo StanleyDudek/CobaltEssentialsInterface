@@ -439,15 +439,20 @@ local function txData()
 end
 
 local function txPlayersDatabase(player)
-	
 	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
-	
 	for k,v in pairs(playersDatabase) do
 		local playerName = string.gsub(v, ".json", "")
 		playersDatabase[k] = {}
 		playersDatabase[k].playerName = playerName
-		playersDatabase[k].banned = players.database[playerName].banned
-		playersDatabase[k].banReason = players.database[playerName].banReason
+		playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+		playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
+		if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+			playersDatabase[k].UI = CobaltDB.query("playersDB/" .. playerName, "UI", "value")
+		end
+		playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+		if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+			playersDatabase[k].banReason = players.database[playerName].banReason
+		end
 		if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
 			playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
 			if playersDatabase[k].tempBanRemaining < 0 then
@@ -455,11 +460,8 @@ local function txPlayersDatabase(player)
 			end
 		end
 	end
-	
 	local data = Util.JsonEncode(playersDatabase)
-	
 	MP.TriggerClientEvent(player.playerID, "rxPlayersDatabase", data)
-	
 end
 
 local function txEnvironment(player)
@@ -476,6 +478,9 @@ local function txPlayersData(player)
 			playersTable[player.playerID] = {
 					playerID = player.playerID,
 					playerName = player.name,
+					beammp = player.beammp,
+					ip = player.ip,
+					UI = player.UI,
 					connectStage = player.connectStage,
 					guest = player.guest,
 					joinTime = player.joinTime / 1000,
@@ -1195,6 +1200,11 @@ function CEIUnban(senderID, data)
 		players.database[targetName].banned = false
 		players.database[targetName].unbanReason = reason
 		players.database[targetName].banReason = nil
+		local beammp = CobaltDB.query("playersDB/" .. targetName, "beammp", "value")
+		CobaltDB.set("playersDB/" .. targetName, "banned", "value", false)
+		CobaltDB.set("playersDB/" .. targetName, "unbanReason", "value", reason)
+		CobaltDB.set("playersDB/" .. beammp, "banned", "value", false)
+		CobaltDB.set("playersDB/" .. beammp, "unbanReason", "value", reason)
 	end
 end
 
@@ -1220,6 +1230,11 @@ function CEIBan(senderID, data)
 			players.database[targetName].banReason = reason
 			MP.SendChatMessage(-1, targetName .. " was banned for: " .. reason)
 		end
+		local beammp = CobaltDB.query("playersDB/" .. targetName, "beammp", "value")
+		CobaltDB.set("playersDB/" .. targetName, "banned", "value", true)
+		CobaltDB.set("playersDB/" .. targetName, "banReason", "value", reason)
+		CobaltDB.set("playersDB/" .. beammp, "banned", "value", true)
+		CobaltDB.set("playersDB/" .. beammp, "banReason", "value", reason)
 	end
 end
 
@@ -1501,9 +1516,50 @@ function onPlayerAuthHandler(player_name, player_role, is_guest)
 	tempPCV[player_name] = "none"
 end
 
+local function onPlayerConnecting(player)
+	
+end
+
 local function onPlayerJoining(player)
 	tempPlayers[player.name].tempPermLevel = player.permissions.level
 	tempPlayers[player.name].player_id = player.playerID
+	
+	local identifiers = MP.GetPlayerIdentifiers(player.playerID)
+	CobaltDB.new("playersDB/" .. identifiers.beammp)
+	if players.database[player.name].beammp == nil then
+		players.database[player.name].beammp = identifiers.beammp
+		CobaltDB.set("playersDB/" .. player.name, "beammp", "value", identifiers.beammp)
+		CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+	end
+	if players.database[player.name].ip == nil then
+		players.database[player.name].ip = identifiers.ip
+		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
+		CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
+	else
+		players.database[player.name].ip = identifiers.ip
+		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
+	end
+	if players.database[player.name].UI == nil then
+		players.database[player.name].UI = true
+		CobaltDB.set("playersDB/" .. player.name, "UI", "value", true)
+	end
+	if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
+		local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
+		player:kick(reason)
+	end
+	
+	if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
+		CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
+	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == false then
+	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
+		local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
+		CobaltDB.set("playersDB/" .. player.name, "banned", "value", true)
+		CobaltDB.set("playersDB/" .. player.name, "banReason", "value", reason)
+		players.database[player.name].banned = true
+		players.database[player.name].banReason = reason
+		player:kick(reason)
+	end
+	
 end
 
 local function onPlayerJoin(player)
