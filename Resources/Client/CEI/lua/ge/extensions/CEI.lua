@@ -215,26 +215,28 @@ local function drawCEI(dt)
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
+	im.Begin("Cobalt Essentials Interface")
 	local tempToD = core_environment.getTimeOfDay()
 	local curSecs
-	if tempToD.time >= 0 and tempToD.time < 0.5 then
-		curSecs = tempToD.time * 86400 + 43200
-	elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
-		curSecs = tempToD.time * 86400 - 43200
+	if tempToD then
+		if tempToD.time >= 0 and tempToD.time < 0.5 then
+			curSecs = tempToD.time * 86400 + 43200
+		elseif tempToD.time >= 0.5 and tempToD.time <= 1 then
+			curSecs = tempToD.time * 86400 - 43200
+		end
+		local curHours = math.floor(curSecs / 3600 )
+		curSecs = curSecs - curHours * 3600
+		local curMins = math.floor(curSecs / 60) 
+		curSecs = curSecs - curMins * 60
+		local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+		im.Text("Current time: " .. currentTime)
+		local currentTempC = core_environment.getTemperatureK() - 273.15
+		local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
+		local currentTempF = currentTempC * 9/5 + 32
+		local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+		im.SameLine()
+		im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	end
-	local curHours = math.floor(curSecs / 3600 )
-	curSecs = curSecs - curHours * 3600
-	local curMins = math.floor(curSecs / 60) 
-	curSecs = curSecs - curMins * 60
-	local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
-	local currentTempC = core_environment.getTemperatureK() - 273.15
-	local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
-	local currentTempF = currentTempC * 9/5 + 32
-	local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
-	im.Begin("Cobalt Essentials Interface")
-	im.Text("Current time: " .. currentTime)
-	im.SameLine()
-	im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	if nametagBlockerTimeout ~= nil then
 		im.Text("Nametags Blocked for:")
 		im.SameLine()
@@ -3045,21 +3047,25 @@ end
 
 local function onTime(value)
 	local timeOfDay = core_environment.getTimeOfDay()
-	timeOfDay.time = value
-	core_environment.setTimeOfDay(timeOfDay)
+	if timeOfDay then
+		timeOfDay.time = value
+		core_environment.setTimeOfDay(timeOfDay)
+	end
 end
 
 local function onTimePlay(value, dt)
 	local timeOfDay = core_environment.getTimeOfDay()
-	if dt then
-		if lastEnvReport + dt > envReportRate then
-			timeOfDay.play = false
-			core_environment.setTimeOfDay(timeOfDay)
-			M.onTime(environment.ToD)
+	if timeOfDay then
+		if dt then
+			if lastEnvReport + dt > envReportRate then
+				timeOfDay.play = false
+				core_environment.setTimeOfDay(timeOfDay)
+				M.onTime(environment.ToD)
+			end
 		end
+		timeOfDay.play = value
+		core_environment.setTimeOfDay(timeOfDay)
 	end
-	timeOfDay.play = value
-	core_environment.setTimeOfDay(timeOfDay)
 end
 
 local function onDayScale(value)
@@ -3067,8 +3073,10 @@ local function onDayScale(value)
 	else
 		local value2 = value / physics.physmult
 		local timeOfDay = core_environment.getTimeOfDay()
-		timeOfDay.dayScale = value2
-		core_environment.setTimeOfDay(timeOfDay)
+		if timeOfDay then
+			timeOfDay.dayScale = value2
+			core_environment.setTimeOfDay(timeOfDay)
+		end
 	end
 end
 
@@ -3077,15 +3085,19 @@ local function onNightScale(value)
 	else
 		local value2 = value / physics.physmult
 		local timeOfDay = core_environment.getTimeOfDay()
-		timeOfDay.nightScale = value2
-		core_environment.setTimeOfDay(timeOfDay)
+		if timeOfDay then
+			timeOfDay.nightScale = value2
+			core_environment.setTimeOfDay(timeOfDay)
+		end
 	end
 end
 
 local function onAzimuthOverride(value)
 	local timeOfDay = core_environment.getTimeOfDay()
-	timeOfDay.azimuthOverride = value
-	core_environment.setTimeOfDay(timeOfDay)
+	if timeOfDay then
+		timeOfDay.azimuthOverride = value
+		core_environment.setTimeOfDay(timeOfDay)
+	end
 end
 
 local function onSunSize(value)
