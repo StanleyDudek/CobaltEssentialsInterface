@@ -3384,7 +3384,7 @@ end
 
 local function onExtensionUnloaded()
 	log('W', logTag, "-=$=- RESETTING UI APPS -=$=-")
-	jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", originalMpLayout)
+	jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", originalMpLayout, 1)
 	log('W', logTag, "-=$=- CEI UNLOADED -=$=-")
 end
 
