@@ -68,6 +68,7 @@ end
 local function rxEnvironment(data)
 	environment = jsonDecode(data)
 	environment.ToDVal = im.FloatPtr(tonumber(environment.ToD))
+	environment.dayLengthInt = im.IntPtr(tonumber(environment.dayLength))
 	environment.dayScaleVal = im.FloatPtr(tonumber(environment.dayScale))
 	environment.nightScaleVal = im.FloatPtr(tonumber(environment.nightScale))
 	environment.azimuthOverrideVal = im.FloatPtr(tonumber(environment.azimuthOverride))
@@ -1811,6 +1812,38 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 						timeUpdateQueued = true
 					end
+					im.Text("Day Length: ")
+					im.SameLine()
+					im.PushItemWidth(110)
+					if im.InputInt("##dayLength", environment.dayLengthInt, 1, 10) then
+						if environment.dayLengthInt[0] < 1 then
+							environment.dayLengthInt = im.IntPtr(1)
+						elseif environment.dayLengthInt[0] > 14400 then
+							environment.dayLengthInt = im.IntPtr(14400)
+						end
+						local data = jsonEncode( { "dayLength", tostring(environment.dayLengthInt[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##DL") then
+						local data = jsonEncode( { "dayLength", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.SameLine()
+					if im.SmallButton("Realtime##DS") then
+						local data = jsonEncode( { "dayLength", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "dayScale", 0.0208333333 } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+						data = jsonEncode( { "nightScale", 0.0208333333 } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
 					im.Text("Day Scale: ")
 					im.SameLine()
 					im.PushItemWidth(110)
@@ -1826,12 +1859,6 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Realtime##DS") then
-						local data = jsonEncode( { "dayScale", 0.020855 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
 					im.SameLine()
 					if im.SmallButton("Reset##DS") then
 						local data = jsonEncode( { "dayScale", "default" } )
@@ -1853,12 +1880,6 @@ local function drawCEI(dt)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Realtime##NS") then
-						local data = jsonEncode( { "nightScale", 0.020855 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
 					im.SameLine()
 					if im.SmallButton("Reset##NS") then
 						local data = jsonEncode( { "nightScale", "default" } )
@@ -2901,6 +2922,7 @@ local function onUpdate(dt)
 					firstReport = true
 				end
 			end
+			M.onDayLength(environment.dayLength)
 			M.onDayScale(environment.dayScale)
 			M.onNightScale(environment.nightScale)
 			M.onAzimuthOverride(environment.azimuthOverride)
@@ -3049,6 +3071,7 @@ local function onTime(value)
 	local timeOfDay = core_environment.getTimeOfDay()
 	if timeOfDay then
 		timeOfDay.time = value
+		timeOfDay.dayLength = 1800
 		core_environment.setTimeOfDay(timeOfDay)
 	end
 end
@@ -3060,7 +3083,9 @@ local function onTimePlay(value, dt)
 			if lastEnvReport + dt > envReportRate then
 				timeOfDay.play = false
 				core_environment.setTimeOfDay(timeOfDay)
-				M.onTime(environment.ToD)
+				if timeOfDay.time > environment.ToD + 0.00625 or timeOfDay.time < environment.ToD - 0.00625 then
+					M.onTime(environment.ToD)
+				end
 			end
 		end
 		timeOfDay.play = value
@@ -3075,6 +3100,17 @@ local function onDayScale(value)
 		local timeOfDay = core_environment.getTimeOfDay()
 		if timeOfDay then
 			timeOfDay.dayScale = value2
+			core_environment.setTimeOfDay(timeOfDay)
+		end
+	end
+end
+
+local function onDayLength(value)
+	if value == nil then
+	else
+		local timeOfDay = core_environment.getTimeOfDay()
+		if timeOfDay then
+			timeOfDay.dayLength = value
 			core_environment.setTimeOfDay(timeOfDay)
 		end
 	end
@@ -3395,6 +3431,7 @@ M.setPhysicsSpeed = setPhysicsSpeed
 
 M.onTime = onTime
 M.onTimePlay = onTimePlay
+M.onDayLength = onDayLength
 M.onDayScale = onDayScale
 M.onNightScale = onNightScale
 M.onAzimuthOverride = onAzimuthOverride
