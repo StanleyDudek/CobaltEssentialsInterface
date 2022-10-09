@@ -37,12 +37,13 @@ local defaultNametagsBlockingTimeout = 300
 local defaultNametagsBlockingWhitelist = "exampleName"
 
 local environmentLogTimer = 0
-local environmentLogInterval = 10
+local environmentLogInterval = 60
 
 local environmentTable = {}
 environmentTable.controlSun_default = false
 environmentTable.ToD_default = 0.1
 environmentTable.timePlay_default = false
+environmentTable.dayLength_default = 1800
 environmentTable.dayScale_default = 1
 environmentTable.nightScale_default = 2
 environmentTable.azimuthOverride_default = 0
@@ -77,6 +78,7 @@ environmentTable.useTempCurve_default = false
 environmentTable.controlSun = ""
 environmentTable.ToD = ""
 environmentTable.timePlay = ""
+environmentTable.dayLength = ""
 environmentTable.dayScale = ""
 environmentTable.nightScale = ""
 environmentTable.azimuthOverride = ""
@@ -113,6 +115,7 @@ local defaultEnvironment = {
 	controlSun = {value = environmentTable.controlSun_default, description = "Do we control everyone's sun?"},
 	ToD = {value = environmentTable.ToD_default, description = "What is the Time of Day?"},
 	timePlay = {value = environmentTable.timePlay_default, description = "Does time progress?"},
+	dayLength = {value = environmentTable.dayLength_default, description = "How long is the day?"},
 	dayScale = {value = environmentTable.dayScale_default, description = "At what rate does daytime progress?"},
 	nightScale = {value = environmentTable.nightScale_default, description = "At what rate does nighttime progress?"},
 	azimuthOverride = {value = environmentTable.azimuthOverride_default, description = "At what position on the horizon does the sun rise and set?"},
@@ -327,6 +330,7 @@ local function onInit()
 	environmentTable.controlSun = CobaltDB.query("environment", "controlSun", "value")
 	environmentTable.ToD = CobaltDB.query("environment", "ToD", "value")
 	environmentTable.timePlay = CobaltDB.query("environment", "timePlay", "value")
+	environmentTable.dayLength = CobaltDB.query("environment", "dayLength", "value")
 	environmentTable.dayScale = CobaltDB.query("environment", "dayScale", "value")
 	environmentTable.nightScale = CobaltDB.query("environment", "nightScale", "value")
 	environmentTable.azimuthOverride = CobaltDB.query("environment", "azimuthOverride", "value")
@@ -786,6 +790,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.ToD = environmentTable.ToD_default
 			environmentTable.timePlay = environmentTable.timePlay_default
 			environmentTable.dayScale = environmentTable.dayScale_default
+			environmentTable.dayLength = environmentTable.dayLength_default
 			environmentTable.nightScale = environmentTable.nightScale_default
 			environmentTable.azimuthOverride = environmentTable.azimuthOverride_default
 			environmentTable.sunSize = environmentTable.sunSize_default
@@ -799,6 +804,7 @@ function CEISetEnv(senderID, data)
 			environmentTable.controlSun = environmentTable.controlSun_default
 			environmentTable.ToD = environmentTable.ToD_default
 			environmentTable.timePlay = environmentTable.timePlay_default
+			environmentTable.dayLength = environmentTable.dayLength_default
 			environmentTable.dayScale = environmentTable.dayScale_default
 			environmentTable.nightScale = environmentTable.nightScale_default
 			environmentTable.azimuthOverride = environmentTable.azimuthOverride_default
@@ -1413,9 +1419,9 @@ local function onTick(age)
 	if environmentTable.controlSun then
 		if environmentTable.timePlay == true then
 			if tonumber(environmentTable.ToD) >= 0.25 and tonumber(environmentTable.ToD) <= 0.75 then
-				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.nightScale * 0.000555)
+				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.nightScale * (1 / environmentTable.dayLength))
 			else
-				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.dayScale * 0.000555)
+				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.dayScale * (1 / environmentTable.dayLength))
 			end
 			if environmentTable.ToD > 1 then
 				environmentTable.ToD = environmentTable.ToD % 1
