@@ -3357,7 +3357,7 @@ local function onExtensionLoaded()
 			raceCountdown.placement.top = "40px"
 			raceCountdown.placement.width = "690px"
 			table.insert(currentMpLayout.apps, raceCountdown)
-			jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", currentMpLayout)
+			jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", currentMpLayout, 1)
 			currentMpLayout = nil
 		end
 	end
