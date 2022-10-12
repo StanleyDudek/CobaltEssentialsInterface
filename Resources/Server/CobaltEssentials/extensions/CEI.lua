@@ -1181,17 +1181,16 @@ function CEIKick(senderID, data)
 	--CElog("CEIKick Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
-		local playerID = tonumber(data[1])
+		local target = players.getPlayerByName(data[1])
 		local reason = data[2]
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
-		local targetName = players[playerID].name
-		if players[tonumber(senderID)].permissions.level < players[tonumber(data[1])].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data[1])].name .. "!")
+		if players[tonumber(senderID)].permissions.level < target.permissions.level then
+			MP.SendChatMessage(senderID, "You cannot affect " ..  target.name .. "!")
 		else
-			CC.kick(players[senderID], targetName, reason)
-			MP.SendChatMessage(-1, targetName .. " was kicked for: " .. reason)
+			target:kick(reason)
+			MP.SendChatMessage(-1, target.name .. " was kicked for: " .. reason)
 		end
 	end
 end
