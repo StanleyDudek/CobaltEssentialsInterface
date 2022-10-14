@@ -6,10 +6,10 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 ## Features:
 
 * Owner / Administrator / Moderator / Default interfaces based on groups!
-* Manipulation of player permissions, vehicle and parts permissions, CE and base server configuration, sun control and sync, weather control and sync, simulation speed control and sync, gravity control and sync, custom temperature curve control and sync, teleportation control and timeout, nametag whitelisting and timer based nametag hiding, all via the interface!
+* Manipulation of player permissions, vehicle and parts permissions, CE and base server configuration, sun control and sync, weather control and sync, simulation speed control and sync, gravity control and sync, custom temperature curve control and sync, teleportation control and timeout, nametag whitelisting and timer based nametag hiding, server-wide and per-vehicle remote start/stop and freeze/unfreeze.
 * voteKick, Kick, Ban, TempBan, Mute, Whitelist
 * Handy `Join Race` and `Race Countdown!` buttons to freeze all players in place, notify and countdown, and then release everyone for perfect race starts!
-* And more!
+* And more, all via the interface!
 
 ## Pre-requisites:
 
