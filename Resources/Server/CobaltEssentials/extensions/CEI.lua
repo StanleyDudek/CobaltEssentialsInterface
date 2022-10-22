@@ -20,135 +20,165 @@ local tempPCV = {}
 
 local kickThresh
 
-local serverConfig = {}
-local cobaltConfig = {}
-cobaltConfig.whitelistedPlayers = {}
-cobaltConfig.permissions = {}
-cobaltConfig.permissions.vehiclePerm = {}
-cobaltConfig.interface = {}
-cobaltConfig.interface.defaultState = true
-
-local nametagsConfig = {}
-nametagsConfig.whitelist = {}
-nametagsConfig.settings = {}
+local config = {}
+config.server = {}
+config.cobalt = {}
+config.cobalt.whitelistedPlayers = {}
+config.cobalt.permissions = {}
+config.cobalt.permissions.vehiclePerm = {}
+config.cobalt.interface = {}
+config.cobalt.interface.defaultState = true
+config.cobalt.groups = {}
+config.nametags = {}
+config.nametags.whitelist = {}
+config.nametags.settings = {}
+config.resets = {}
+config.resets.control_default = false
+config.resets.messageDuration_default = 5
+config.resets.enabled_default = true
+config.resets.timeout_default = 10
+config.resets.title_default = "Vehicle Reset Limiter"
+config.resets.elapsedMessage_default = "You can now reset your vehicle."
+config.resets.message_default = "You can reset your vehicle in {secondsLeft} seconds."
+config.resets.disabledMessage_default = "Vehicle resetting is disabled on this server."
+config.resets.control = ""
+config.resets.messageDuration = ""
+config.resets.enabled = ""
+config.resets.timeout = ""
+config.resets.title = ""
+config.resets.elapsedMessage = ""
+config.resets.message = ""
+config.resets.disabledMessage = ""
 
 local defaultNametagsBlockingEnabled = false
 local defaultNametagsBlockingTimeout = 300
 local defaultNametagsBlockingWhitelist = "exampleName"
 
-local environmentLogTimer = 0
-local environmentLogInterval = 60
+local logTimer = 0
+local logInterval = 30
 
-local environmentTable = {}
-environmentTable.controlSun_default = false
-environmentTable.ToD_default = 0.1
-environmentTable.timePlay_default = false
-environmentTable.dayLength_default = 1800
-environmentTable.dayScale_default = 1
-environmentTable.nightScale_default = 2
-environmentTable.azimuthOverride_default = 0
-environmentTable.sunSize_default = 1
-environmentTable.skyBrightness_default = 40
-environmentTable.sunLightBrightness_default = 1
-environmentTable.exposure_default = 1
-environmentTable.shadowDistance_default = 1600
-environmentTable.shadowSoftness_default = 0.2
-environmentTable.shadowSplits_default = 4
-environmentTable.controlWeather_default = false
-environmentTable.fogDensity_default = 0.0001
-environmentTable.fogDensity_default = 0.0001
-environmentTable.fogDensityOffset_default = 8
-environmentTable.cloudCover_default = 0.08
-environmentTable.cloudSpeed_default = 0.2
-environmentTable.rainDrops_default = 0
-environmentTable.dropSize_default = 1
-environmentTable.dropMinSpeed_default = 0.1
-environmentTable.dropMaxSpeed_default = 0.2
-environmentTable.precipType_default = "rain_medium"
-environmentTable.teleportTimeout_default = 5
-environmentTable.simSpeed_default = 1
-environmentTable.controlSimSpeed_default = false
-environmentTable.gravity_default = -9.81
-environmentTable.controlGravity_default = false
-environmentTable.tempCurveNoon_default = 38
-environmentTable.tempCurveDusk_default = 12
-environmentTable.tempCurveMidnight_default = -15
-environmentTable.tempCurveDawn_default = 12
-environmentTable.useTempCurve_default = false
-environmentTable.controlSun = ""
-environmentTable.ToD = ""
-environmentTable.timePlay = ""
-environmentTable.dayLength = ""
-environmentTable.dayScale = ""
-environmentTable.nightScale = ""
-environmentTable.azimuthOverride = ""
-environmentTable.sunSize = ""
-environmentTable.skyBrightness = ""
-environmentTable.sunLightBrightness = ""
-environmentTable.exposure = ""
-environmentTable.shadowDistance = ""
-environmentTable.shadowSoftness = ""
-environmentTable.shadowSplits = ""
-environmentTable.controlWeather = ""
-environmentTable.fogDensity = ""
-environmentTable.fogDensityOffset = ""
-environmentTable.cloudCover = ""
-environmentTable.cloudSpeed = ""
-environmentTable.rainDrops = ""
-environmentTable.dropSize = ""
-environmentTable.dropMinSpeed = ""
-environmentTable.dropMaxSpeed = ""
-environmentTable.precipType = ""
-environmentTable.teleportTimeout = ""
-environmentTable.simSpeed = ""
-environmentTable.controlSimSpeed = ""
-environmentTable.gravity = ""
-environmentTable.controlGravity = ""
-environmentTable.tempCurveNoon = ""
-environmentTable.tempCurveDusk = ""
-environmentTable.tempCurveMidnight = ""
-environmentTable.tempCurveDawn = ""
-environmentTable.useTempCurve = ""
+local environment = {}
+environment.controlSun_default = false
+environment.ToD_default = 0.1
+environment.timePlay_default = false
+environment.dayLength_default = 1800
+environment.dayScale_default = 1
+environment.nightScale_default = 2
+environment.azimuthOverride_default = 0
+environment.sunSize_default = 1
+environment.skyBrightness_default = 40
+environment.sunLightBrightness_default = 1
+environment.exposure_default = 1
+environment.shadowDistance_default = 1600
+environment.shadowSoftness_default = 0.2
+environment.shadowSplits_default = 4
+environment.controlWeather_default = false
+environment.fogDensity_default = 0.0001
+environment.fogDensity_default = 0.0001
+environment.fogDensityOffset_default = 8
+environment.cloudCover_default = 0.08
+environment.cloudSpeed_default = 0.2
+environment.rainDrops_default = 0
+environment.dropSize_default = 1
+environment.dropMinSpeed_default = 0.1
+environment.dropMaxSpeed_default = 0.2
+environment.precipType_default = "rain_medium"
+environment.teleportTimeout_default = 5
+environment.simSpeed_default = 1
+environment.controlSimSpeed_default = false
+environment.gravity_default = -9.81
+environment.controlGravity_default = false
+environment.tempCurveNoon_default = 38
+environment.tempCurveDusk_default = 12
+environment.tempCurveMidnight_default = -15
+environment.tempCurveDawn_default = 12
+environment.useTempCurve_default = false
+environment.controlSun = ""
+environment.ToD = ""
+environment.timePlay = ""
+environment.dayLength = ""
+environment.dayScale = ""
+environment.nightScale = ""
+environment.azimuthOverride = ""
+environment.sunSize = ""
+environment.skyBrightness = ""
+environment.sunLightBrightness = ""
+environment.exposure = ""
+environment.shadowDistance = ""
+environment.shadowSoftness = ""
+environment.shadowSplits = ""
+environment.controlWeather = ""
+environment.fogDensity = ""
+environment.fogDensityOffset = ""
+environment.cloudCover = ""
+environment.cloudSpeed = ""
+environment.rainDrops = ""
+environment.dropSize = ""
+environment.dropMinSpeed = ""
+environment.dropMaxSpeed = ""
+environment.precipType = ""
+environment.teleportTimeout = ""
+environment.simSpeed = ""
+environment.controlSimSpeed = ""
+environment.gravity = ""
+environment.controlGravity = ""
+environment.tempCurveNoon = ""
+environment.tempCurveDusk = ""
+environment.tempCurveMidnight = ""
+environment.tempCurveDawn = ""
+environment.useTempCurve = ""
 
-local environment = CobaltDB.new("environment")
+local environmentJson = CobaltDB.new("environment")
 local defaultEnvironment = {
-	controlSun = {value = environmentTable.controlSun_default, description = "Do we control everyone's sun?"},
-	ToD = {value = environmentTable.ToD_default, description = "What is the Time of Day?"},
-	timePlay = {value = environmentTable.timePlay_default, description = "Does time progress?"},
-	dayLength = {value = environmentTable.dayLength_default, description = "How long is the day?"},
-	dayScale = {value = environmentTable.dayScale_default, description = "At what rate does daytime progress?"},
-	nightScale = {value = environmentTable.nightScale_default, description = "At what rate does nighttime progress?"},
-	azimuthOverride = {value = environmentTable.azimuthOverride_default, description = "At what position on the horizon does the sun rise and set?"},
-	sunSize = {value = environmentTable.sunSize_default, description = "How big is the sun?"},
-	skyBrightness = {value = environmentTable.skyBrightness_default, description = "How bright is the sky?"},
-	sunLightBrightness = {value = environmentTable.sunLightBrightness_default, description = "How bright is the sunlight?"},
-	exposure = {value = environmentTable.exposure_default, description = "How exposed is the environment?"},
-	shadowDistance = {value = environmentTable.shadowDistance_default, description = "How far are the shadows?"},
-	shadowSoftness = {value = environmentTable.shadowSoftness_default, description = "How soft are the shadows?"},
-	shadowSplits = {value = environmentTable.shadowSplits_default, description = "How many splits are there for shadows?"},
-	controlWeather = {value = environmentTable.controlWeather_default, description = "Do we control everyone's weather?"},
-	fogDensity = {value = environmentTable.fogDensity_default, description = "How thicc is the fog?"},
-	fogDensityOffset = {value = environmentTable.fogDensityOffset_default, description = "How far away is the fog?"},
-	cloudCover = {value = environmentTable.cloudCover_default, description = "How thicc are the clouds?"},
-	cloudSpeed = {value = environmentTable.cloudSpeed_default, description = "How fast are the clouds?"},
-	rainDrops = {value = environmentTable.rainDrops_default, description = "How many rain drops are there?"},
-	dropSize = {value = environmentTable.dropSize_default, description = "What size are the drops of precipitation?"},
-	dropMinSpeed = {value = environmentTable.dropMinSpeed_default, description = "What is the minimum speed of precipitation?"},
-	dropMaxSpeed = {value = environmentTable.dropMaxSpeed_default, description = "What is the maximum speed of precipitation?"},
-	precipType = {value = environmentTable.precipType_default, description = "What type of precipitation do we use?"},
-	teleportTimeout = {value = environmentTable.teleportTimeout_default, description = "How long between telports?"},
-	simSpeed = {value = environmentTable.simSpeed_default, description = "At what rate does the simulation run?"},
-	controlSimSpeed = {value = environmentTable.controlSimSpeed_default, description = "Do we control everyone's sim speed?"},
-	gravity = {value = environmentTable.gravity_default, description = "At what rate do objects fall towards the ground?"},
-	controlGravity = {value = environmentTable.controlGravity_default, description = "Do we control everyone's gravity?"},
-	tempCurveNoon = {value = environmentTable.tempCurveNoon_default, description = "What is the custom temperature in C at noon?"},
-	tempCurveDusk = {value = environmentTable.tempCurveDusk_default, description = "What is the custom temperature in C at dusk?"},
-	tempCurveMidnight = {value = environmentTable.tempCurveMidnight_default, description = "What is the custom temperature in C at midnight?"},
-	tempCurveDawn = {value = environmentTable.tempCurveDawn_default, description = "What is the custom temperature in C at dawn?"},
-	useTempCurve = {value = environmentTable.useTempCurve_default, description = "Do we use a custom temperature curve?"},
+	controlSun = {value = environment.controlSun_default, description = "Do we control everyone's sun?"},
+	ToD = {value = environment.ToD_default, description = "What is the Time of Day?"},
+	timePlay = {value = environment.timePlay_default, description = "Does time progress?"},
+	dayLength = {value = environment.dayLength_default, description = "How long is the day?"},
+	dayScale = {value = environment.dayScale_default, description = "At what rate does daytime progress?"},
+	nightScale = {value = environment.nightScale_default, description = "At what rate does nighttime progress?"},
+	azimuthOverride = {value = environment.azimuthOverride_default, description = "At what position on the horizon does the sun rise and set?"},
+	sunSize = {value = environment.sunSize_default, description = "How big is the sun?"},
+	skyBrightness = {value = environment.skyBrightness_default, description = "How bright is the sky?"},
+	sunLightBrightness = {value = environment.sunLightBrightness_default, description = "How bright is the sunlight?"},
+	exposure = {value = environment.exposure_default, description = "How exposed is the environment?"},
+	shadowDistance = {value = environment.shadowDistance_default, description = "How far are the shadows?"},
+	shadowSoftness = {value = environment.shadowSoftness_default, description = "How soft are the shadows?"},
+	shadowSplits = {value = environment.shadowSplits_default, description = "How many splits are there for shadows?"},
+	controlWeather = {value = environment.controlWeather_default, description = "Do we control everyone's weather?"},
+	fogDensity = {value = environment.fogDensity_default, description = "How thicc is the fog?"},
+	fogDensityOffset = {value = environment.fogDensityOffset_default, description = "How far away is the fog?"},
+	cloudCover = {value = environment.cloudCover_default, description = "How thicc are the clouds?"},
+	cloudSpeed = {value = environment.cloudSpeed_default, description = "How fast are the clouds?"},
+	rainDrops = {value = environment.rainDrops_default, description = "How many rain drops are there?"},
+	dropSize = {value = environment.dropSize_default, description = "What size are the drops of precipitation?"},
+	dropMinSpeed = {value = environment.dropMinSpeed_default, description = "What is the minimum speed of precipitation?"},
+	dropMaxSpeed = {value = environment.dropMaxSpeed_default, description = "What is the maximum speed of precipitation?"},
+	precipType = {value = environment.precipType_default, description = "What type of precipitation do we use?"},
+	teleportTimeout = {value = environment.teleportTimeout_default, description = "How long between telports?"},
+	simSpeed = {value = environment.simSpeed_default, description = "At what rate does the simulation run?"},
+	controlSimSpeed = {value = environment.controlSimSpeed_default, description = "Do we control everyone's sim speed?"},
+	gravity = {value = environment.gravity_default, description = "At what rate do objects fall towards the ground?"},
+	controlGravity = {value = environment.controlGravity_default, description = "Do we control everyone's gravity?"},
+	tempCurveNoon = {value = environment.tempCurveNoon_default, description = "What is the custom temperature in C at noon?"},
+	tempCurveDusk = {value = environment.tempCurveDusk_default, description = "What is the custom temperature in C at dusk?"},
+	tempCurveMidnight = {value = environment.tempCurveMidnight_default, description = "What is the custom temperature in C at midnight?"},
+	tempCurveDawn = {value = environment.tempCurveDawn_default, description = "What is the custom temperature in C at dawn?"},
+	useTempCurve = {value = environment.useTempCurve_default, description = "Do we use a custom temperature curve?"}
 }
 
-local vehicles = CobaltDB.new("vehicles")
+local restrictionsJson = CobaltDB.new("restrictions")
+local defaultRestrictions = {
+	control = {value = config.resets.control_default, description = "Are resets controlled?"},
+	messageDuration = {value = config.resets.messageDuration_default, description = "How long does the toast show?"},
+	enabled = {value = config.resets.enabled_default, description = "Are resets allowed?"},
+	timeout = {value = config.resets.timeout_default, description = "How often can a vehicle be reset (in seconds)?"},
+	title = {value = config.resets.title_default, description = "Title shown when resetting is limited or disabled."},
+	elapsedMessage = {value = config.resets.elapsedMessage_default, description = "Message shown when reset timeout has elapsed."},
+	message = {value = config.resets.message_default, description = "Message shown when resetting is limited."},
+	disabledMessage = {value = config.resets.disabledMessage_default, description = "Message shown when resetting is completely disabled."},
+}
+
+local vehiclesJson = CobaltDB.new("vehicles")
 local defaultVehicles = {
 	autobello = { level = 1 },
 	ball = { level = 1 },
@@ -241,16 +271,16 @@ local defaultVehicles = {
 	woodplanks = { level = 1 }
 }
 
-local nametags = CobaltDB.new("nametags")
+local nametagsJson = CobaltDB.new("nametags")
 local defaultNametagsSettings = {
 	blockingEnabled = {value = defaultNametagsBlockingEnabled, description = "Are nametags blocked?"},
 	blockingTimeout = {value = defaultNametagsBlockingTimeout, description = "For how long are nametags blocked?"},
 	nametagsWhitelist = {exampleName = defaultNametagsBlockingWhitelist, description = "Who is immune to nametag blocking?"}
 }
 
-local interface = CobaltDB.new("interface")
+local interfaceJson = CobaltDB.new("interface")
 local defaultInterfaceSettings = {
-	defaultCEIState = {value = cobaltConfig.interface.defaultState, description = "The state of the interface for new players."}
+	defaultCEIState = {value = config.cobalt.interface.defaultState, description = "The state of the interface for new players."}
 }
 
 
@@ -297,78 +327,91 @@ local function onInit()
 	MP.RegisterEvent("CEIRemoveNametagWhitelist","CEIRemoveNametagWhitelist")
 	MP.RegisterEvent("CEINametagSetting","CEINametagSetting")
 	MP.RegisterEvent("CEIStop","CEIStop")
+	MP.RegisterEvent("CEISetRestrictions","CEISetRestrictions")
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
 	MP.RegisterEvent("CEISetTeleportPerm","CEISetTeleportPerm")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
-	serverConfig.name = utils.readCfg("ServerConfig.toml").General.Name
+	config.server.name = utils.readCfg("ServerConfig.toml").General.Name
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
-		serverConfig.debug = false
+		config.server.debug = false
 	else
-		serverConfig.debug = true
+		config.server.debug = true
 	end
 	if not utils.readCfg("ServerConfig.toml").General.Private then
-		serverConfig.private = false
+		config.server.private = false
 	else
-		serverConfig.private = true
+		config.server.private = true
 	end
-	serverConfig.maxCars = utils.readCfg("ServerConfig.toml").General.MaxCars
-	serverConfig.maxPlayers = utils.readCfg("ServerConfig.toml").General.MaxPlayers
-	serverConfig.map = utils.readCfg("ServerConfig.toml").General.Map
-	serverConfig.description = utils.readCfg("ServerConfig.toml").General.Description
+	config.server.maxCars = utils.readCfg("ServerConfig.toml").General.MaxCars
+	config.server.maxPlayers = utils.readCfg("ServerConfig.toml").General.MaxPlayers
+	config.server.map = utils.readCfg("ServerConfig.toml").General.Map
+	config.server.description = utils.readCfg("ServerConfig.toml").General.Description
 	
-	M.applyStuff(environment, defaultEnvironment)
-	M.applyStuff(vehicles, defaultVehicles)
-	M.applyStuff(nametags, defaultNametagsSettings)
-	M.applyStuff(interface, defaultInterfaceSettings)
+	M.applyStuff(environmentJson, defaultEnvironment)
+	M.applyStuff(vehiclesJson, defaultVehicles)
+	M.applyStuff(nametagsJson, defaultNametagsSettings)
+	M.applyStuff(interfaceJson, defaultInterfaceSettings)
+	M.applyStuff(restrictionsJson, defaultRestrictions)
 	
-	nametagsConfig.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
-	nametagsConfig.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
+	config.resets.control = CobaltDB.query("restrictions", "control", "value")
+	config.resets.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
+	config.resets.enabled = CobaltDB.query("restrictions", "enabled", "value")
+	config.resets.timeout = CobaltDB.query("restrictions", "timeout", "value")
+	config.resets.title = CobaltDB.query("restrictions", "title", "value")
+	config.resets.elapsedMessage = CobaltDB.query("restrictions", "elapsedMessage", "value")
+	config.resets.message = CobaltDB.query("restrictions", "message", "value")
+	config.resets.disabledMessage = CobaltDB.query("restrictions", "disabledMessage", "value")
 	
-	environmentTable.controlSun = CobaltDB.query("environment", "controlSun", "value")
-	environmentTable.ToD = CobaltDB.query("environment", "ToD", "value")
-	environmentTable.timePlay = CobaltDB.query("environment", "timePlay", "value")
-	environmentTable.dayLength = CobaltDB.query("environment", "dayLength", "value")
-	environmentTable.dayScale = CobaltDB.query("environment", "dayScale", "value")
-	environmentTable.nightScale = CobaltDB.query("environment", "nightScale", "value")
-	environmentTable.azimuthOverride = CobaltDB.query("environment", "azimuthOverride", "value")
-	environmentTable.sunSize = CobaltDB.query("environment", "sunSize", "value")
-	environmentTable.skyBrightness = CobaltDB.query("environment", "skyBrightness", "value")
-	environmentTable.sunLightBrightness = CobaltDB.query("environment", "sunLightBrightness", "value")
-	environmentTable.exposure = CobaltDB.query("environment", "exposure", "value")
-	environmentTable.shadowDistance = CobaltDB.query("environment", "shadowDistance", "value")
-	environmentTable.shadowSoftness = CobaltDB.query("environment", "shadowSoftness", "value")
-	environmentTable.shadowSplits = CobaltDB.query("environment", "shadowSplits", "value")
-	environmentTable.controlWeather = CobaltDB.query("environment", "controlWeather", "value")
-	environmentTable.fogDensity = CobaltDB.query("environment", "fogDensity", "value")
-	environmentTable.fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
-	environmentTable.cloudCover = CobaltDB.query("environment", "cloudCover", "value")
-	environmentTable.cloudSpeed = CobaltDB.query("environment", "cloudSpeed", "value")
-	environmentTable.rainDrops = CobaltDB.query("environment", "rainDrops", "value")
-	environmentTable.dropSize = CobaltDB.query("environment", "dropSize", "value")
-	environmentTable.dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
-	environmentTable.dropMaxSpeed = CobaltDB.query("environment", "dropMaxSpeed", "value")
-	environmentTable.precipType = CobaltDB.query("environment", "precipType", "value")
-	environmentTable.teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
-	environmentTable.simSpeed = CobaltDB.query("environment", "simSpeed", "value")
-	environmentTable.controlSimSpeed = CobaltDB.query("environment", "controlSimSpeed", "value")
-	environmentTable.gravity = CobaltDB.query("environment", "gravity", "value")
-	environmentTable.controlGravity = CobaltDB.query("environment", "controlGravity", "value")
-	environmentTable.tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
-	environmentTable.tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
-	environmentTable.tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
-	environmentTable.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
-	environmentTable.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
+	config.nametags.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
+	config.nametags.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
+	config.nametags.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
 	
-	cobaltConfig.interface.defaultState = CobaltDB.query("interface", "defaultCEIState", "value")
+	environment.controlSun = CobaltDB.query("environment", "controlSun", "value")
+	environment.ToD = CobaltDB.query("environment", "ToD", "value")
+	environment.timePlay = CobaltDB.query("environment", "timePlay", "value")
+	environment.dayLength = CobaltDB.query("environment", "dayLength", "value")
+	environment.dayScale = CobaltDB.query("environment", "dayScale", "value")
+	environment.nightScale = CobaltDB.query("environment", "nightScale", "value")
+	environment.azimuthOverride = CobaltDB.query("environment", "azimuthOverride", "value")
+	environment.sunSize = CobaltDB.query("environment", "sunSize", "value")
+	environment.skyBrightness = CobaltDB.query("environment", "skyBrightness", "value")
+	environment.sunLightBrightness = CobaltDB.query("environment", "sunLightBrightness", "value")
+	environment.exposure = CobaltDB.query("environment", "exposure", "value")
+	environment.shadowDistance = CobaltDB.query("environment", "shadowDistance", "value")
+	environment.shadowSoftness = CobaltDB.query("environment", "shadowSoftness", "value")
+	environment.shadowSplits = CobaltDB.query("environment", "shadowSplits", "value")
+	environment.controlWeather = CobaltDB.query("environment", "controlWeather", "value")
+	environment.fogDensity = CobaltDB.query("environment", "fogDensity", "value")
+	environment.fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
+	environment.cloudCover = CobaltDB.query("environment", "cloudCover", "value")
+	environment.cloudSpeed = CobaltDB.query("environment", "cloudSpeed", "value")
+	environment.rainDrops = CobaltDB.query("environment", "rainDrops", "value")
+	environment.dropSize = CobaltDB.query("environment", "dropSize", "value")
+	environment.dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
+	environment.dropMaxSpeed = CobaltDB.query("environment", "dropMaxSpeed", "value")
+	environment.precipType = CobaltDB.query("environment", "precipType", "value")
+	environment.teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
+	environment.simSpeed = CobaltDB.query("environment", "simSpeed", "value")
+	environment.controlSimSpeed = CobaltDB.query("environment", "controlSimSpeed", "value")
+	environment.gravity = CobaltDB.query("environment", "gravity", "value")
+	environment.controlGravity = CobaltDB.query("environment", "controlGravity", "value")
+	environment.tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
+	environment.tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
+	environment.tempCurveMidnight = CobaltDB.query("environment", "tempCurveMidnight", "value")
+	environment.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
+	environment.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
+	
+	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultCEIState", "value")
 	
 	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
 	
 	for k,v in pairs(playersDatabase) do
 		local playerName = string.gsub(v, ".json", "")
 		CobaltDB.new("playersDB/" .. playerName)
+		tempPlayers[playerName] = {}
 	end
 		
 	CElog("CEI Loaded!", "CEI")
@@ -403,16 +446,14 @@ local function CEI(player)
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", false)
 		showCEI[player.name] = false
 	end
-	local data = Util.JsonEncode( { showCEI[player.name] } )
-	MP.TriggerClientEvent(player.playerID, "rxCEIstate", data)
+	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 end
 
-local function txPlayersRoles(player)
+local function txPlayersGroup(player)
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
-			if MP.IsPlayerConnected(player.playerID) then
-				local data = Util.JsonEncode( { player.permissions.group } )
-				MP.TriggerClientEvent(player.playerID, "rxPlayerRole", data)
+			if player.connectStage == "connected" then
+				MP.TriggerClientEvent(player.playerID, "rxPlayerGroup", player.permissions.group)
 			end
 		end
 	end
@@ -421,21 +462,22 @@ end
 local function txData()
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
-			if MP.IsPlayerConnected(player.playerID) then
+			if player.connectStage == "connected" then
 				if player.permissions.group == "owner"  or player.permissions.group == "admin" or player.permissions.group == "mod" then
 					M.txPlayersData(player)
 					M.txPlayersDatabase(player)
 					M.txConfigData(player)
-					M.txPlayersRoles(player)
+					M.txPlayersGroup(player)
 					M.txEnvironment(player)
 					M.txNametagWhitelisted(player)
 					M.txNametagBlockerActive(player)
 				else
 					M.txPlayersData(player)
-					M.txPlayersRoles(player)
+					M.txPlayersGroup(player)
 					M.txEnvironment(player)
 					M.txNametagWhitelisted(player)
 					M.txNametagBlockerActive(player)
+					M.txConfigData(player)
 				end
 			end
 		end
@@ -447,6 +489,12 @@ local function txPlayersDatabase(player)
 	for k,v in pairs(playersDatabase) do
 		local playerName = string.gsub(v, ".json", "")
 		playersDatabase[k] = {}
+		local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+		playersDatabase[k].permissions = {}
+		for a,b in pairs(playerPermissions) do
+			playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
+		end
+		playersDatabase[k].permissions.group = players.database[playerName].group
 		playersDatabase[k].playerName = playerName
 		playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
 		playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
@@ -456,6 +504,8 @@ local function txPlayersDatabase(player)
 		playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
 		if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
 			playersDatabase[k].banReason = players.database[playerName].banReason
+		else
+			CobaltDB.query("playersDB/" .. playerName, "banReason", "value", "No reason specified")
 		end
 		if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
 			playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
@@ -464,13 +514,11 @@ local function txPlayersDatabase(player)
 			end
 		end
 	end
-	local data = Util.JsonEncode(playersDatabase)
-	MP.TriggerClientEvent(player.playerID, "rxPlayersDatabase", data)
+	MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase)
 end
 
 local function txEnvironment(player)
-	local data = Util.JsonEncode(environmentTable)
-	MP.TriggerClientEvent(player.playerID, "rxEnvironment", data)
+	MP.TriggerClientEventJson(player.playerID, "rxEnvironment", environment)
 end
 
 local function txPlayersData(player)
@@ -522,35 +570,28 @@ local function txPlayersData(player)
 			end
 		end
 	end
-	local data = Util.JsonEncode(playersTable)
-	MP.TriggerClientEvent(player.playerID, "rxPlayersData", data)
+	MP.TriggerClientEventJson(player.playerID, "rxPlayersData", playersTable)
 end
 
 local function txConfigData(player)
-	cobaltConfig.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
-	cobaltConfig.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
-	cobaltConfig.groups = {}
+	config.cobalt.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
+	config.cobalt.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
 	local playerGroupsLength = 0
 	local whitelistLength = 0
 	local groupPlayerLength = 0
 	for k,v in pairs(players.database) do
 		if string.find(k, "group") then
 			playerGroupsLength = playerGroupsLength + 1
-			cobaltConfig.groups[playerGroupsLength] = {}
-			cobaltConfig.groups[playerGroupsLength].groupName = k
-			cobaltConfig.groups[playerGroupsLength].groupPerms = {}
-			cobaltConfig.groups[playerGroupsLength].groupPerms.level = CobaltDB.query("playerPermissions",k,"level")
-			cobaltConfig.groups[playerGroupsLength].groupPerms.whitelisted = CobaltDB.query("playerPermissions",k,"whitelisted")
-			cobaltConfig.groups[playerGroupsLength].groupPerms.muted = CobaltDB.query("playerPermissions",k,"muted")
-			cobaltConfig.groups[playerGroupsLength].groupPerms.banned = CobaltDB.query("playerPermissions",k,"banned")
-			cobaltConfig.groups[playerGroupsLength].groupPerms.banReason = CobaltDB.query("playerPermissions",k,"banReason")
-			cobaltConfig.groups[playerGroupsLength].groupPlayers = {}
+			config.cobalt.groups[playerGroupsLength] = {}
+			config.cobalt.groups[playerGroupsLength].groupName = k
+			config.cobalt.groups[playerGroupsLength].groupPerms = CobaltDB.getTable("playerPermissions",k)
+			config.cobalt.groups[playerGroupsLength].groupPlayers = {}
 			for w,z in pairs(players.database) do
 				for a,b in pairs(z) do
 					if a == "group" then
 						if "group:"..b == k then
 							groupPlayerLength = groupPlayerLength + 1
-							cobaltConfig.groups[playerGroupsLength].groupPlayers[groupPlayerLength] = w
+							config.cobalt.groups[playerGroupsLength].groupPlayers[groupPlayerLength] = w
 						end
 					end
 				end
@@ -558,19 +599,19 @@ local function txConfigData(player)
 		else
 			if players.database[k].whitelisted then
 				whitelistLength = whitelistLength + 1
-				cobaltConfig.whitelistedPlayers[whitelistLength] = k
+				config.cobalt.whitelistedPlayers[whitelistLength] = k
 			end
 		end
 	end
 	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
 	local vehicleCapsLength = 0
-	cobaltConfig.permissions.vehicleCap = {}
+	config.cobalt.permissions.vehicleCap = {}
 	for k,v in pairs(vehicleCaps) do
 		if string.find(k, "%d+") then
 			vehicleCapsLength = vehicleCapsLength + 1
-			cobaltConfig.permissions.vehicleCap[vehicleCapsLength] = {}
-			cobaltConfig.permissions.vehicleCap[vehicleCapsLength].level = k
-			cobaltConfig.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
+			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
+			config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
+			config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
 		end
 	end
 	local vehiclePerms = CobaltDB.getTables("vehicles")
@@ -578,55 +619,53 @@ local function txConfigData(player)
 	local vehiclePermsPartLevelsLength = 0
 	for k,v in pairsByKeys(vehiclePerms) do
 		vehiclePermsLength = vehiclePermsLength + 1
-		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength] = {}
-		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
-		cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].name = v
+		config.cobalt.permissions.vehiclePerm[vehiclePermsLength] = {}
+		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
+		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].name = v
 		local vehiclePerm = CobaltDB.getTable("vehicles",v)
 		for i,j in pairsByKeys(vehiclePerm) do
 			if i == "level" then
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].level = j
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].level = j
 			end
 			if string.find(i,"partlevel") then
 				vehiclePermsPartLevelsLength = vehiclePermsPartLevelsLength + 1
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
-				cobaltConfig.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
 			end
 		end
 	end
-	local dataTable = { serverConfig, cobaltConfig, nametagsConfig }
-	local data = Util.JsonEncode(dataTable)
-	MP.TriggerClientEvent(player.playerID,"rxConfigData",data)
+	MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
 end
 
 function txNametagWhitelisted(player)
 	local isWhitelisted
 	if CobaltDB.query("nametags","nametagsWhitelist",player.name) then
-		nametagsConfig.whitelist[player.name] = CobaltDB.query("nametags","nametagsWhitelist",player.name)
+		config.nametags.whitelist[player.name] = CobaltDB.query("nametags","nametagsWhitelist",player.name)
 		isWhitelisted = true
 	else
 		isWhitelisted = false
 	end
 	local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 	local nametagWhitelistIterator = 0
-	nametagsConfig.whitelist = {}
+	config.nametags.whitelist = {}
 	for k,v in pairs(nametagsBlockingWhitelist) do
 		if k ~= "description" then
 			nametagWhitelistIterator = nametagWhitelistIterator + 1
-			nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+			config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
 		end
 	end
-	local data = Util.JsonEncode({isWhitelisted})
-	MP.TriggerClientEvent(player.playerID,"rxNametagWhitelisted",data)
+	MP.TriggerClientEventJson(player.playerID, "rxNametagWhitelisted", { isWhitelisted } )
 end
 
 function txNametagBlockerActive(player)
-	local data = Util.JsonEncode({CobaltDB.query("nametags","blockingEnabled","value")})
-	MP.TriggerClientEvent(player.playerID, "rxNametagBlockerActive", data)
+	local data = CobaltDB.query("nametags","blockingEnabled","value")
+	MP.TriggerClientEventJson(player.playerID, "rxNametagBlockerActive", { data } )
 end
 
 function txNametagBlockerTimeout(senderID, data)
-	MP.TriggerClientEvent(-1,"rxNametagBlockerTimeout", data)
+	data = Util.JsonDecode(data)
+	MP.TriggerClientEvent(-1, "rxNametagBlockerTimeout", tostring(data[1]))
 end
 
 function CEIPreRace(senderID, data)
@@ -642,7 +681,7 @@ function CEISetDefaultState(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		CobaltDB.set("interface", "defaultCEIState", "value", data[1])
-		cobaltConfig.interface.defaultState = data[1]
+		config.cobalt.interface.defaultState = data[1]
 	end
 end
 
@@ -657,6 +696,7 @@ function CEISetNewVehiclePerm(senderID, data)
 		else
 			CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -667,6 +707,7 @@ function CEISetVehiclePermLevel(senderID, data)
 		local vehicleName = data[1]
 		local vehiclePermLevel = tonumber(data[2])
 		CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -687,6 +728,7 @@ function CEIRemoveVehiclePerm(senderID, data)
 		end
 		M.updateCobaltDatabase("vehicles")
 		vehicles = CobaltDB.new("vehicles")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -703,6 +745,7 @@ function CEISetNewVehiclePart(senderID, data)
 			local partLevel = 1
 			CobaltDB.set("vehicles", vehicleName, partName, partLevel)
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -729,6 +772,7 @@ function CEIRemoveVehiclePart(senderID, data)
 		else
 			return
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -740,6 +784,7 @@ function CEISetVehiclePartLevel(senderID, data)
 		local vehiclePartName = "partlevel:" .. data[2]
 		local vehiclePartLevel = tonumber(data[3])
 		CobaltDB.set("vehicles", vehicleName, vehiclePartName, vehiclePartLevel)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -760,11 +805,56 @@ function logEnvironment()
 		local currentEnvironmentTable = CobaltDB.getTable("environment",v)
 		for x,y in pairs(currentEnvironmentTable) do
 			if x == "value" then
-				if environmentTable[k] ~= y then
-					CobaltDB.set("environment", k, "value", environmentTable[k])
+				if environment[k] ~= y then
+					CobaltDB.set("environment", k, "value", environment[k])
 				end
 			end
 		end
+	end
+end
+
+function logRestrictions()
+	local restrictionsTables = CobaltDB.getTables("restrictions")
+	for k,v in pairs(restrictionsTables) do
+		local currentRestrictionTable = CobaltDB.getTable("restrictions",v)
+		for x,y in pairs(currentRestrictionTable) do
+			if x == "value" then
+				if config.resets[k] ~= y then
+					CobaltDB.set("restrictions", k, "value", config.resets[k])
+				end
+			end
+		end
+	end
+end
+
+function CEISetRestrictions(senderID, data)
+	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+		data = Util.JsonDecode(data)
+		local key = data[1]
+		local value = data[2]
+		if key == "all" then
+			config.resets.control = config.resets.control_default
+			config.resets.messageDuration = config.resets.messageDuration_default
+			config.resets.enabled = config.resets.enabled_default
+			config.resets.timeout = config.resets.timeout_default
+			config.resets.title = config.resets.title_default
+			config.resets.elapsedMessage = config.resets.elapsedMessage_default
+			config.resets.message = config.resets.message_default
+			config.resets.disabledMessage = config.resets.disabledMessage_default
+		elseif value == "default" then
+			config.resets[key] = config.resets[key .. "_default"]
+		else
+			config.resets[key] = value
+		end
+		for playerID, player in pairs(players) do
+			if type(playerID) == "number" then
+				if player.connectStage == "connected" then
+					txConfigData(player)
+				end
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -775,80 +865,81 @@ function CEISetEnv(senderID, data)
 		local key = data[1]
 		local value = data[2]
 		if key == "allWeather" then
-			environmentTable.controlWeather = environmentTable.controlWeather_default
-			environmentTable.fogDensity = environmentTable.fogDensity_default
-			environmentTable.fogDensityOffset = environmentTable.fogDensityOffset_default
-			environmentTable.cloudCover = environmentTable.cloudCover_default
-			environmentTable.cloudSpeed = environmentTable.cloudSpeed_default
-			environmentTable.rainDrops = environmentTable.rainDrops_default
-			environmentTable.dropSize = environmentTable.dropSize_default
-			environmentTable.dropMinSpeed = environmentTable.dropMinSpeed_default
-			environmentTable.dropMaxSpeed = environmentTable.dropMaxSpeed_default
-			environmentTable.precipType = environmentTable.precipType_default
+			environment.controlWeather = environment.controlWeather_default
+			environment.fogDensity = environment.fogDensity_default
+			environment.fogDensityOffset = environment.fogDensityOffset_default
+			environment.cloudCover = environment.cloudCover_default
+			environment.cloudSpeed = environment.cloudSpeed_default
+			environment.rainDrops = environment.rainDrops_default
+			environment.dropSize = environment.dropSize_default
+			environment.dropMinSpeed = environment.dropMinSpeed_default
+			environment.dropMaxSpeed = environment.dropMaxSpeed_default
+			environment.precipType = environment.precipType_default
 		elseif key == "allSun" then
-			environmentTable.controlSun = environmentTable.controlSun_default
-			environmentTable.ToD = environmentTable.ToD_default
-			environmentTable.timePlay = environmentTable.timePlay_default
-			environmentTable.dayScale = environmentTable.dayScale_default
-			environmentTable.dayLength = environmentTable.dayLength_default
-			environmentTable.nightScale = environmentTable.nightScale_default
-			environmentTable.azimuthOverride = environmentTable.azimuthOverride_default
-			environmentTable.sunSize = environmentTable.sunSize_default
-			environmentTable.skyBrightness = environmentTable.skyBrightness_default
-			environmentTable.sunLightBrightness = environmentTable.sunLightBrightness_default
-			environmentTable.exposure = environmentTable.exposure_default
-			environmentTable.shadowDistance = environmentTable.shadowDistance_default
-			environmentTable.shadowSoftness = environmentTable.shadowSoftness_default
-			environmentTable.shadowSplits = environmentTable.shadowSplits_default
+			environment.controlSun = environment.controlSun_default
+			environment.ToD = environment.ToD_default
+			environment.timePlay = environment.timePlay_default
+			environment.dayScale = environment.dayScale_default
+			environment.dayLength = environment.dayLength_default
+			environment.nightScale = environment.nightScale_default
+			environment.azimuthOverride = environment.azimuthOverride_default
+			environment.sunSize = environment.sunSize_default
+			environment.skyBrightness = environment.skyBrightness_default
+			environment.sunLightBrightness = environment.sunLightBrightness_default
+			environment.exposure = environment.exposure_default
+			environment.shadowDistance = environment.shadowDistance_default
+			environment.shadowSoftness = environment.shadowSoftness_default
+			environment.shadowSplits = environment.shadowSplits_default
 		elseif key == "all" then
-			environmentTable.controlSun = environmentTable.controlSun_default
-			environmentTable.ToD = environmentTable.ToD_default
-			environmentTable.timePlay = environmentTable.timePlay_default
-			environmentTable.dayLength = environmentTable.dayLength_default
-			environmentTable.dayScale = environmentTable.dayScale_default
-			environmentTable.nightScale = environmentTable.nightScale_default
-			environmentTable.azimuthOverride = environmentTable.azimuthOverride_default
-			environmentTable.sunSize = environmentTable.sunSize_default
-			environmentTable.skyBrightness = environmentTable.skyBrightness_default
-			environmentTable.sunLightBrightness = environmentTable.sunLightBrightness_default
-			environmentTable.exposure = environmentTable.exposure_default
-			environmentTable.shadowDistance = environmentTable.shadowDistance_default
-			environmentTable.shadowSoftness = environmentTable.shadowSoftness_default
-			environmentTable.shadowSplits = environmentTable.shadowSplits_default
-			environmentTable.controlWeather = environmentTable.controlWeather_default
-			environmentTable.fogDensity = environmentTable.fogDensity_default
-			environmentTable.fogDensityOffset = environmentTable.fogDensityOffset_default
-			environmentTable.cloudCover = environmentTable.cloudCover_default
-			environmentTable.cloudSpeed = environmentTable.cloudSpeed_default
-			environmentTable.rainDrops = environmentTable.rainDrops_default
-			environmentTable.dropSize = environmentTable.dropSize_default
-			environmentTable.dropMinSpeed = environmentTable.dropMinSpeed_default
-			environmentTable.dropMaxSpeed = environmentTable.dropMaxSpeed_default
-			environmentTable.precipType = environmentTable.precipType_default
-			environmentTable.teleportTimeout = environmentTable.teleportTimeout_default
-			environmentTable.simSpeed = environmentTable.simSpeed_default
-			environmentTable.controlSimSpeed = environmentTable.controlSimSpeed_default
-			environmentTable.gravity = environmentTable.gravity_default
-			environmentTable.controlGravity = environmentTable.controlGravity_default
-			environmentTable.tempCurveNoon = environmentTable.tempCurveNoon_default
-			environmentTable.tempCurveDusk = environmentTable.tempCurveDusk_default
-			environmentTable.tempCurveMidnight = environmentTable.tempCurveMidnight_default
-			environmentTable.tempCurveDawn = environmentTable.tempCurveDawn_default
-			environmentTable.useTempCurve = environmentTable.useTempCurve_default
+			environment.controlSun = environment.controlSun_default
+			environment.ToD = environment.ToD_default
+			environment.timePlay = environment.timePlay_default
+			environment.dayLength = environment.dayLength_default
+			environment.dayScale = environment.dayScale_default
+			environment.nightScale = environment.nightScale_default
+			environment.azimuthOverride = environment.azimuthOverride_default
+			environment.sunSize = environment.sunSize_default
+			environment.skyBrightness = environment.skyBrightness_default
+			environment.sunLightBrightness = environment.sunLightBrightness_default
+			environment.exposure = environment.exposure_default
+			environment.shadowDistance = environment.shadowDistance_default
+			environment.shadowSoftness = environment.shadowSoftness_default
+			environment.shadowSplits = environment.shadowSplits_default
+			environment.controlWeather = environment.controlWeather_default
+			environment.fogDensity = environment.fogDensity_default
+			environment.fogDensityOffset = environment.fogDensityOffset_default
+			environment.cloudCover = environment.cloudCover_default
+			environment.cloudSpeed = environment.cloudSpeed_default
+			environment.rainDrops = environment.rainDrops_default
+			environment.dropSize = environment.dropSize_default
+			environment.dropMinSpeed = environment.dropMinSpeed_default
+			environment.dropMaxSpeed = environment.dropMaxSpeed_default
+			environment.precipType = environment.precipType_default
+			environment.teleportTimeout = environment.teleportTimeout_default
+			environment.simSpeed = environment.simSpeed_default
+			environment.controlSimSpeed = environment.controlSimSpeed_default
+			environment.gravity = environment.gravity_default
+			environment.controlGravity = environment.controlGravity_default
+			environment.tempCurveNoon = environment.tempCurveNoon_default
+			environment.tempCurveDusk = environment.tempCurveDusk_default
+			environment.tempCurveMidnight = environment.tempCurveMidnight_default
+			environment.tempCurveDawn = environment.tempCurveDawn_default
+			environment.useTempCurve = environment.useTempCurve_default
 		elseif value == "default" then
-			environmentTable[key] = environmentTable[key .. "_default"]
+			environment[key] = environment[key .. "_default"]
 		elseif tonumber(value) then
-			environmentTable[key] = tonumber(value)
+			environment[key] = tonumber(value)
 		else
-			environmentTable[key] = value
+			environment[key] = value
 		end
 		for playerID, player in pairs(players) do
 			if type(playerID) == "number" then
-				if MP.IsPlayerConnected(player.playerID) then
+				if player.connectStage == "connected" then
 					txEnvironment(player)
 				end
 			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "environment")
 	end
 end
 
@@ -909,6 +1000,7 @@ function CEISetNewGroup(senderID, data)
 			local applyGroup = { [newGroup] = { level = 1 } }
 			applyStuff(players.database, applyGroup)
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -926,11 +1018,8 @@ function CEIRemoveGroup(senderID, data)
 		end
 		M.updateCobaltDatabase("playerPermissions")
 		playerPermissions = CobaltDB.new("playerPermissions")
-		for k,v in pairs(cobaltConfig.groups) do
-			if cobaltConfig.groups[k].groupName == group then
-				cobaltConfig.groups[k] = nil
-			end
-		end
+		config.cobalt.groups = {}
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -948,6 +1037,7 @@ function CEISetNewVehiclePermsLevel(senderID, data)
 				CobaltDB.set("permissions", "vehicleCap", targetLevel, 1)
 			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -961,6 +1051,7 @@ function CEIRemoveVehiclePermsLevel(senderID, data)
 		else
 			return
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -971,6 +1062,7 @@ function CEISetVehiclePerms(senderID, data)
 		local targetLevel = data[1]
 		local targetVehicles = tonumber(data[2])
 		CobaltDB.set("permissions", "vehicleCap", targetLevel, targetVehicles)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -1008,6 +1100,9 @@ function CEISetGroup(senderID, data)
 				end
 			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
 
@@ -1016,17 +1111,20 @@ function CEISetGroupPerms(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local group = data[1]
-		local key = data[2]
+		local permission = data[2]
 		local value = data[3]
 		if tonumber(value) then
 			if tonumber(value) >= 0 then
-				players.database[group][key] = tonumber(value)
+				players.database[group][permission] = tonumber(value)
 			elseif tonumber(value) < 0 then
 				return
 			end
+		elseif value == "null" then
+			players.database[group][permission] = nil
 		else
-			players.database[group][key] =  value
+			players.database[group][permission] = value
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -1037,12 +1135,24 @@ function CEISetPerm(senderID, data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
 		local permLvl = tonumber(data[2])
-		if players[senderID].permissions.level <= permLvl then
-			MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s level to " .. permLvl .. " because it exceeds your own!")
+		if player then
+			if players[senderID].permissions.level <= permLvl then
+				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s level to " .. permLvl .. " because it exceeds your own!")
+			else
+				CC.setperm(players[senderID], targetName, permLvl)
+				tempPlayers[targetName].tempPermLevel = players[player.playerID].permissions.level
+				CobaltDB.set("playersDB/" .. targetName, "level", "value", permLvl)
+			end
 		else
-			CC.setperm(players[senderID], targetName, permLvl)
-			tempPlayers[targetName].tempPermLevel = players[player.playerID].permissions.level
+			if players[senderID].permissions.level <= permLvl then
+				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s level to " .. permLvl .. " because it exceeds your own!")
+			else
+				CobaltDB.set("playersDB/" .. targetName, "level", "value", permLvl)
+				players.database[targetName].level = permLvl
+			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
 
@@ -1068,21 +1178,21 @@ function CEISetCfg(senderID, data)
 		if key == "Debug" then
 			if value == true then
 				MP.Set(0, true)
-				serverConfig.debug = true
+				config.server.debug = true
 				writeCfg("ServerConfig.toml", key, true)
 			elseif value == false then
 				MP.Set(0, false)
-				serverConfig.debug = false
+				config.server.debug = false
 				writeCfg("ServerConfig.toml", key, false)
 			end
 		elseif key == "Private" then
 			if value == true then 
 				MP.Set(1, true)
-				serverConfig.private = true
+				config.server.private = true
 				writeCfg("ServerConfig.toml", key, true)
 			elseif value == false then
 				MP.Set(1, false)
-				serverConfig.private = false
+				config.server.private = false
 				writeCfg("ServerConfig.toml", key, false)
 			end
 		elseif key == "MaxCars" then
@@ -1090,39 +1200,40 @@ function CEISetCfg(senderID, data)
 				return
 			end
 			MP.Set(2, value)
-			serverConfig.maxCars = value
+			config.server.maxCars = value
 			writeCfg("ServerConfig.toml", key, value)
 		elseif key == "MaxPlayers" then
 			if value < 0 then
 				return
 			end
 			MP.Set(3, value)
-			serverConfig.maxPlayers = value
+			config.server.maxPlayers = value
 			writeCfg("ServerConfig.toml", key, value)
 		elseif key == "Map" then
 			if value == nil then
 				return
 			end
 			MP.Set(4, value)
-			serverConfig.map = value
+			config.server.map = value
 			writeCfg("ServerConfig.toml", key, value)
 		elseif key == "Name" then
 			if value == nil then
 				return
 			end
 			MP.Set(5, value)
-			serverConfig.name = value
+			config.server.name = value
 			writeCfg("ServerConfig.toml", key, value)
 		elseif key == "Description" then
 			if value == nil then
 				return
 			end
 			MP.Set(6, value)
-			serverConfig.description = value
+			config.server.description = value
 			writeCfg("ServerConfig.toml", key, value)
 		else
 			return nil
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -1132,6 +1243,7 @@ function CEISetMaxActivePlayers(senderID, data)
 		data = Util.JsonDecode(data)
 		data = tonumber(data[1])
 		CobaltDB.set("config", "maxActivePlayers", "value", data)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -1151,6 +1263,7 @@ function CEIRemoveVehicle(senderID, data)
 			MP.RemoveVehicle(tempPlayerID, tempVehicleID)
 			MP.SendChatMessage(tempPlayerID, "Your vehicle was deleted for: " .. reason)
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1174,6 +1287,7 @@ function CEIVoteKick(senderID, data)
 		else
 			MP.SendChatMessage(senderID, "You cannot vote for " ..  targetName .. " more than once!")
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1192,6 +1306,7 @@ function CEIKick(senderID, data)
 			target:kick(reason)
 			MP.SendChatMessage(-1, target.name .. " was kicked for: " .. reason)
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1200,16 +1315,16 @@ function CEIUnban(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
-		local reason = data[2] or "No reason specified"
-		MP.SendChatMessage(-1, targetName .. " was unbanned for: " .. reason)
+		MP.SendChatMessage(-1, targetName .. " was unbanned")
 		players.database[targetName].banned = false
-		players.database[targetName].unbanReason = reason
 		players.database[targetName].banReason = nil
 		local beammp = CobaltDB.query("playersDB/" .. targetName, "beammp", "value")
 		CobaltDB.set("playersDB/" .. targetName, "banned", "value", false)
-		CobaltDB.set("playersDB/" .. targetName, "unbanReason", "value", reason)
-		CobaltDB.set("playersDB/" .. beammp, "banned", "value", false)
-		CobaltDB.set("playersDB/" .. beammp, "unbanReason", "value", reason)
+		if beammp then
+			CobaltDB.set("playersDB/" .. beammp, "banned", "value", false)
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1222,6 +1337,8 @@ function CEIBan(senderID, data)
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
+		
+		
 		local player = players.getPlayerByName(targetName)
 		if player then
 			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
@@ -1238,8 +1355,12 @@ function CEIBan(senderID, data)
 		local beammp = CobaltDB.query("playersDB/" .. targetName, "beammp", "value")
 		CobaltDB.set("playersDB/" .. targetName, "banned", "value", true)
 		CobaltDB.set("playersDB/" .. targetName, "banReason", "value", reason)
-		CobaltDB.set("playersDB/" .. beammp, "banned", "value", true)
-		CobaltDB.set("playersDB/" .. beammp, "banReason", "value", reason)
+		if beammp then
+			CobaltDB.set("playersDB/" .. beammp, "banned", "value", true)
+			CobaltDB.set("playersDB/" .. beammp, "banReason", "value", reason)
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1250,23 +1371,36 @@ function CEITempBan(senderID, data)
 		local targetName = data[1]
 		local length = data[2]
 		local reason = data[3]
-		if reason == "" or reason == nil then
-			reason = "No reason specified"
-		end
-		local player = players.getPlayerByName(targetName)
-		if player then
-			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
-				MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+		if tonumber(length) then
+			if reason == "" or reason == nil then
+				reason = "No reason specified"
+			end
+			local player = players.getPlayerByName(targetName)
+			if player then
+				if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+					MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+				else
+					CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
+					CC.kick(players[senderID], targetName, "tempBan for " .. string.format("%.3f", length) .. " days for: " .. reason)
+					MP.SendChatMessage(-1, targetName .. " was tempBanned for " .. string.format("%.3f", length) .. " days for: " .. reason)
+				end
 			else
+				CobaltDB.new("playersDB/" .. targetName)
 				CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
-				CC.kick(players[senderID], targetName, "tempBan for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
-				MP.SendChatMessage(-1, targetName .. " was tempBanned for: " .. reason .. " for " .. string.format("%.3f", length) .. " days.")
+				if length > 0 then
+					players.database[targetName].banReason = reason
+					MP.SendChatMessage(-1, targetName .. " was tempBanned for " .. string.format("%.3f", length) .. " days for: " .. reason)
+				else
+					players.database[targetName].banReason = nil
+					MP.SendChatMessage(-1, targetName .. " was unTempBanned")
+				end
 			end
 		else
-			CobaltDB.new("playersDB/" .. targetName)
-			CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", length * 86400 + os.time())
-			players.database[targetName].banReason = reason
+			CobaltDB.set("playersDB/" .. targetName, "tempBan", "value", os.time())
+			MP.SendChatMessage(-1, targetName .. " was unTempBanned")
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1280,12 +1414,22 @@ function CEIMute(senderID, data)
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
-		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+		if player then
+			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+				MP.SendChatMessage(senderID, "You cannot affect " ..  targetName .. "!")
+			else
+				CC.mute(players[senderID], targetName, reason)
+				CobaltDB.set("playersDB/" .. targetName, "muted", "value", true)
+				CobaltDB.set("playersDB/" .. targetName, "muteReason", "value", reason)
+				MP.SendChatMessage(-1, targetName .. " was muted for: " .. reason)
+			end
 		else
-			CC.mute(players[senderID], targetName, reason)
-			MP.SendChatMessage(-1, targetName .. " was muted for: " .. reason)
+			CobaltDB.set("playersDB/" .. targetName, "muted", "value", true)
+			CobaltDB.set("playersDB/" .. targetName, "muteReason", "value", reason)
+			players.database[targetName].muted = true
+			players.database[targetName].muteReason = reason
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1294,8 +1438,19 @@ function CEIUnmute(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
-		CC.unmute(players[senderID], targetName)
-		MP.SendChatMessage(-1, targetName .. " was unmuted")
+		local player = players.getPlayerByName(targetName)
+		if player then
+			CC.unmute(players[senderID], targetName)
+			CobaltDB.set("playersDB/" .. targetName, "muted", "value", false)
+			CobaltDB.set("playersDB/" .. targetName, "muteReason", "value", nil)
+			MP.SendChatMessage(-1, targetName .. " was unmuted")
+		else
+			CobaltDB.set("playersDB/" .. targetName, "muted", "value", false)
+			CobaltDB.set("playersDB/" .. targetName, "muteReason", "value", nil)
+			players.database[targetName].muted = false
+			players.database[targetName].muteReason = nil
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1318,14 +1473,19 @@ function CEIWhitelist(senderID, data)
 		else
 			arguments = action
 		end
-		CC.whitelist(players[senderID], arguments)
-		if action == "remove" then
-			for k,v in pairs(cobaltConfig.whitelistedPlayers) do
-				if cobaltConfig.whitelistedPlayers[k] == data[2] then
-					cobaltConfig.whitelistedPlayers[k] = nil
-				end
-			end
+		local player = players.getPlayerByName(targetName)
+		if player then
+			CC.whitelist(players[senderID], arguments)
 		end
+		if action == "add" then
+			players.database[targetName].whitelisted = true
+			CobaltDB.set("playersDB/" .. targetName, "whitelisted", "value", true)
+		end
+		if action == "remove" then
+			config.cobalt.whitelistedPlayers = {}
+			CobaltDB.set("playersDB/" .. targetName, "whitelisted", "value", false)
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1347,14 +1507,15 @@ function CEISetNametagWhitelist(senderID, data)
 			CobaltDB.set("nametags", "nametagsWhitelist", targetName, targetName)
 			local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 			local nametagWhitelistIterator = 0
-			nametagsConfig.whitelist = {}
+			config.nametags.whitelist = {}
 			for k,v in pairs(nametagsBlockingWhitelist) do
 				if k ~= "description" then
 					nametagWhitelistIterator = nametagWhitelistIterator + 1
-					nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+					config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
 				end
 			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
 
@@ -1366,13 +1527,14 @@ function CEIRemoveNametagWhitelist(senderID, data)
 		CobaltDB.set("nametags", "nametagsWhitelist", targetName, nil)
 		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 		local nametagWhitelistIterator = 0
-		nametagsConfig.whitelist = {}
+		config.nametags.whitelist = {}
 		for k,v in pairs(nametagsBlockingWhitelist) do
 			if k ~= "description" then
 				nametagWhitelistIterator = nametagWhitelistIterator + 1
-				nametagsConfig.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+				config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
 			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
 
@@ -1382,11 +1544,12 @@ function CEINametagSetting(senderID, data)
 		data = Util.JsonDecode(data)
 		if tonumber(data[1]) then
 			CobaltDB.set("nametags", "blockingTimeout", "value", tonumber(data[1]))
-			nametagsConfig.settings.blockingTimeout = data[1]
+			config.nametags.settings.blockingTimeout = data[1]
 		else
 			CobaltDB.set("nametags", "blockingEnabled", "value", data[1])
-			nametagsConfig.settings.blockingEnabled = data[1]
+			config.nametags.settings.blockingEnabled = data[1]
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
 
@@ -1406,33 +1569,36 @@ function CEISetTeleportPerm(senderID, data)
 	--CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
 		data = Util.JsonDecode(data)
-		playerID = tonumber(data[1])
-		playerName = players[playerID].name
+		playerName = data[1]
 		teleport[playerName] = data[2]
 		CobaltDB.set("playersDB/" .. playerName, "teleport", "value", data[2])
-		MP.TriggerClientEvent(playerID, "rxCEItp", Util.JsonEncode( { data[2] } ) )
+		local player = players.getPlayerByName(playerName)
+		if player then
+			MP.TriggerClientEventJson(player.playerID, "rxCEItp", { data[2] } )
+		end
 	end
 end
 
 local function onTick(age)
-	if environmentTable.controlSun then
-		if environmentTable.timePlay == true then
-			if tonumber(environmentTable.ToD) >= 0.25 and tonumber(environmentTable.ToD) <= 0.75 then
-				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.nightScale * (1 / environmentTable.dayLength))
+	if environment.controlSun then
+		if environment.timePlay == true then
+			if environment.ToD >= 0.25 and environment.ToD <= 0.75 then
+				environment.ToD = environment.ToD + (environment.nightScale * (1 / environment.dayLength))
 			else
-				environmentTable.ToD = tonumber(environmentTable.ToD) + (environmentTable.dayScale * (1 / environmentTable.dayLength))
+				environment.ToD = environment.ToD + (environment.dayScale * (1 / environment.dayLength))
 			end
-			if environmentTable.ToD > 1 then
-				environmentTable.ToD = environmentTable.ToD % 1
+			if environment.ToD > 1 then
+				environment.ToD = environment.ToD % 1
 			end
 		end
 	end
 	txData()
-	environmentLogTimer = environmentLogTimer + 1
-	if environmentLogTimer >= environmentLogInterval then
-		CobaltDB.set("environment", "ToD", "value", environmentTable.ToD)
+	logTimer = logTimer + 1
+	if logTimer >= logInterval then
+		CobaltDB.set("environment", "ToD", "value", environment.ToD)
 		logEnvironment()
-		environmentLogTimer = 0
+		logRestrictions()
+		logTimer = 0
 	end
 	if raceCountdown ~= nil then
 		raceTimer()
@@ -1445,12 +1611,14 @@ local function onTick(age)
 	kickThresh = (MP.GetPlayerCount() - MP.GetPlayerCount() / 3)
 	for playerID, player in pairs(players) do 
 		if type(playerID) == "number" then
-			if MP.IsPlayerConnected(tonumber(player.playerID)) then
+			if playersTable[tonumber(player.playerID)] then
 				if tempPlayers[player.name].kickVotes then
 					if tempPlayers[player.name].kickVotes > kickThresh then
 						MP.SendChatMessage(-1, player.name .. " was VoteKicked with " .. tempPlayers[player.name].kickVotes .. " votes")
 						for k,v in pairs(tempPlayers) do
-							tempPlayers[k].votedFor[player.name] = false
+							if tempPlayers[k].votedFor then
+								tempPlayers[k].votedFor[player.name] = false
+							end
 						end
 						player:kick("VoteKicked with " .. tempPlayers[player.name].kickVotes .. " votes")
 						for k,v in pairs(tempPlayers) do
@@ -1468,9 +1636,8 @@ function raceTimer()
 		for k,v in pairs(tempPlayers) do
 			if v.includeInRace == true then
 				MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "3ping")
-				local dataTable = { "You have been frozen, prepare to race!", 5 }
-				local data = Util.JsonEncode(dataTable)
-				MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", data)
+				local data = { "You have been frozen, prepare to race!", 5 }
+				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
 			end
 		end
 	elseif raceCountdown == 11 then
@@ -1482,17 +1649,15 @@ function raceTimer()
 	elseif raceCountdown < 11 and raceCountdown > 0 then
 		for k,v in pairs(tempPlayers) do
 			if v.includeInRace == true then
-				local dataTable = { raceCountdown .. "...", 1, true }
-				local data = Util.JsonEncode(dataTable)
-				MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", data)
+				local data = { raceCountdown .. "...", 1, true }
+				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
 			end
 		end
 	elseif raceCountdown == 0 then
 		for k,v in pairs(tempPlayers) do
 			if v.includeInRace == true then
-				local dataTable = { "GO!!!", 3, true }
-				local data = Util.JsonEncode(dataTable)
-				MP.TriggerClientEvent(v.player_id, "CEIRaceCountdown", data)
+				local data = { "GO!!!", 3, true }
+				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
 				raceStart()
 			end
 		end
@@ -1502,13 +1667,13 @@ end
 function raceStart()
 	for k,v in pairs(playersTable) do
 		for x,y in pairs(playersTable[k].vehicles) do
-			local data = Util.JsonEncode( { playersTable[k].playerID, tostring(playersTable[k].vehicles[x].vehicleID), false } ) 
-			MP.TriggerClientEvent(-1, "CEIToggleLock", data)
+			local data = { playersTable[k].playerID, tostring(playersTable[k].vehicles[x].vehicleID), false }
+			MP.TriggerClientEventJson(-1, "CEIToggleLock", data)
 		end
 	end
 end
 
-function onPlayerAuthHandler(player_name, player_role, is_guest)
+function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	if CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") == 0 then
 	elseif CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") > os.time() then
 		return 1
@@ -1522,14 +1687,6 @@ function onPlayerAuthHandler(player_name, player_role, is_guest)
 end
 
 local function onPlayerConnecting(player)
-	
-end
-
-local function onPlayerJoining(player)
-	tempPlayers[player.name].tempPermLevel = player.permissions.level
-	tempPlayers[player.name].player_id = player.playerID
-	
-	local identifiers = MP.GetPlayerIdentifiers(player.playerID)
 	CobaltDB.new("playersDB/" .. identifiers.beammp)
 	if players.database[player.name].beammp == nil then
 		players.database[player.name].beammp = identifiers.beammp
@@ -1550,7 +1707,7 @@ local function onPlayerJoining(player)
 	end
 	if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
 		local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
-		player:kick(reason)
+		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
 	end
 	
 	if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
@@ -1562,9 +1719,13 @@ local function onPlayerJoining(player)
 		CobaltDB.set("playersDB/" .. player.name, "banReason", "value", reason)
 		players.database[player.name].banned = true
 		players.database[player.name].banReason = reason
-		player:kick(reason)
+		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
 	end
-	
+end
+
+local function onPlayerJoining(player)
+	tempPlayers[player.name].tempPermLevel = player.permissions.level
+	tempPlayers[player.name].player_id = player.playerID
 end
 
 local function onPlayerJoin(player)
@@ -1572,8 +1733,8 @@ local function onPlayerJoin(player)
 		players.database[player.name].group = "default"
 	end
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
-		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", cobaltConfig.interface.defaultState)
-		showCEI[player.name] = cobaltConfig.interface.defaultState
+		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
+		showCEI[player.name] = config.cobalt.interface.defaultState
 	else
 		showCEI[player.name] = CobaltDB.query("playersDB/" .. player.name, "showCEI", "value")
 	end
@@ -1583,12 +1744,14 @@ local function onPlayerJoin(player)
 	else
 		teleport[player.name] = CobaltDB.query("playersDB/" .. player.name, "teleport", "value")
 	end
-	local data = Util.JsonEncode( { teleport[player.name] } )
-	MP.TriggerClientEvent(player.playerID, "rxCEItp", data)
-	data = Util.JsonEncode( { showCEI[player.name] } )
-	MP.TriggerClientEvent(player.playerID, "rxCEIstate", data)
+	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
+	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 	CE.delayExec( 2000 , MP.SendChatMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
 	CE.delayExec( 2500 , MP.SendChatMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
+	
+	for k,v in pairs(player.permissions) do
+		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
+	end
 end
 
 local function onPlayerDisconnect(player)
@@ -1600,6 +1763,10 @@ end
 
 local function onVehicleSpawn(player, vehID,  data)
 	tempPCV[player.name] = player.playerID .. "-" .. vehID
+end
+
+local function onVehicleReset(player, vehID,  data)
+
 end
 
 local function updateCobaltDatabase(DBname)
@@ -1658,6 +1825,7 @@ M.onPlayerJoining = onPlayerJoining
 M.onPlayerJoin = onPlayerJoin
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
+M.onVehicleReset = onVehicleReset
 
 M.updateCobaltDatabase = updateCobaltDatabase
 
@@ -1667,7 +1835,7 @@ M.cei = CEI
 M.txPlayersData = txPlayersData
 M.txPlayersDatabase = txPlayersDatabase
 M.txConfigData = txConfigData
-M.txPlayersRoles = txPlayersRoles
+M.txPlayersGroup = txPlayersGroup
 M.txEnvironment = txEnvironment
 M.txNametagWhitelisted = txNametagWhitelisted
 M.txNametagBlockerActive = txNametagBlockerActive
