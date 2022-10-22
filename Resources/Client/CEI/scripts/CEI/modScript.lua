@@ -1,2 +1,1 @@
-load("CEI")
-registerCoreModule("CEI")
+queueExtensionToLoad('CEI')
