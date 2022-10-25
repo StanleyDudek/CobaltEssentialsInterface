@@ -59,25 +59,36 @@ local logInterval = 30
 
 local environment = {}
 environment.controlSun_default = false
-environment.ToD_default = 0.1
+environment.ToD_default = 0.125
 environment.timePlay_default = false
 environment.dayLength_default = 1800
 environment.dayScale_default = 1
 environment.nightScale_default = 2
-environment.azimuthOverride_default = 0
-environment.sunSize_default = 1
+environment.sunAzimuth_default = 0.0
 environment.skyBrightness_default = 40
+environment.sunSize_default = 1
+environment.rayleighScattering_default = 0.003
 environment.sunLightBrightness_default = 1
+environment.flareScale_default = 5
+environment.occlusionScale_default = 0.025
 environment.exposure_default = 1
 environment.shadowDistance_default = 1600
 environment.shadowSoftness_default = 0.2
 environment.shadowSplits_default = 4
+environment.shadowTexSize_default = 1024
+environment.shadowLogWeight_default = 0.98
+environment.visibleDistance_default = 4000
+environment.moonAzimuth_default = 0.0
+environment.moonElevation_default = 45
+environment.moonScale_default = 0.03
 environment.controlWeather_default = false
-environment.fogDensity_default = 0.0001
-environment.fogDensity_default = 0.0001
-environment.fogDensityOffset_default = 8
+environment.fogDensity_default = 0.001
+environment.fogDensityOffset_default = 0.0
+environment.fogAtmosphereHeight_default = 400
+environment.cloudHeight_default = 0.08
 environment.cloudCover_default = 0.08
 environment.cloudSpeed_default = 0.2
+environment.cloudExposure_default = 1.6
 environment.rainDrops_default = 0
 environment.dropSize_default = 1
 environment.dropMinSpeed_default = 0.1
@@ -99,19 +110,31 @@ environment.timePlay = ""
 environment.dayLength = ""
 environment.dayScale = ""
 environment.nightScale = ""
-environment.azimuthOverride = ""
-environment.sunSize = ""
+environment.sunAzimuth = ""
 environment.skyBrightness = ""
+environment.sunSize = ""
+environment.rayleighScattering = ""
 environment.sunLightBrightness = ""
+environment.flareScale = ""
+environment.occlusionScale = ""
 environment.exposure = ""
 environment.shadowDistance = ""
 environment.shadowSoftness = ""
 environment.shadowSplits = ""
+environment.shadowTexSize = ""
+environment.shadowLogWeight = ""
+environment.visibleDistance = ""
+environment.moonAzimuth = ""
+environment.moonElevation = ""
+environment.moonScale = ""
 environment.controlWeather = ""
 environment.fogDensity = ""
 environment.fogDensityOffset = ""
+environment.fogAtmosphereHeight = ""
+environment.cloudHeight = ""
 environment.cloudCover = ""
 environment.cloudSpeed = ""
+environment.cloudExposure = ""
 environment.rainDrops = ""
 environment.dropSize = ""
 environment.dropMinSpeed = ""
@@ -136,19 +159,31 @@ local defaultEnvironment = {
 	dayLength = {value = environment.dayLength_default, description = "How long is the day?"},
 	dayScale = {value = environment.dayScale_default, description = "At what rate does daytime progress?"},
 	nightScale = {value = environment.nightScale_default, description = "At what rate does nighttime progress?"},
-	azimuthOverride = {value = environment.azimuthOverride_default, description = "At what position on the horizon does the sun rise and set?"},
-	sunSize = {value = environment.sunSize_default, description = "How big is the sun?"},
+	sunAzimuth = {value = environment.sunAzimuth_default, description = "At what position on the horizon does the sun rise and set?"},
 	skyBrightness = {value = environment.skyBrightness_default, description = "How bright is the sky?"},
+	sunSize = {value = environment.sunSize_default, description = "How big is the sun?"},
+	rayleighScattering = {value = environment.rayleighScattering_default, description = "How much rayleigh scattering"},
 	sunLightBrightness = {value = environment.sunLightBrightness_default, description = "How bright is the sunlight?"},
+	flareScale = {value = environment.flareScale_default, description = "How big is the sun lens flare?"},
+	occlusionScale = {value = environment.occlusionScale_default, description = "How occluded is the sun lens flare?"},
 	exposure = {value = environment.exposure_default, description = "How exposed is the environment?"},
 	shadowDistance = {value = environment.shadowDistance_default, description = "How far are the shadows?"},
 	shadowSoftness = {value = environment.shadowSoftness_default, description = "How soft are the shadows?"},
 	shadowSplits = {value = environment.shadowSplits_default, description = "How many splits are there for shadows?"},
+	shadowTexSize = {value = environment.shadowTexSize_default, description = "What is the texture resolution for shadows?"},
+	shadowLogWeight = {value = environment.shadowLogWeight_default, description = "How much does the log weigh?"},
+	visibleDistance = {value = environment.visibleDistance_default, description = "How far can we see?"},
+	moonAzimuth = {value = environment.moonAzimuth_default, description = "Horizontal position of moon."},
+	moonElevation = {value = environment.moonElevation_default, description = "Vertical position of moon."},
+	moonScale = {value = environment.moonScale_default, description = "How big is the moon?"},
 	controlWeather = {value = environment.controlWeather_default, description = "Do we control everyone's weather?"},
 	fogDensity = {value = environment.fogDensity_default, description = "How thicc is the fog?"},
 	fogDensityOffset = {value = environment.fogDensityOffset_default, description = "How far away is the fog?"},
+	fogAtmosphereHeight = {value = environment.fogAtmosphereHeight_default, description = "How high is the fog?"},
+	cloudHeight = {value = environment.cloudHeight_default, description = "How high are the clouds?"},
 	cloudCover = {value = environment.cloudCover_default, description = "How thicc are the clouds?"},
 	cloudSpeed = {value = environment.cloudSpeed_default, description = "How fast are the clouds?"},
+	cloudExposure = {value = environment.cloudExposure_default, description = "How exposed are the clouds?"},
 	rainDrops = {value = environment.rainDrops_default, description = "How many rain drops are there?"},
 	dropSize = {value = environment.dropSize_default, description = "What size are the drops of precipitation?"},
 	dropMinSpeed = {value = environment.dropMinSpeed_default, description = "What is the minimum speed of precipitation?"},
@@ -375,19 +410,31 @@ local function onInit()
 	environment.dayLength = CobaltDB.query("environment", "dayLength", "value")
 	environment.dayScale = CobaltDB.query("environment", "dayScale", "value")
 	environment.nightScale = CobaltDB.query("environment", "nightScale", "value")
-	environment.azimuthOverride = CobaltDB.query("environment", "azimuthOverride", "value")
-	environment.sunSize = CobaltDB.query("environment", "sunSize", "value")
+	environment.sunAzimuth = CobaltDB.query("environment", "sunAzimuth", "value")
 	environment.skyBrightness = CobaltDB.query("environment", "skyBrightness", "value")
+	environment.sunSize = CobaltDB.query("environment", "sunSize", "value")
+	environment.rayleighScattering = CobaltDB.query("environment", "rayleighScattering", "value")
 	environment.sunLightBrightness = CobaltDB.query("environment", "sunLightBrightness", "value")
+	environment.flareScale = CobaltDB.query("environment", "flareScale", "value")
+	environment.occlusionScale = CobaltDB.query("environment", "occlusionScale", "value")
 	environment.exposure = CobaltDB.query("environment", "exposure", "value")
 	environment.shadowDistance = CobaltDB.query("environment", "shadowDistance", "value")
 	environment.shadowSoftness = CobaltDB.query("environment", "shadowSoftness", "value")
 	environment.shadowSplits = CobaltDB.query("environment", "shadowSplits", "value")
+	environment.shadowTexSize = CobaltDB.query("environment", "shadowTexSize", "value")
+	environment.shadowLogWeight = CobaltDB.query("environment", "shadowLogWeight", "value")
+	environment.visibleDistance = CobaltDB.query("environment", "visibleDistance", "value")
+	environment.moonAzimuth = CobaltDB.query("environment", "moonAzimuth", "value")
+	environment.moonElevation = CobaltDB.query("environment", "moonElevation", "value")
+	environment.moonScale = CobaltDB.query("environment", "moonScale", "value")
 	environment.controlWeather = CobaltDB.query("environment", "controlWeather", "value")
 	environment.fogDensity = CobaltDB.query("environment", "fogDensity", "value")
 	environment.fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
+	environment.fogAtmosphereHeight = CobaltDB.query("environment", "fogAtmosphereHeight", "value")
+	environment.cloudHeight = CobaltDB.query("environment", "cloudHeight", "value")
 	environment.cloudCover = CobaltDB.query("environment", "cloudCover", "value")
 	environment.cloudSpeed = CobaltDB.query("environment", "cloudSpeed", "value")
+	environment.cloudExposure = CobaltDB.query("environment", "cloudExposure", "value")
 	environment.rainDrops = CobaltDB.query("environment", "rainDrops", "value")
 	environment.dropSize = CobaltDB.query("environment", "dropSize", "value")
 	environment.dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
@@ -406,7 +453,12 @@ local function onInit()
 	
 	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultCEIState", "value")
 	
-	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	local playersDatabase
+	if FS.Exists("Resources/Server/CobaltEssentials/CobaltDB/playersDB") then
+		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	else
+		playersDatabase = {}
+	end
 	
 	for k,v in pairs(playersDatabase) do
 		local playerName = string.gsub(v, ".json", "")
@@ -868,8 +920,11 @@ function CEISetEnv(senderID, data)
 			environment.controlWeather = environment.controlWeather_default
 			environment.fogDensity = environment.fogDensity_default
 			environment.fogDensityOffset = environment.fogDensityOffset_default
+			environment.fogAtmosphereHeight = environment.fogAtmosphereHeight_default
+			environment.cloudHeight = environment.cloudHeight_default
 			environment.cloudCover = environment.cloudCover_default
 			environment.cloudSpeed = environment.cloudSpeed_default
+			environment.cloudExposure = environment.cloudExposure_default
 			environment.rainDrops = environment.rainDrops_default
 			environment.dropSize = environment.dropSize_default
 			environment.dropMinSpeed = environment.dropMinSpeed_default
@@ -882,49 +937,29 @@ function CEISetEnv(senderID, data)
 			environment.dayScale = environment.dayScale_default
 			environment.dayLength = environment.dayLength_default
 			environment.nightScale = environment.nightScale_default
-			environment.azimuthOverride = environment.azimuthOverride_default
-			environment.sunSize = environment.sunSize_default
+			environment.sunAzimuth = environment.sunAzimuth_default
 			environment.skyBrightness = environment.skyBrightness_default
+			environment.sunSize = environment.sunSize_default
+			environment.rayleighScattering = environment.rayleighScattering_default
 			environment.sunLightBrightness = environment.sunLightBrightness_default
+			environment.flareScale = environment.flareScale_default
+			environment.occlusionScale = environment.occlusionScale_default
 			environment.exposure = environment.exposure_default
 			environment.shadowDistance = environment.shadowDistance_default
 			environment.shadowSoftness = environment.shadowSoftness_default
 			environment.shadowSplits = environment.shadowSplits_default
+			environment.shadowTexSize = environment.shadowTexSize_default
+			environment.shadowLogWeight = environment.shadowLogWeight_default
+			environment.visibleDistance = environment.visibleDistance_default
+			environment.moonAzimuth = environment.moonAzimuth_default
+			environment.moonElevation = environment.moonElevation_default
+			environment.moonScale = environment.moonScale_default
 		elseif key == "all" then
-			environment.controlSun = environment.controlSun_default
-			environment.ToD = environment.ToD_default
-			environment.timePlay = environment.timePlay_default
-			environment.dayLength = environment.dayLength_default
-			environment.dayScale = environment.dayScale_default
-			environment.nightScale = environment.nightScale_default
-			environment.azimuthOverride = environment.azimuthOverride_default
-			environment.sunSize = environment.sunSize_default
-			environment.skyBrightness = environment.skyBrightness_default
-			environment.sunLightBrightness = environment.sunLightBrightness_default
-			environment.exposure = environment.exposure_default
-			environment.shadowDistance = environment.shadowDistance_default
-			environment.shadowSoftness = environment.shadowSoftness_default
-			environment.shadowSplits = environment.shadowSplits_default
-			environment.controlWeather = environment.controlWeather_default
-			environment.fogDensity = environment.fogDensity_default
-			environment.fogDensityOffset = environment.fogDensityOffset_default
-			environment.cloudCover = environment.cloudCover_default
-			environment.cloudSpeed = environment.cloudSpeed_default
-			environment.rainDrops = environment.rainDrops_default
-			environment.dropSize = environment.dropSize_default
-			environment.dropMinSpeed = environment.dropMinSpeed_default
-			environment.dropMaxSpeed = environment.dropMaxSpeed_default
-			environment.precipType = environment.precipType_default
-			environment.teleportTimeout = environment.teleportTimeout_default
-			environment.simSpeed = environment.simSpeed_default
-			environment.controlSimSpeed = environment.controlSimSpeed_default
-			environment.gravity = environment.gravity_default
-			environment.controlGravity = environment.controlGravity_default
-			environment.tempCurveNoon = environment.tempCurveNoon_default
-			environment.tempCurveDusk = environment.tempCurveDusk_default
-			environment.tempCurveMidnight = environment.tempCurveMidnight_default
-			environment.tempCurveDawn = environment.tempCurveDawn_default
-			environment.useTempCurve = environment.useTempCurve_default
+			for k,v in pairs(environment) do
+				if not string.find(k, "default") then
+					environment[k] = environment[k .. "_default"]
+				end
+			end
 		elseif value == "default" then
 			environment[key] = environment[key .. "_default"]
 		elseif tonumber(value) then
