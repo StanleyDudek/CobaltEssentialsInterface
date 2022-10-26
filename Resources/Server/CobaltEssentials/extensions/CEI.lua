@@ -64,7 +64,7 @@ environment.timePlay_default = false
 environment.dayLength_default = 1800
 environment.dayScale_default = 1
 environment.nightScale_default = 2
-environment.sunAzimuth_default = 0.0
+environment.sunAzimuthOverride_default = 0.0
 environment.skyBrightness_default = 40
 environment.sunSize_default = 1
 environment.rayleighScattering_default = 0.003
@@ -85,10 +85,14 @@ environment.controlWeather_default = false
 environment.fogDensity_default = 0.001
 environment.fogDensityOffset_default = 0.0
 environment.fogAtmosphereHeight_default = 400
-environment.cloudHeight_default = 0.08
-environment.cloudCover_default = 0.08
+environment.cloudHeight_default = 2.5
+environment.cloudHeightOne_default = 5
+environment.cloudCover_default = 0.2
+environment.cloudCoverOne_default = 0.2
 environment.cloudSpeed_default = 0.2
-environment.cloudExposure_default = 1.6
+environment.cloudSpeedOne_default = 0.2
+environment.cloudExposure_default = 1.4
+environment.cloudExposureOne_default = 1.6
 environment.rainDrops_default = 0
 environment.dropSize_default = 1
 environment.dropMinSpeed_default = 0.1
@@ -110,7 +114,7 @@ environment.timePlay = ""
 environment.dayLength = ""
 environment.dayScale = ""
 environment.nightScale = ""
-environment.sunAzimuth = ""
+environment.sunAzimuthOverride = ""
 environment.skyBrightness = ""
 environment.sunSize = ""
 environment.rayleighScattering = ""
@@ -132,9 +136,13 @@ environment.fogDensity = ""
 environment.fogDensityOffset = ""
 environment.fogAtmosphereHeight = ""
 environment.cloudHeight = ""
+environment.cloudHeightOne = ""
 environment.cloudCover = ""
+environment.cloudCoverOne = ""
 environment.cloudSpeed = ""
+environment.cloudSpeedOne = ""
 environment.cloudExposure = ""
+environment.cloudExposureOne = ""
 environment.rainDrops = ""
 environment.dropSize = ""
 environment.dropMinSpeed = ""
@@ -159,7 +167,7 @@ local defaultEnvironment = {
 	dayLength = {value = environment.dayLength_default, description = "How long is the day?"},
 	dayScale = {value = environment.dayScale_default, description = "At what rate does daytime progress?"},
 	nightScale = {value = environment.nightScale_default, description = "At what rate does nighttime progress?"},
-	sunAzimuth = {value = environment.sunAzimuth_default, description = "At what position on the horizon does the sun rise and set?"},
+	sunAzimuthOverride = {value = environment.sunAzimuthOverride_default, description = "At what position on the horizon does the sun rise and set?"},
 	skyBrightness = {value = environment.skyBrightness_default, description = "How bright is the sky?"},
 	sunSize = {value = environment.sunSize_default, description = "How big is the sun?"},
 	rayleighScattering = {value = environment.rayleighScattering_default, description = "How much rayleigh scattering"},
@@ -181,9 +189,13 @@ local defaultEnvironment = {
 	fogDensityOffset = {value = environment.fogDensityOffset_default, description = "How far away is the fog?"},
 	fogAtmosphereHeight = {value = environment.fogAtmosphereHeight_default, description = "How high is the fog?"},
 	cloudHeight = {value = environment.cloudHeight_default, description = "How high are the clouds?"},
+	cloudHeightOne = {value = environment.cloudHeightOne_default, description = "How high are the clouds?"},
 	cloudCover = {value = environment.cloudCover_default, description = "How thicc are the clouds?"},
+	cloudCoverOne = {value = environment.cloudCoverOne_default, description = "How thicc are the clouds?"},
 	cloudSpeed = {value = environment.cloudSpeed_default, description = "How fast are the clouds?"},
+	cloudSpeedOne = {value = environment.cloudSpeedOne_default, description = "How fast are the clouds?"},
 	cloudExposure = {value = environment.cloudExposure_default, description = "How exposed are the clouds?"},
+	cloudExposureOne = {value = environment.cloudExposureOne_default, description = "How exposed are the clouds?"},
 	rainDrops = {value = environment.rainDrops_default, description = "How many rain drops are there?"},
 	dropSize = {value = environment.dropSize_default, description = "What size are the drops of precipitation?"},
 	dropMinSpeed = {value = environment.dropMinSpeed_default, description = "What is the minimum speed of precipitation?"},
@@ -410,7 +422,7 @@ local function onInit()
 	environment.dayLength = CobaltDB.query("environment", "dayLength", "value")
 	environment.dayScale = CobaltDB.query("environment", "dayScale", "value")
 	environment.nightScale = CobaltDB.query("environment", "nightScale", "value")
-	environment.sunAzimuth = CobaltDB.query("environment", "sunAzimuth", "value")
+	environment.sunAzimuthOverride = CobaltDB.query("environment", "sunAzimuthOverride", "value")
 	environment.skyBrightness = CobaltDB.query("environment", "skyBrightness", "value")
 	environment.sunSize = CobaltDB.query("environment", "sunSize", "value")
 	environment.rayleighScattering = CobaltDB.query("environment", "rayleighScattering", "value")
@@ -432,9 +444,13 @@ local function onInit()
 	environment.fogDensityOffset = CobaltDB.query("environment", "fogDensityOffset", "value")
 	environment.fogAtmosphereHeight = CobaltDB.query("environment", "fogAtmosphereHeight", "value")
 	environment.cloudHeight = CobaltDB.query("environment", "cloudHeight", "value")
+	environment.cloudHeightOne = CobaltDB.query("environment", "cloudHeightOne", "value")
 	environment.cloudCover = CobaltDB.query("environment", "cloudCover", "value")
+	environment.cloudCoverOne = CobaltDB.query("environment", "cloudCoverOne", "value")
 	environment.cloudSpeed = CobaltDB.query("environment", "cloudSpeed", "value")
+	environment.cloudSpeedOne = CobaltDB.query("environment", "cloudSpeedOne", "value")
 	environment.cloudExposure = CobaltDB.query("environment", "cloudExposure", "value")
+	environment.cloudExposureOne = CobaltDB.query("environment", "cloudExposureOne", "value")
 	environment.rainDrops = CobaltDB.query("environment", "rainDrops", "value")
 	environment.dropSize = CobaltDB.query("environment", "dropSize", "value")
 	environment.dropMinSpeed = CobaltDB.query("environment", "dropMinSpeed", "value")
@@ -922,9 +938,13 @@ function CEISetEnv(senderID, data)
 			environment.fogDensityOffset = environment.fogDensityOffset_default
 			environment.fogAtmosphereHeight = environment.fogAtmosphereHeight_default
 			environment.cloudHeight = environment.cloudHeight_default
+			environment.cloudHeightOne = environment.cloudHeightOne_default
 			environment.cloudCover = environment.cloudCover_default
+			environment.cloudCoverOne = environment.cloudCoverOne_default
 			environment.cloudSpeed = environment.cloudSpeed_default
+			environment.cloudSpeedOne = environment.cloudSpeedOne_default
 			environment.cloudExposure = environment.cloudExposure_default
+			environment.cloudExposureOne = environment.cloudExposureOne_default
 			environment.rainDrops = environment.rainDrops_default
 			environment.dropSize = environment.dropSize_default
 			environment.dropMinSpeed = environment.dropMinSpeed_default
@@ -937,7 +957,7 @@ function CEISetEnv(senderID, data)
 			environment.dayScale = environment.dayScale_default
 			environment.dayLength = environment.dayLength_default
 			environment.nightScale = environment.nightScale_default
-			environment.sunAzimuth = environment.sunAzimuth_default
+			environment.sunAzimuthOverride = environment.sunAzimuthOverride_default
 			environment.skyBrightness = environment.skyBrightness_default
 			environment.sunSize = environment.sunSize_default
 			environment.rayleighScattering = environment.rayleighScattering_default
