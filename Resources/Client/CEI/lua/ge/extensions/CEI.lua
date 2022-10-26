@@ -49,8 +49,8 @@ local configValsSet = false
 local configVals = {}
 local config = {}
 
-resetsPlayerNotified = true
-resetsTimerElapsedReset = 0
+local resetsPlayerNotified = true
+local resetsTimerElapsedReset = 0
 
 local vehiclePermsFiltering = {}
 vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
@@ -128,7 +128,7 @@ local function rxEnvironment(data)
 		environmentVals.dayLengthInt = im.IntPtr(tonumber(environment.dayLength))
 		environmentVals.dayScaleVal = im.FloatPtr(tonumber(environment.dayScale))
 		environmentVals.nightScaleVal = im.FloatPtr(tonumber(environment.nightScale))
-		environmentVals.sunAzimuthVal = im.FloatPtr(tonumber(environment.sunAzimuth))
+		environmentVals.sunAzimuthOverrideVal = im.FloatPtr(tonumber(environment.sunAzimuthOverride))
 		environmentVals.skyBrightnessVal = im.FloatPtr(tonumber(environment.skyBrightness))
 		environmentVals.sunSizeVal = im.FloatPtr(tonumber(environment.sunSize))
 		environmentVals.rayleighScatteringVal = im.FloatPtr(tonumber(environment.rayleighScattering))
@@ -147,11 +147,15 @@ local function rxEnvironment(data)
 		environmentVals.moonScaleVal = im.FloatPtr(tonumber(environment.moonScale))
 		environmentVals.fogDensityVal = im.FloatPtr(tonumber(environment.fogDensity))
 		environmentVals.fogDensityOffsetVal = im.FloatPtr(tonumber(environment.fogDensityOffset))
-		environmentVals.fogAtmosphereHeightVal = im.FloatPtr(tonumber(environment.fogAtmosphereHeight))
+		environmentVals.fogAtmosphereHeightInt = im.IntPtr(tonumber(environment.fogAtmosphereHeight))
 		environmentVals.cloudHeightVal = im.FloatPtr(tonumber(environment.cloudHeight))
+		environmentVals.cloudHeightOneVal = im.FloatPtr(tonumber(environment.cloudHeightOne))
 		environmentVals.cloudCoverVal = im.FloatPtr(tonumber(environment.cloudCover))
+		environmentVals.cloudCoverOneVal = im.FloatPtr(tonumber(environment.cloudCoverOne))
 		environmentVals.cloudSpeedVal = im.FloatPtr(tonumber(environment.cloudSpeed))
+		environmentVals.cloudSpeedOneVal = im.FloatPtr(tonumber(environment.cloudSpeedOne))
 		environmentVals.cloudExposureVal = im.FloatPtr(tonumber(environment.cloudExposure))
+		environmentVals.cloudExposureOneVal = im.FloatPtr(tonumber(environment.cloudExposureOne))
 		environmentVals.rainDropsInt = im.IntPtr(tonumber(environment.rainDrops))
 		environmentVals.dropSizeVal = im.FloatPtr(tonumber(environment.dropSize))
 		environmentVals.dropMinSpeedVal = im.FloatPtr(tonumber(environment.dropMinSpeed))
@@ -2247,20 +2251,20 @@ local function drawCEI(dt)
 					im.Text("Sun Azimuth: ")
 					im.SameLine()
 					im.PushItemWidth(100)
-					if im.InputFloat("##sunAzimuth", environmentVals.sunAzimuthVal,  0.1, 1) then
-						if environmentVals.sunAzimuthVal[0] < 0 then
-							environmentVals.sunAzimuthVal = im.FloatPtr(360)
-						elseif environmentVals.sunAzimuthVal[0] > 360 then
-							environmentVals.sunAzimuthVal = im.FloatPtr(0)
+					if im.InputFloat("##sunAzimuthOverride", environmentVals.sunAzimuthOverrideVal,  0.001, 0.01) then
+						if environmentVals.sunAzimuthOverrideVal[0] < 0 then
+							environmentVals.sunAzimuthOverrideVal = im.FloatPtr(6.25)
+						elseif environmentVals.sunAzimuthOverrideVal[0] > 6.25 then
+							environmentVals.sunAzimuthOverrideVal = im.FloatPtr(0)
 						end
-						local data = jsonEncode( { "sunAzimuth", tostring(environmentVals.sunAzimuthVal[0]) } )
+						local data = jsonEncode( { "sunAzimuthOverride", tostring(environmentVals.sunAzimuthOverrideVal[0]) } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
 					im.SameLine()
 					if im.SmallButton("Reset##SA") then
-						local data = jsonEncode( { "sunAzimuth", "default" } )
+						local data = jsonEncode( { "sunAzimuthOverride", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
@@ -2672,7 +2676,67 @@ local function drawCEI(dt)
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.Text("Cloud Cover: ")
+					im.Text("Fog Height: ")
+					im.SameLine()
+					im.PushItemWidth(110)
+					if im.InputInt("##fogAtmosphereHeight", environmentVals.fogAtmosphereHeightInt, 1) then
+						if environmentVals.fogAtmosphereHeightInt[0] < 0 then
+							environmentVals.fogAtmosphereHeightInt = im.IntPtr(0)
+						elseif environmentVals.fogAtmosphereHeightInt[0] > 10000 then
+							environmentVals.fogAtmosphereHeightInt = im.IntPtr(10000)
+						end
+						local data = jsonEncode( { "fogAtmosphereHeight", tostring(environmentVals.fogAtmosphereHeightInt[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##FAH") then
+						local data = jsonEncode( { "fogAtmosphereHeight", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.Text("Cloud 1 Height: ")
+					im.SameLine()
+					im.PushItemWidth(120)
+					if im.InputFloat("##cloudHeight", environmentVals.cloudHeightVal, 0.01, 0.1) then
+						if environmentVals.cloudHeightVal[0] < 0 then
+							environmentVals.cloudHeightVal = im.FloatPtr(0)
+						elseif environmentVals.cloudHeightVal[0] > 20 then
+							environmentVals.cloudHeightVal = im.FloatPtr(20)
+						end
+						local data = jsonEncode( { "cloudHeight", tostring(environmentVals.cloudHeightVal[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##CH") then
+						local data = jsonEncode( { "cloudHeight", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.Text("Cloud 2 Height: ")
+					im.SameLine()
+					im.PushItemWidth(120)
+					if im.InputFloat("##cloudHeightOne", environmentVals.cloudHeightOneVal, 0.01, 0.1) then
+						if environmentVals.cloudHeightOneVal[0] < 0 then
+							environmentVals.cloudHeightOneVal = im.FloatPtr(0)
+						elseif environmentVals.cloudHeightOneVal[0] > 20 then
+							environmentVals.cloudHeightOneVal = im.FloatPtr(20)
+						end
+						local data = jsonEncode( { "cloudHeightOne", tostring(environmentVals.cloudHeightOneVal[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##CHO") then
+						local data = jsonEncode( { "cloudHeightOne", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.Text("Cloud 1 Cover: ")
 					im.SameLine()
 					im.PushItemWidth(100)
 					if im.InputFloat("##cloudCover", environmentVals.cloudCoverVal, 0.01, 0.1) then
@@ -2692,7 +2756,27 @@ local function drawCEI(dt)
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.Text("Cloud Speed: ")
+					im.Text("Cloud 2 Cover: ")
+					im.SameLine()
+					im.PushItemWidth(100)
+					if im.InputFloat("##cloudCoverOne", environmentVals.cloudCoverOneVal, 0.01, 0.1) then
+						if environmentVals.cloudCoverOneVal[0] < 0 then
+							environmentVals.cloudCoverOneVal = im.FloatPtr(0)
+						elseif environmentVals.cloudCoverOneVal[0] > 5 then
+							environmentVals.cloudCoverOneVal = im.FloatPtr(5)
+						end
+						local data = jsonEncode( { "cloudCoverOne", tostring(environmentVals.cloudCoverOneVal[0]) } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.PopItemWidth()
+					im.SameLine()
+					if im.SmallButton("Reset##CCO") then
+						local data = jsonEncode( { "cloudCoverOne", "default" } )
+						TriggerServerEvent("CEISetEnv", data)
+						log('W', logTag, "CEISetEnv Called: " .. data)
+					end
+					im.Text("Cloud 1 Speed: ")
 					im.SameLine()
 					im.PushItemWidth(100)
 					if im.InputFloat("##cloudSpeed", environmentVals.cloudSpeedVal, 0.01, 0.1) then
@@ -2712,106 +2796,169 @@ local function drawCEI(dt)
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.Text("Rain Drops: ")
+					im.Text("Cloud 2 Speed: ")
 					im.SameLine()
 					im.PushItemWidth(100)
-					if im.InputInt("##rainDrops", environmentVals.rainDropsInt, 1, 10) then
-						if environmentVals.rainDropsInt[0] < 0 then
-							environmentVals.rainDropsInt = im.IntPtr(0)
-						elseif environmentVals.rainDropsInt[0] > 20000 then
-							environmentVals.rainDropsInt = im.IntPtr(20000)
+					if im.InputFloat("##cloudSpeedOne", environmentVals.cloudSpeedOneVal, 0.01, 0.1) then
+						if environmentVals.cloudSpeedOneVal[0] < 0 then
+							environmentVals.cloudSpeedOneVal = im.FloatPtr(0)
+						elseif environmentVals.cloudSpeedOneVal[0] > 10 then
+							environmentVals.cloudSpeedOneVal = im.FloatPtr(10)
 						end
-						local data = jsonEncode( { "rainDrops", tostring(environmentVals.rainDropsInt[0]) } )
+						local data = jsonEncode( { "cloudSpeedOne", tostring(environmentVals.cloudSpeedOneVal[0]) } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
 					im.SameLine()
-					if im.SmallButton("Reset##RD") then
-						local data = jsonEncode( { "rainDrops", "default" } )
+					if im.SmallButton("Reset##CSO") then
+						local data = jsonEncode( { "cloudSpeedOne", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.Text("Drop Size: ")
+					im.Text("Cloud 1 Exposure: ")
 					im.SameLine()
 					im.PushItemWidth(100)
-					if im.InputFloat("##dropSize", environmentVals.dropSizeVal, 0.001, 0.01) then
-						if environmentVals.dropSizeVal[0] < 0 then
-							environmentVals.dropSizeVal = im.FloatPtr(0)
-						elseif environmentVals.dropSizeVal[0] > 2 then
-							environmentVals.dropSizeVal = im.FloatPtr(2)
+					if im.InputFloat("##cloudExposure", environmentVals.cloudExposureVal, 0.01, 0.1) then
+						if environmentVals.cloudExposureVal[0] < 0 then
+							environmentVals.cloudExposureVal = im.FloatPtr(0)
+						elseif environmentVals.cloudExposureVal[0] > 10 then
+							environmentVals.cloudExposureVal = im.FloatPtr(10)
 						end
-						local data = jsonEncode( { "dropSize", tostring(environmentVals.dropSizeVal[0]) } )
+						local data = jsonEncode( { "cloudExposure", tostring(environmentVals.cloudExposureVal[0]) } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
 					im.SameLine()
-					if im.SmallButton("Reset##DSZ") then
-						local data = jsonEncode( { "dropSize", "default" } )
+					if im.SmallButton("Reset##CE") then
+						local data = jsonEncode( { "cloudExposure", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.Text("Drop Min Speed: ")
+					im.Text("Cloud 2 Exposure: ")
 					im.SameLine()
 					im.PushItemWidth(100)
-					if im.InputFloat("##dropMinSpeed", environmentVals.dropMinSpeedVal, 0.001, 0.01) then
-						if environmentVals.dropMinSpeedVal[0] < 0 then
-							environmentVals.dropMinSpeedVal = im.FloatPtr(0)
-						elseif environmentVals.dropMinSpeedVal[0] > 2 then
-							environmentVals.dropMinSpeedVal = im.FloatPtr(2)
+					if im.InputFloat("##cloudExposureOne", environmentVals.cloudExposureOneVal, 0.01, 0.1) then
+						if environmentVals.cloudExposureOneVal[0] < 0 then
+							environmentVals.cloudExposureOneVal = im.FloatPtr(0)
+						elseif environmentVals.cloudExposureOneVal[0] > 10 then
+							environmentVals.cloudExposureOneVal = im.FloatPtr(10)
 						end
-						local data = jsonEncode( { "dropMinSpeed", tostring(environmentVals.dropMinSpeedVal[0]) } )
+						local data = jsonEncode( { "cloudExposureOne", tostring(environmentVals.cloudExposureOneVal[0]) } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 					im.PopItemWidth()
 					im.SameLine()
-					if im.SmallButton("Reset##DMNS") then
-						local data = jsonEncode( { "dropMinSpeed", "default" } )
+					if im.SmallButton("Reset##CEO") then
+						local data = jsonEncode( { "cloudExposureOne", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.Text("Drop Max Speed: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##dropMaxSpeed", environmentVals.dropMaxSpeedVal, 0.001, 0.01) then
-						if environmentVals.dropMaxSpeedVal[0] < 0 then
-							environmentVals.dropMaxSpeedVal = im.FloatPtr(0)
-						elseif environmentVals.dropMaxSpeedVal[0] > 2 then
-							environmentVals.dropMaxSpeedVal = im.FloatPtr(2)
-						end
-						local data = jsonEncode( { "dropMaxSpeed", tostring(environmentVals.dropMaxSpeedVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##DMXS") then
-						local data = jsonEncode( { "dropMaxSpeed", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Precipitation Type: ")
-					im.SameLine()
-					local precipType = environment.precipType
-					if precipType == "rain_medium" then
-						if im.SmallButton("Medium Rain") then
-							local data = jsonEncode( { "precipType", "rain_drop" } )
+					local rainObj = getObject("Precipitation")
+					if rainObj then 
+						im.Text("Rain Drops: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##rainDrops", environmentVals.rainDropsInt, 1, 10) then
+							if environmentVals.rainDropsInt[0] < 0 then
+								environmentVals.rainDropsInt = im.IntPtr(0)
+							elseif environmentVals.rainDropsInt[0] > 20000 then
+								environmentVals.rainDropsInt = im.IntPtr(20000)
+							end
+							local data = jsonEncode( { "rainDrops", tostring(environmentVals.rainDropsInt[0]) } )
 							TriggerServerEvent("CEISetEnv", data)
 							log('W', logTag, "CEISetEnv Called: " .. data)
 						end
-					elseif precipType == "rain_drop" then
-						if im.SmallButton("Light Rain") then
-							local data = jsonEncode( { "precipType", "Snow_menu" } )
+						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##RD") then
+							local data = jsonEncode( { "rainDrops", "default" } )
 							TriggerServerEvent("CEISetEnv", data)
 							log('W', logTag, "CEISetEnv Called: " .. data)
 						end
-					elseif precipType == "Snow_menu" then
-						if im.SmallButton("Snow") then
-							local data = jsonEncode( { "precipType", "rain_medium" } )
+						im.Text("Drop Size: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputFloat("##dropSize", environmentVals.dropSizeVal, 0.001, 0.01) then
+							if environmentVals.dropSizeVal[0] < 0 then
+								environmentVals.dropSizeVal = im.FloatPtr(0)
+							elseif environmentVals.dropSizeVal[0] > 2 then
+								environmentVals.dropSizeVal = im.FloatPtr(2)
+							end
+							local data = jsonEncode( { "dropSize", tostring(environmentVals.dropSizeVal[0]) } )
 							TriggerServerEvent("CEISetEnv", data)
 							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##DSZ") then
+							local data = jsonEncode( { "dropSize", "default" } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.Text("Drop Min Speed: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputFloat("##dropMinSpeed", environmentVals.dropMinSpeedVal, 0.001, 0.01) then
+							if environmentVals.dropMinSpeedVal[0] < 0 then
+								environmentVals.dropMinSpeedVal = im.FloatPtr(0)
+							elseif environmentVals.dropMinSpeedVal[0] > 2 then
+								environmentVals.dropMinSpeedVal = im.FloatPtr(2)
+							end
+							local data = jsonEncode( { "dropMinSpeed", tostring(environmentVals.dropMinSpeedVal[0]) } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##DMNS") then
+							local data = jsonEncode( { "dropMinSpeed", "default" } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.Text("Drop Max Speed: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputFloat("##dropMaxSpeed", environmentVals.dropMaxSpeedVal, 0.001, 0.01) then
+							if environmentVals.dropMaxSpeedVal[0] < 0 then
+								environmentVals.dropMaxSpeedVal = im.FloatPtr(0)
+							elseif environmentVals.dropMaxSpeedVal[0] > 2 then
+								environmentVals.dropMaxSpeedVal = im.FloatPtr(2)
+							end
+							local data = jsonEncode( { "dropMaxSpeed", tostring(environmentVals.dropMaxSpeedVal[0]) } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##DMXS") then
+							local data = jsonEncode( { "dropMaxSpeed", "default" } )
+							TriggerServerEvent("CEISetEnv", data)
+							log('W', logTag, "CEISetEnv Called: " .. data)
+						end
+						im.Text("Precipitation Type: ")
+						im.SameLine()
+						local precipType = environment.precipType
+						if precipType == "rain_medium" then
+							if im.SmallButton("Medium Rain") then
+								local data = jsonEncode( { "precipType", "rain_drop" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+						elseif precipType == "rain_drop" then
+							if im.SmallButton("Light Rain") then
+								local data = jsonEncode( { "precipType", "Snow_menu" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+						elseif precipType == "Snow_menu" then
+							if im.SmallButton("Snow") then
+								local data = jsonEncode( { "precipType", "rain_medium" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
 						end
 					end
 					im.TreePop()
@@ -3581,11 +3728,11 @@ local function onNightScale(value)
 	end
 end
 
-local function onSunAzimuth(value)
-	local scatterSkyObj = getObject("ScatterSky")
-	if scatterSkyObj and value then
-		scatterSkyObj.azimuth = value
-		scatterSkyObj:postApply()
+local function onSunAzimuthOverride(value)
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		timeOfDay.azimuthOverride = value
+		core_environment.setTimeOfDay(timeOfDay)
 	end
 end
 
@@ -3718,12 +3865,55 @@ local function onFogDensityOffset(value)
 	core_environment.setFogDensityOffset(value)
 end
 
+local function onFogAtmosphereHeight(value)
+	core_environment.setFogAtmosphereHeight(value)
+end
+
+local function onCloudHeight(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	core_environment.setCloudHeightByID(cloudObjID, value)
+end
+
+local function onCloudHeightOne(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	local cloudObjIDOne = cloudObjID + 1
+	local cloud = be:getObjectByID(cloudObjIDOne)
+	core_environment.setCloudHeightByID(cloudObjIDOne, value)
+end
+
 local function onCloudCover(value)
-	core_environment.setCloudCover(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	core_environment.setCloudCoverByID(cloudObjID, value)
+end
+
+local function onCloudCoverOne(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	local cloudObjIDOne = cloudObjID + 1
+	local cloud = be:getObjectByID(cloudObjIDOne)
+	core_environment.setCloudCoverByID(cloudObjIDOne, value)
 end
 
 local function onCloudSpeed(value)
-	core_environment.setWindSpeed(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	core_environment.setCloudWindByID(cloudObjID, value)
+end
+
+local function onCloudSpeedOne(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	local cloudObjIDOne = cloudObjID + 1
+	local cloud = be:getObjectByID(cloudObjIDOne)
+	core_environment.setCloudWindByID(cloudObjIDOne, value)
+end
+
+local function onCloudExposure(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	core_environment.setCloudExposureByID(cloudObjID, value)
+end
+
+local function onCloudExposureOne(value)
+	local cloudObjID = getObject("CloudLayer"):getId()
+	local cloudObjIDOne = cloudObjID + 1
+	core_environment.setCloudExposureByID(cloudObjIDOne, value)
 end
 
 local function onRainDrops(value)
@@ -3863,7 +4053,7 @@ local function runEnvironment(dt)
 			onDayLength(environment.dayLength)
 			onDayScale(environment.dayScale)
 			onNightScale(environment.nightScale)
-			onSunAzimuth(environment.sunAzimuth)
+			onSunAzimuthOverride(environment.sunAzimuthOverride)
 			onSunSize(environment.sunSize)
 			onSkyBrightness(environment.skyBrightness)
 			onRayleighScattering(environment.rayleighScattering)
@@ -3886,7 +4076,7 @@ local function runEnvironment(dt)
 			onDayLength(environment.dayLength_default)
 			onDayScale(environment.dayScale_default)
 			onNightScale(environment.nightScale_default)
-			onSunAzimuth(environment.sunAzimuth_default)
+			onSunAzimuthOverride(environment.sunAzimuthOverride_default)
 			onSunSize(environment.sunSize_default)
 			onSkyBrightness(environment.skyBrightness_default)
 			onRayleighScattering(environment.rayleighScattering_default)
@@ -3910,8 +4100,15 @@ local function runEnvironment(dt)
 		elseif environment.controlWeather == true and defaultWeatherSet == false then
 			onFogDensity(environment.fogDensity)
 			onFogDensityOffset(environment.fogDensityOffset)
+			onFogAtmosphereHeight(environment.fogAtmosphereHeight)
+			onCloudHeight(environment.cloudHeight)
+			onCloudHeightOne(environment.cloudHeightOne)
 			onCloudCover(environment.cloudCover)
+			onCloudCoverOne(environment.cloudCoverOne)
 			onCloudSpeed(environment.cloudSpeed)
+			onCloudSpeedOne(environment.cloudSpeedOne)
+			onCloudExposure(environment.cloudExposure)
+			onCloudExposureOne(environment.cloudExposureOne)
 			onRainDrops(environment.rainDrops)
 			onDropSize(environment.dropSize)
 			onDropMinSpeed(environment.dropMinSpeed)
@@ -3919,8 +4116,15 @@ local function runEnvironment(dt)
 		elseif environment.controlWeather == false and defaultWeatherSet == false then
 			onFogDensity(environment.fogDensity_default)
 			onFogDensityOffset(environment.fogDensityOffset_default)
+			onFogAtmosphereHeight(environment.fogAtmosphereHeight_default)
+			onCloudHeight(environment.cloudHeight_default)
+			onCloudHeightOne(environment.cloudHeightOne_default)
 			onCloudCover(environment.cloudCover_default)
+			onCloudCoverOne(environment.cloudCoverOne_default)
 			onCloudSpeed(environment.cloudSpeed_default)
+			onCloudSpeedOne(environment.cloudSpeedOne_default)
+			onCloudExposure(environment.cloudExposure_default)
+			onCloudExposureOne(environment.cloudExposureOne_default)
 			onRainDrops(environment.rainDrops_default)
 			onDropSize(environment.dropSize_default)
 			onDropMinSpeed(environment.dropMinSpeed_default)
