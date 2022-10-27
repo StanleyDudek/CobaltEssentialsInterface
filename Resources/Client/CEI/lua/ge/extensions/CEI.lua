@@ -10,6 +10,7 @@ local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
 local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 local currentGroup
+local currentUIPerm
 local canTeleport
 local includeInRace = false
 local nametagWhitelisted = false
@@ -18,10 +19,8 @@ local nametagBlockerTimeout
 local nametagsValsSet = {}
 local ignitionEnabled = {}
 local isFrozen = {}
-
 local firstReset = false
 local firstTeleport = false
-
 local resetsBlockedInputActions = {}
 local allResetsBlockedInputActions = {
 	"loadHome",
@@ -32,7 +31,6 @@ local allResetsBlockedInputActions = {
 	"reset_all_physics",
 	"reset_physics"
 }
-
 local environmentValsSet = false
 local environmentVals = {}
 local environment = {}
@@ -43,21 +41,16 @@ local playersDatabaseValsSet = false
 local playersDatabaseVals = {}
 local playersDatabase = {}
 local playersDatabaseFiltering = {}
-playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
-
+	  playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 local configValsSet = false
 local configVals = {}
 local config = {}
-
 local resetsPlayerNotified = true
 local resetsTimerElapsedReset = 0
-
 local vehiclePermsFiltering = {}
-vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
-
+	  vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 local physics = {}
-physics.physmult = 1
-
+	  physics.physmult = 1
 local timeUpdateQueued = false
 local timeUpdateTimer = 0
 local timeUpdateTimeout = 0.05
@@ -217,7 +210,12 @@ local function rxConfigData(data)
 		for k,v in pairs(config.cobalt.groups) do
 			configVals.cobalt.groups[k] = {}
 			configVals.cobalt.groups[k].groupPerms = {}
-			configVals.cobalt.groups[k].groupPerms.groupLevelInt = im.IntPtr(tonumber(config.cobalt.groups[k].groupPerms.level)) or im.IntPtr(0)
+			configVals.cobalt.groups[k].groupPerms.groupLevelInt = im.IntPtr(tonumber(config.cobalt.groups[k].groupPerms.level))
+			if config.cobalt.groups[k].groupPerms.UI then
+				configVals.cobalt.groups[k].groupPerms.groupUILevelInt = im.IntPtr(tonumber(config.cobalt.groups[k].groupPerms.UI))
+			else
+				configVals.cobalt.groups[k].groupPerms.groupUILevelInt = im.IntPtr(1)
+			end
 			configVals.cobalt.groups[k].groupPerms.groupBanReasonInput = im.ArrayChar(128)
 			configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput = im.ArrayChar(128)
 			configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput = im.ArrayChar(128)
@@ -247,6 +245,10 @@ local function rxPlayerGroup(data)
 	currentGroup = data
 end
 
+local function rxPlayersUIPerm(data)
+	currentUIPerm = tonumber(data)
+end
+
 local function rxPlayersDatabase(data)
 	playersDatabase = jsonDecode(data)
 	if playersDatabaseValsSet == false then
@@ -258,6 +260,11 @@ local function rxPlayersDatabase(data)
 					playersDatabaseVals[k].permissions.levelInt = im.IntPtr(playersDatabase[k].permissions.level)
 				else
 					playersDatabaseVals[k].permissions.levelInt = im.IntPtr(1)
+				end
+				if tonumber(playersDatabase[k].permissions.UI) then
+					playersDatabaseVals[k].permissions.UILevelInt = im.IntPtr(playersDatabase[k].permissions.UI)
+				else
+					playersDatabaseVals[k].permissions.UILevelInt = im.IntPtr(1)
 				end
 			end
 			playersDatabaseVals[k].permissions.groupInput = im.ArrayChar(128)
@@ -284,6 +291,7 @@ local function rxPlayersData(data)
 			playersVals[playerID].tempBanLength = im.FloatPtr(tonumber(players[playerID].tempBanLength))
 			playersVals[playerID].vehDeleteReason = im.ArrayChar(128)
 			playersVals[playerID].permissions.levelInt = im.IntPtr(tonumber(players[playerID].tempPermLevel))
+			playersVals[playerID].permissions.UILevelInt = im.IntPtr(tonumber(players[playerID].tempUIPermLevel))
 			playersVals[playerID].permissions.groupInput = im.ArrayChar(128)
 			playersValsSet[playerID] = true
 		end
@@ -458,7 +466,7 @@ local function drawCEI(dt)
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.5, 0.0, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.6, 0.0, 0.5))
 			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.4, 0.0, 0.999))
-			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentGroup == "default" then
+			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 				if im.SmallButton("Race Countdown!") then
 					for k,v in pairs(players) do
 						if players[k].includeInRace == true then
@@ -502,7 +510,7 @@ local function drawCEI(dt)
 				im.PopStyleColor(3)
 			end
 			im.Separator()
-			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 				im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
@@ -609,7 +617,7 @@ local function drawCEI(dt)
 						TriggerServerEvent("CEIVoteKick", data)
 						log('W', logTag, "CEIVoteKick Called: " .. data)
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -617,7 +625,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
 							local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -631,7 +639,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
@@ -663,7 +671,7 @@ local function drawCEI(dt)
 					end
 					if vehiclesCounter > 0 then
 						if canTeleport then
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 							else
 								im.SameLine()
 							end
@@ -681,7 +689,7 @@ local function drawCEI(dt)
 							end
 							im.SameLine()
 							im.ShowHelpMarker("Teleport to this player's current vehicle.")
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 								im.SameLine()
 								if im.SmallButton("Teleport From##" .. tostring(k)) then
 									if lastTeleport >= tonumber(environment.teleportTimeout) then
@@ -694,7 +702,7 @@ local function drawCEI(dt)
 							end
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						im.Text("		")
 						im.SameLine()
 						im.Text("Reason:")
@@ -702,7 +710,7 @@ local function drawCEI(dt)
 						if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", playersVals[k].kickBanMuteReason, 128) then
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 						im.Text("		")
 						im.SameLine()
 						im.Text("tempBan:")
@@ -727,7 +735,7 @@ local function drawCEI(dt)
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 								im.Text("		")
 								im.SameLine()
 								im.Text("Reason:")
@@ -746,7 +754,7 @@ local function drawCEI(dt)
 								im.Text(tostring(players[k].vehicles[x].vehicleID) .. ":")
 								im.SameLine()
 								im.Text(players[k].vehicles[x].jbm)
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 									for i,j in pairs(ignitionEnabled) do
 										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
 											if j == true then
@@ -767,7 +775,7 @@ local function drawCEI(dt)
 										end
 									end
 								end
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 									for i,j in pairs(isFrozen) do
 										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
 											if j == false then
@@ -803,7 +811,7 @@ local function drawCEI(dt)
 							im.Separator()
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						if im.TreeNode1("info##"..tostring(k)) then
 							im.Text("		playerID: " .. players[k].playerID)
 							im.Text("		connectStage: " .. players[k].connectStage)
@@ -813,7 +821,7 @@ local function drawCEI(dt)
 							im.Text("| connectedTime: " .. string.format("%.2f",players[k].connectedTime))
 							im.Separator()
 							if im.TreeNode1("permissions##"..tostring(k)) then
-								if currentGroup == "owner" or currentGroup == "admin" then
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 									if players[k].teleport == false then
 										if im.SmallButton("Allow Teleport##"..tostring(k)) then
 											local data = jsonEncode( { players[k].playerName, true } )
@@ -828,21 +836,46 @@ local function drawCEI(dt)
 										end
 									end
 								end
-								if im.TreeNode1("level:") then
+								if im.TreeNode1("UI Level:") then
 									im.SameLine()
-									im.Text(tostring(players[k].permissions.level))
-									if currentGroup == "owner" or currentGroup == "admin" then
+									im.Text(tostring(players[k].permissions.UI))
+									if currentGroup == "owner" or currentUIPerm > 3 then
 										im.Text("		")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("", playersVals[k].permissions.levelInt, 1) then
+										if im.InputInt("##UILevel", playersVals[k].permissions.UILevelInt, 1) then
+											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
+											TriggerServerEvent("CEISetTempUIPerm", data)
+											log('W', logTag, "CEISetTempUIPerm Called: " .. data)
+										end
+										im.PopItemWidth()
+										im.SameLine()
+										if im.Button("Apply##UILevelPlayer") then
+											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
+											TriggerServerEvent("CEISetUIPerm", data)
+											log('W', logTag, "CEISetUIPerm Called: " .. data)
+										end
+									end
+									im.TreePop()
+								else
+									im.SameLine()
+									im.Text(tostring(players[k].permissions.UI))
+								end
+								if im.TreeNode1("level:") then
+									im.SameLine()
+									im.Text(tostring(players[k].permissions.level))
+									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
+										im.Text("		")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("##level", playersVals[k].permissions.levelInt, 1) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetTempPerm", data)
 											log('W', logTag, "CEISetTempPerm Called: " .. data)
 										end
 										im.PopItemWidth()
 										im.SameLine()
-										if im.Button("Apply##level"..tostring(x)) then
+										if im.Button("Apply##levelPlayer") then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetPerm", data)
 											log('W', logTag, "CEISetPerm Called: " .. data)
@@ -860,7 +893,7 @@ local function drawCEI(dt)
 								if im.TreeNode1("group:##"..tostring(k)) then
 									im.SameLine()
 									im.Text(players[k].permissions.group)
-									if currentGroup == "owner" or currentGroup == "admin" then
+									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 										im.Text("		")
 										im.SameLine()
 										if im.InputTextWithHint("##newGroup", "Group Name", playersVals[k].permissions.groupInput, 128) then
@@ -912,7 +945,7 @@ local function drawCEI(dt)
 						TriggerServerEvent("CEIVoteKick", data)
 						log('W', logTag, "CEIVoteKick Called: " .. data)
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -920,7 +953,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
 							local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -934,7 +967,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
@@ -966,7 +999,7 @@ local function drawCEI(dt)
 					end
 					if vehiclesCounter > 0 then
 						if canTeleport then
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 							else
 								im.SameLine()
 							end
@@ -984,7 +1017,7 @@ local function drawCEI(dt)
 							end
 							im.SameLine()
 							im.ShowHelpMarker("Teleport to this player's current vehicle.")
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 								im.SameLine()
 								if im.SmallButton("Teleport From##" .. tostring(k)) then
 									if lastTeleport >= tonumber(environment.teleportTimeout) then
@@ -1003,7 +1036,7 @@ local function drawCEI(dt)
 			im.EndTabItem()
 		end
 ----------------------------------------------------------------------------------CONFIG TAB
-		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 			if im.BeginTabItem("Config") then
 ----------------------------------------------------------------------------------COBALT HEADER
 				if im.CollapsingHeader1("Cobalt Essentials") then
@@ -1013,7 +1046,7 @@ local function drawCEI(dt)
 					for a,b in pairs(vehiclePerms) do
 						vehiclePermsCounter = vehiclePermsCounter + 1
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 						if im.TreeNode1("vehiclePerms:") then
 							im.SameLine()
 							im.Text(tostring(vehiclePermsCounter))
@@ -1042,7 +1075,7 @@ local function drawCEI(dt)
 												im.Text("	")
 												im.SameLine()
 												im.PushItemWidth(100)
-												if im.InputInt("", configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
+												if im.InputInt("##level", configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
 													local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, tostring(configVals.cobalt.permissions.vehiclePerm[k].levelInt[0]) } )
 													TriggerServerEvent("CEISetVehiclePermLevel", data)
 													log('W', logTag, "CEISetVehiclePermLevel Called: " .. data)
@@ -1078,7 +1111,7 @@ local function drawCEI(dt)
 															im.Text("	")
 															im.SameLine()
 															im.PushItemWidth(100)
-															if im.InputInt("", configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
+															if im.InputInt("##level", configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
 																local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName, tostring(configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt[0]) } )
 																TriggerServerEvent("CEISetVehiclePartLevel", data)
 																log('W', logTag, "CEISetVehiclePartLevel Called: " .. data)
@@ -1129,7 +1162,7 @@ local function drawCEI(dt)
 									im.Text("		")
 									im.SameLine()
 									im.PushItemWidth(100)
-									if im.InputInt("", configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
+									if im.InputInt("##level", configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
 										local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
 										TriggerServerEvent("CEISetVehiclePerms", data)
 										log('W', logTag, "CEISetVehiclePerms Called: " .. data)
@@ -1176,7 +1209,7 @@ local function drawCEI(dt)
 							im.Text("		")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("", configVals.cobalt.maxActivePlayersInt, 1) then
+							if im.InputInt("##maxActivePlayers", configVals.cobalt.maxActivePlayersInt, 1) then
 								local data = jsonEncode( { tostring(configVals.cobalt.maxActivePlayersInt[0]) } )
 								TriggerServerEvent("CEISetMaxActivePlayers", data)
 								log('W', logTag, "CEISetMaxActivePlayers Called: " .. data)
@@ -1248,8 +1281,17 @@ local function drawCEI(dt)
 										im.Text("		level: ")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
+										if im.InputInt("##level", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
 											local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
+											TriggerServerEvent("CEISetGroupPerms", data)
+											log('W', logTag, "CEISetGroupPerms Called: " .. data)
+										end
+										im.PopItemWidth()
+										im.Text("		UI: ")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("##UILevel", configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
+											local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
 											TriggerServerEvent("CEISetGroupPerms", data)
 											log('W', logTag, "CEISetGroupPerms Called: " .. data)
 										end
@@ -1258,8 +1300,17 @@ local function drawCEI(dt)
 										im.Text("		level: ")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
+										if im.InputInt("##level", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
 											local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
+											TriggerServerEvent("CEISetGroupPerms", data)
+											log('W', logTag, "CEISetGroupPerms Called: " .. data)
+										end
+										im.PopItemWidth()
+										im.Text("		UI: ")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("##UILevel", configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
+											local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
 											TriggerServerEvent("CEISetGroupPerms", data)
 											log('W', logTag, "CEISetGroupPerms Called: " .. data)
 										end
@@ -1267,6 +1318,7 @@ local function drawCEI(dt)
 									end
 									for a,b in pairs(config.cobalt.groups[k].groupPerms) do
 										if a ~= "level"
+										and a ~= "UI"
 										and a ~= "whitelisted"
 										and a ~= "muted"
 										and a ~= "banned"
@@ -1298,7 +1350,6 @@ local function drawCEI(dt)
 											im.PopStyleColor(3)
 										end
 									end
-											
 									if config.cobalt.groups[k].groupPerms.whitelisted then
 										im.Text("		whitelisted: " .. tostring(config.cobalt.groups[k].groupPerms.whitelisted))
 										im.SameLine()
@@ -1491,7 +1542,7 @@ local function drawCEI(dt)
 						end
 						im.Separator()
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 						local whitelistPlayersCounter = 0
 						if config.cobalt.whitelistedPlayers then
 							for a,b in pairs(config.cobalt.whitelistedPlayers) do
@@ -1559,7 +1610,7 @@ local function drawCEI(dt)
 						end
 						im.Separator()
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 						im.Text('		Default CEI State:')
 						im.SameLine()
 						if config.cobalt.interface.defaultState == true then
@@ -1579,7 +1630,7 @@ local function drawCEI(dt)
 					im.Unindent()
 				end
 ----------------------------------------------------------------------------------SERVER HEADER
-				if currentGroup == "owner" or currentGroup == "admin" then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm > 2 then
 					if im.CollapsingHeader1("Server") then
 						im.Indent()
 						if im.TreeNode1("name:") then
@@ -1610,7 +1661,7 @@ local function drawCEI(dt)
 							im.Text("		")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("", configVals.server.maxCarsInt, 1) then
+							if im.InputInt("##maxCars", configVals.server.maxCarsInt, 1) then
 								local data = jsonEncode( { "MaxCars", tostring(configVals.server.maxCarsInt[0]) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -1628,7 +1679,7 @@ local function drawCEI(dt)
 							im.Text("		")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("", configVals.server.maxPlayersInt, 1) then
+							if im.InputInt("##maxPlayers", configVals.server.maxPlayersInt, 1) then
 								local data = jsonEncode( { "MaxPlayers", tostring(configVals.server.maxPlayersInt[0]) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -1733,7 +1784,7 @@ local function drawCEI(dt)
 					end
 				end
 ----------------------------------------------------------------------------------NAMETAGS HEADER
-				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 					if im.CollapsingHeader1("Nametags") then
 						local nametagWhitelist = config.nametags.whitelist
 						local nametagWhitelistCounter = 0
@@ -1955,7 +2006,7 @@ local function drawCEI(dt)
 						im.Unindent()
 					end
 ----------------------------------------------------------------------------------EXTRAS HEADER
-				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 					if im.CollapsingHeader1("Extras") then
 						im.Indent()
 						if im.TreeNode1("Simulation Speed") then
@@ -2094,7 +2145,7 @@ local function drawCEI(dt)
 			end
 		end
 ----------------------------------------------------------------------------------ENVIRONMENT TAB
-		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 			if im.BeginTabItem("Environment") then
 				im.Indent()
 				if im.SmallButton("Reset All##ENV") then
@@ -3289,7 +3340,7 @@ local function drawCEI(dt)
 			end
 		end
 ----------------------------------------------------------------------------------DATABASE TAB
-		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm > 1 then
 			if im.BeginTabItem("Database") then
 				im.Indent()
 		
@@ -3446,26 +3497,75 @@ local function drawCEI(dt)
 													end
 												end
 												if im.TreeNode1("permissions##"..playerName) then
-														if playersDatabase[k].permissions.teleport == false or playersDatabase[k].permissions.teleport == nil or playersDatabase[k].permissions.teleport == "nil" then
-															if im.SmallButton("Allow Teleport##"..playerName) then
-																local data = jsonEncode( { playerName, true } )
-																TriggerServerEvent("CEISetTeleportPerm", data)
-																log('W', logTag, "CEISetTeleportPerm Called: " .. data)
-															end
-														elseif playersDatabase[k].permissions.teleport == true then
-															if im.SmallButton("Revoke Teleport##"..playerName) then
-																local data = jsonEncode( { playerName, false } )
-																TriggerServerEvent("CEISetTeleportPerm", data)
-																log('W', logTag, "CEISetTeleportPerm Called: " .. data)
-															end
+													if playersDatabase[k].permissions.teleport == false or playersDatabase[k].permissions.teleport == nil or playersDatabase[k].permissions.teleport == "nil" then
+														if im.SmallButton("Allow Teleport##"..playerName) then
+															local data = jsonEncode( { playerName, true } )
+															TriggerServerEvent("CEISetTeleportPerm", data)
+															log('W', logTag, "CEISetTeleportPerm Called: " .. data)
 														end
+													elseif playersDatabase[k].permissions.teleport == true then
+														if im.SmallButton("Revoke Teleport##"..playerName) then
+															local data = jsonEncode( { playerName, false } )
+															TriggerServerEvent("CEISetTeleportPerm", data)
+															log('W', logTag, "CEISetTeleportPerm Called: " .. data)
+														end
+													end
+													
+													if im.TreeNode1("UI Level:") then
+														im.SameLine()
+														if playersDatabase[k].permissions.UI then
+															im.Text(tostring(playersDatabase[k].permissions.UI))
+															if currentGroup == "owner" or currentUIPerm > 3 then
+																im.Text("		")
+																im.SameLine()
+																im.PushItemWidth(100)
+																if im.InputInt("##UILevel", playersDatabaseVals[k].permissions.UILevelInt, 1) then
+																	local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																	TriggerServerEvent("CEISetTempUIPerm", data)
+																	log('W', logTag, "CEISetTempUIPerm Called: " .. data)
+																end
+																im.PopItemWidth()
+																im.SameLine()
+																if im.Button("Apply##UILevelDatabase") then
+																	local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																	TriggerServerEvent("CEISetUIPerm", data)
+																	log('W', logTag, "CEISetUIPerm Called: " .. data)
+																end
+															end
+															im.TreePop()
+														else
+															im.Text(tostring(1))
+															if currentGroup == "owner" or currentUIPerm > 3 then
+																im.Text("		")
+																im.SameLine()
+																im.PushItemWidth(100)
+																if im.InputInt("##UILevel", playersDatabaseVals[k].permissions.UILevelInt, 1) then
+																	local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																	TriggerServerEvent("CEISetTempUIPerm", data)
+																	log('W', logTag, "CEISetTempUIPerm Called: " .. data)
+																end
+																im.PopItemWidth()
+																im.SameLine()
+																if im.Button("Apply##UILevelDatabase") then
+																	local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																	TriggerServerEvent("CEISetUIPerm", data)
+																	log('W', logTag, "CEISetUIPerm Called: " .. data)
+																end
+															end
+															im.TreePop()
+														end
+													else
+														im.SameLine()
+														im.Text(tostring(players[k].permissions.UI))
+													end
+													
 													if im.TreeNode1("level:") then
 														im.SameLine()
 														im.Text(tostring(playersDatabase[k].permissions.level))
 														im.Text("		")
 														im.SameLine()
 														im.PushItemWidth(100)
-														if im.InputInt("", playersDatabaseVals[k].permissions.levelInt, 1) then
+														if im.InputInt("##level", playersDatabaseVals[k].permissions.levelInt, 1) then
 															local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
 															TriggerServerEvent("CEISetTempPerm", data)
 															log('W', logTag, "CEISetTempPerm Called: " .. data)
@@ -4326,6 +4426,7 @@ local function onExtensionLoaded()
 	AddEventHandler("rxConfigData", rxConfigData)
 	AddEventHandler("rxInputUpdate", rxInputUpdate)
 	AddEventHandler("rxEnvironment", rxEnvironment)
+	AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
 	AddEventHandler("rxCEIstate", rxCEIstate)
 	AddEventHandler("rxCEItp", rxCEItp)
 	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
