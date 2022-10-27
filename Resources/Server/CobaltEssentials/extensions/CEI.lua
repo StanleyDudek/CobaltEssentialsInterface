@@ -1215,7 +1215,7 @@ function CEISetUIPerm(senderID, data)
 			if players[senderID].permissions.UI <= UIPermLvl then
 				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s UI Level to " .. UIPermLvl .. " because it exceeds your own!")
 			else
-				CC.setperm(players[senderID], targetName, UIPermLvl)
+				players.database[targetName].UI = UIPermLvl
 				tempPlayers[targetName].tempUIPermLevel = players[player.playerID].permissions.UI
 				CobaltDB.set("playersDB/" .. targetName, "UI", "value", UIPermLvl)
 			end
