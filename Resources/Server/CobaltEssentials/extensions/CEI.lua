@@ -347,7 +347,9 @@ local function onInit()
 	MP.RegisterEvent("CEISetGroupLevel","CEISetGroupLevel")
 	MP.RegisterEvent("CEISetGroupPerms","CEISetGroupPerms")
 	MP.RegisterEvent("CEISetPerm","CEISetPerm")
+	MP.RegisterEvent("CEISetUIPerm","CEISetUIPerm")
 	MP.RegisterEvent("CEISetTempPerm","CEISetTempPerm")
+	MP.RegisterEvent("CEISetTempUIPerm","CEISetTempUIPerm")
 	MP.RegisterEvent("CEISetVehiclePerms","CEISetVehiclePerms")
 	MP.RegisterEvent("CEIRemoveVehiclePerm","CEIRemoveVehiclePerm")
 	MP.RegisterEvent("CEIRemoveVehiclePart","CEIRemoveVehiclePart")
@@ -527,26 +529,11 @@ local function txPlayersGroup(player)
 	end
 end
 
-local function txData()
+local function txPlayersUIPerm(player)
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			if player.connectStage == "connected" then
-				if player.permissions.group == "owner"  or player.permissions.group == "admin" or player.permissions.group == "mod" then
-					M.txPlayersData(player)
-					M.txPlayersDatabase(player)
-					M.txConfigData(player)
-					M.txPlayersGroup(player)
-					M.txEnvironment(player)
-					M.txNametagWhitelisted(player)
-					M.txNametagBlockerActive(player)
-				else
-					M.txPlayersData(player)
-					M.txPlayersGroup(player)
-					M.txEnvironment(player)
-					M.txNametagWhitelisted(player)
-					M.txNametagBlockerActive(player)
-					M.txConfigData(player)
-				end
+				MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
 			end
 		end
 	end
@@ -593,14 +580,11 @@ local function txPlayersData(player)
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			local connectedTime
-			connectedTime = os.clock() * 1000 - player.joinTime
+			connectedTime = ageTimer:GetCurrent()*1000 - player.joinTime
 			connectedTime = connectedTime / 1000
 			playersTable[player.playerID] = {
 					playerID = player.playerID,
 					playerName = player.name,
-					beammp = player.beammp,
-					ip = player.ip,
-					UI = player.UI,
 					connectStage = player.connectStage,
 					guest = player.guest,
 					joinTime = player.joinTime / 1000,
@@ -617,11 +601,15 @@ local function txPlayersData(player)
 						group = player.permissions.group,
 						muted = player.permissions.muted,
 						muteReason = (player.permissions.muteReason or ""),
-						banned = player.permissions.banned
+						banned = player.permissions.banned,
+						ip = player.permissions.ip,
+						beammp = player.permissions.beammp,
+						UI = player.permissions.UI
 						},
 					teleport = teleport[player.name],
 					tempBanLength = tempPlayers[player.name].tempBanLength,
 					tempPermLevel = tempPlayers[player.name].tempPermLevel,
+					tempUIPermLevel = tempPlayers[player.name].tempUIPermLevel,
 					includeInRace = tempPlayers[player.name].includeInRace,
 					currentVehicle = tempPCV[player.name],
 					vehicles = (player.vehicles or {})
@@ -734,6 +722,27 @@ end
 function txNametagBlockerTimeout(senderID, data)
 	data = Util.JsonDecode(data)
 	MP.TriggerClientEvent(-1, "rxNametagBlockerTimeout", tostring(data[1]))
+end
+
+local function txData()
+	for playerID, player in pairs(players) do
+		if type(playerID) == "number" then
+			if player.connectStage == "connected" then
+				txPlayersData(player)
+				txPlayersGroup(player)
+				txEnvironment(player)
+				txNametagWhitelisted(player)
+				txNametagBlockerActive(player)
+				txConfigData(player)
+				txPlayersUIPerm(player)
+				if player.permissions.UI then
+					if player.permissions.UI > 1 then
+						txPlayersDatabase(player)
+					end
+				end
+			end
+		end
+	end
 end
 
 function CEIPreRace(senderID, data)
@@ -1168,7 +1177,19 @@ function CEISetGroupPerms(senderID, data)
 		local group = data[1]
 		local permission = data[2]
 		local value = data[3]
-		if tonumber(value) then
+		if permission == "level" then
+			if players[senderID].permissions.level <= tonumber(value) then
+				MP.SendChatMessage(senderID, "Cannot set " .. group .. "'s level to " .. value .. " because it exceeds your own!")
+			else
+				players.database[group].level = tonumber(value)
+			end
+		elseif permission == "UI" then
+			if players[senderID].permissions.UI <= tonumber(value) then
+				MP.SendChatMessage(senderID, "Cannot set " .. group .. "'s UI Level to " .. value .. " because it exceeds your own!")
+			else
+				players.database[group].UI = tonumber(value)
+			end
+		elseif tonumber(value) then
 			if tonumber(value) >= 0 then
 				players.database[group][permission] = tonumber(value)
 			elseif tonumber(value) < 0 then
@@ -1180,6 +1201,34 @@ function CEISetGroupPerms(senderID, data)
 			players.database[group][permission] = value
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEISetUIPerm(senderID, data)
+	--CElog("CEISetUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI > 2 then
+		data = Util.JsonDecode(data)
+		local targetName = data[1]
+		local player = players.getPlayerByName(targetName)
+		local UIPermLvl = tonumber(data[2])
+		if player then
+			if players[senderID].permissions.UI <= UIPermLvl then
+				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s UI Level to " .. UIPermLvl .. " because it exceeds your own!")
+			else
+				CC.setperm(players[senderID], targetName, UIPermLvl)
+				tempPlayers[targetName].tempUIPermLevel = players[player.playerID].permissions.UI
+				CobaltDB.set("playersDB/" .. targetName, "UI", "value", UIPermLvl)
+			end
+		else
+			if players[senderID].permissions.UI <= UIPermLvl then
+				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s UI Level to " .. UIPermLvl .. " because it exceeds your own!")
+			else
+				CobaltDB.set("playersDB/" .. targetName, "UI", "value", UIPermLvl)
+				players.database[targetName].UI = UIPermLvl
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
 
@@ -1210,6 +1259,17 @@ function CEISetPerm(senderID, data)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
+
+function CEISetTempUIPerm(senderID, data)
+	--CElog("CEISetTempUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI > 2 then
+		data = Util.JsonDecode(data)
+		local targetName = data[1]
+		local UIPermLvl = tonumber(data[2])
+		tempPlayers[targetName].tempUIPermLevel = UIPermLvl
+	end
+end
+
 
 function CEISetTempPerm(senderID, data)
 	--CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
@@ -1728,6 +1788,16 @@ function raceStart()
 	end
 end
 
+local function sendDelayedMessage(player_id, message)
+	for playerID, player in pairs(players) do
+		if type(playerID) == "number" then
+			if player.connectStage == "connected" then
+				MP.SendChatMessage(player_id, message)
+			end
+		end
+	end
+end
+
 function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	if CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") == 0 then
 	elseif CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") > os.time() then
@@ -1735,6 +1805,7 @@ function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	end
 	tempPlayers[player_name] = {}
 	tempPlayers[player_name].tempPermLevel = 0
+	tempPlayers[player_name].tempUIPermLevel = 1
 	tempPlayers[player_name].tempBanLength = 1
 	tempPlayers[player_name].includeInRace = false
 	tempPlayers[player_name].votedFor = {}
@@ -1757,14 +1828,13 @@ local function onPlayerConnecting(player)
 		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
 	end
 	if players.database[player.name].UI == nil then
-		players.database[player.name].UI = true
-		CobaltDB.set("playersDB/" .. player.name, "UI", "value", true)
+		players.database[player.name].UI = 1
+		CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
 	end
 	if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
 		local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
 		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
 	end
-	
 	if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
 		CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
 	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == false then
@@ -1780,6 +1850,7 @@ end
 
 local function onPlayerJoining(player)
 	tempPlayers[player.name].tempPermLevel = player.permissions.level
+	tempPlayers[player.name].tempPermLevel = player.permissions.UI
 	tempPlayers[player.name].player_id = player.playerID
 end
 
@@ -1801,9 +1872,8 @@ local function onPlayerJoin(player)
 	end
 	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
-	CE.delayExec( 2000 , MP.SendChatMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
-	CE.delayExec( 2500 , MP.SendChatMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
-	
+	CE.delayExec( 3000 , sendDelayedMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
+	CE.delayExec( 6000 , sendDelayedMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
@@ -1886,13 +1956,5 @@ M.updateCobaltDatabase = updateCobaltDatabase
 
 M.CEI = CEI
 M.cei = CEI
-
-M.txPlayersData = txPlayersData
-M.txPlayersDatabase = txPlayersDatabase
-M.txConfigData = txConfigData
-M.txPlayersGroup = txPlayersGroup
-M.txEnvironment = txEnvironment
-M.txNametagWhitelisted = txNametagWhitelisted
-M.txNametagBlockerActive = txNametagBlockerActive
 
 return M
