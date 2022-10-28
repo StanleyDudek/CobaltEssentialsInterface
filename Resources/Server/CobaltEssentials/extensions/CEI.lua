@@ -2109,6 +2109,7 @@ M.applyStuff = applyStuff
 
 M.onInit = onInit
 M.onTick = onTick
+M.onPlayerConnecting = onPlayerConnecting
 M.onPlayerJoining = onPlayerJoining
 M.onPlayerJoin = onPlayerJoin
 M.onPlayerDisconnect = onPlayerDisconnect
