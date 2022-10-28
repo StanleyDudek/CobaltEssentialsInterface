@@ -901,7 +901,7 @@ end
 
 function CEISetDefaultState(senderID, data)
 	--CElog("CEISetDefaultState Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		CobaltDB.set("interface", "defaultState", "value", data[1])
 		config.cobalt.interface.defaultState = data[1]
@@ -910,7 +910,7 @@ end
 
 function CEISetNewVehiclePerm(senderID, data)
 	--CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local vehiclePermLevel = 1
@@ -925,7 +925,7 @@ end
 
 function CEISetVehiclePermLevel(senderID, data)
 	--CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local vehiclePermLevel = tonumber(data[2])
@@ -936,7 +936,7 @@ end
 
 function CEIRemoveVehiclePerm(senderID, data)
 	--CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local removeVehicle = vehicleName
@@ -957,7 +957,7 @@ end
 
 function CEISetNewVehiclePart(senderID, data)
 	--CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local partName = data[2]
@@ -974,7 +974,7 @@ end
 
 function CEISetVehiclePartLevel(senderID, data)
 	--CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local partName = "partlevel:" .. data[2]
@@ -985,7 +985,7 @@ end
 
 function CEIRemoveVehiclePart(senderID, data)
 	--CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local partName = "partlevel:" .. data[2]
@@ -1000,7 +1000,7 @@ end
 
 function CEISetVehiclePartLevel(senderID, data)
 	--CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local vehiclePartName = "partlevel:" .. data[2]
@@ -1012,7 +1012,7 @@ end
 
 function CEISetTempBan(senderID, data)
 	--CElog("CEISetTempBan Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetID = tonumber(data[1])
 		local name = players[targetID].name
@@ -1037,7 +1037,7 @@ end
 
 function CEISetInterface(senderID, data)
 	--CElog("CEISetInterface Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = tonumber(data[2])
@@ -1068,7 +1068,7 @@ end
 
 function CEISetRestrictions(senderID, data)
 	--CElog("CEISetRestrictions Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.restrictions then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
@@ -1097,12 +1097,14 @@ end
 
 function CEISetEnv(senderID, data)
 	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.environment then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
 		if key == "allWeather" then
-			environment.controlWeather = environment.controlWeather_default
+			if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
+				environment.controlWeather = environment.controlWeather_default
+			end
 			environment.fogDensity = environment.fogDensity_default
 			environment.fogDensityOffset = environment.fogDensityOffset_default
 			environment.fogAtmosphereHeight = environment.fogAtmosphereHeight_default
@@ -1120,7 +1122,9 @@ function CEISetEnv(senderID, data)
 			environment.dropMaxSpeed = environment.dropMaxSpeed_default
 			environment.precipType = environment.precipType_default
 		elseif key == "allSun" then
-			environment.controlSun = environment.controlSun_default
+			if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
+				environment.controlSun = environment.controlSun_default
+			end
 			environment.ToD = environment.ToD_default
 			environment.timePlay = environment.timePlay_default
 			environment.dayScale = environment.dayScale_default
@@ -1169,7 +1173,7 @@ end
 
 function CEIToggleIgnition(senderID, data)
 	--CElog("CEIToggleIgnition Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(tempData[1])].name .. "!")
@@ -1181,7 +1185,7 @@ end
 
 function CEIToggleLock(senderID, data)
 	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(tempData[1])].name .. "!")
@@ -1193,7 +1197,7 @@ end
 
 function CEIToggleRaceLock(senderID, data)
 	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.group == "default" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		MP.TriggerClientEvent(-1, "CEIToggleLock", data)
 	end
 end
@@ -1206,7 +1210,7 @@ end
 
 function CEIStop(senderID, data)
 	--CElog("CEIStop Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.server then
 		MP.SendChatMessage(-1, "Good-bye!")
 		exit()
 	end
@@ -1214,7 +1218,7 @@ end
 
 function CEISetNewGroup(senderID, data)
 	--CElog("CEISetNewGroup Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local group = data[1]
 		if group == nil or group == "" then
@@ -1230,7 +1234,7 @@ end
 
 function CEIRemoveGroup(senderID, data)
 	--CElog("CEIRemoveGroup Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local group = data[1]
 		loadedDatabases["playerPermissions"] = {}
@@ -1249,7 +1253,7 @@ end
 
 function CEISetNewVehiclePermsLevel(senderID, data)
 	--CElog("CEISetNewVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
 		if targetLevel == nil or targetLevel == "" then
@@ -1267,7 +1271,7 @@ end
 
 function CEIRemoveVehiclePermsLevel(senderID, data)
 	--CElog("CEIRemoveVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = tostring(data[1])
 		if CobaltDB.query("permissions", "vehicleCap", targetLevel) then
@@ -1281,7 +1285,7 @@ end
 
 function CEISetVehiclePerms(senderID, data)
 	--CElog("CEISetVehiclePerms Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
 		local targetVehicles = tonumber(data[2])
@@ -1292,7 +1296,7 @@ end
 
 function CEISetGroup(senderID, data)
 	--CElog("CEISetGroup Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local name
 		if tonumber(data[1]) then
@@ -1332,7 +1336,7 @@ end
 
 function CEISetGroupPerms(senderID, data)
 	--CElog("CEISetGroupPerms Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local group = data[1]
 		local permission = data[2]
@@ -1366,7 +1370,7 @@ end
 
 function CEISetUIPerm(senderID, data)
 	--CElog("CEISetUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI > 2 then
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1394,7 +1398,7 @@ end
 
 function CEISetPerm(senderID, data)
 	--CElog("CEISetPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1422,7 +1426,7 @@ end
 
 function CEISetTempUIPerm(senderID, data)
 	--CElog("CEISetTempUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI > 2 then
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local UIPermLvl = tonumber(data[2])
@@ -1433,7 +1437,7 @@ end
 
 function CEISetTempPerm(senderID, data)
 	--CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local permLvl = tonumber(data[2])
@@ -1443,7 +1447,7 @@ end
 
 function CEISetCfg(senderID, data)
 	--CElog("CEISetCfg Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.server then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
@@ -1514,7 +1518,7 @@ end
 
 function CEISetMaxActivePlayers(senderID, data)
 	--CElog("CEISetMaxActivePlayers Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		data = tonumber(data[1])
 		CobaltDB.set("config", "maxActivePlayers", "value", data)
@@ -1524,7 +1528,7 @@ end
 
 function CEIRemoveVehicle(senderID, data)
 	--CElog("CEIRemoveVehicle Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local tempPlayerID = tonumber(data[1])
 		local tempVehicleID = tonumber(data[2])
@@ -1568,7 +1572,7 @@ end
 
 function CEIKick(senderID, data)
 	--CElog("CEIKick Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local target = players.getPlayerByName(data[1])
 		local reason = data[2]
@@ -1587,7 +1591,7 @@ end
 
 function CEIUnban(senderID, data)
 	--CElog("CEIUnban Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		MP.SendChatMessage(-1, targetName .. " was unbanned")
@@ -1605,7 +1609,7 @@ end
 
 function CEIBan(senderID, data)
 	--CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local reason = data[2]
@@ -1641,7 +1645,7 @@ end
 
 function CEITempBan(senderID, data)
 	--CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local length = data[2]
@@ -1681,7 +1685,7 @@ end
 
 function CEIMute(senderID, data)
 	--CElog("CEIMute Called by: " .. senderID, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1710,7 +1714,7 @@ end
 
 function CEIUnmute(senderID, data)
 	--CElog("CEIMute Called by: " .. senderID, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1731,7 +1735,7 @@ end
 
 function CEIWhitelist(senderID, data)
 	--CElog("CEIWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local arguments
 		local tempPlayerID
@@ -1773,7 +1777,7 @@ end
 
 function CEISetNametagWhitelist(senderID, data)
 	--CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		if targetName == nil or targetName == "" then
@@ -1796,7 +1800,7 @@ end
 
 function CEIRemoveNametagWhitelist(senderID, data)
 	--CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		CobaltDB.set("nametags", "nametagsWhitelist", targetName, nil)
@@ -1815,7 +1819,7 @@ end
 
 function CEINametagSetting(senderID, data)
 	--CElog("CEINametagSetting Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		if tonumber(data[1]) then
 			CobaltDB.set("nametags", "blockingTimeout", "value", tonumber(data[1]))
@@ -1830,7 +1834,7 @@ end
 
 function CEITeleportFrom(senderID, data)
 	--CElog("CEITeleportFrom Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		if players[tonumber(senderID)].permissions.level < players[tonumber(data)].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data)].name .. "!")
 		else
@@ -1842,7 +1846,7 @@ end
 
 function CEISetTeleportPerm(senderID, data)
 	--CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		playerName = data[1]
 		teleport[playerName] = data[2]
