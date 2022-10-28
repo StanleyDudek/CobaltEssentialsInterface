@@ -3,10 +3,9 @@ local M = {}
 
 local counter = 0
 local physstart = 0
-
 local physmult = 1
 
-local function update(dtSim)
+local function update()
 	if counter == 0 then
 		physstart = os.clock()
 	end
@@ -17,7 +16,7 @@ local function update(dtSim)
 		local physdiff = physend - physstart
 		if playerInfo.firstPlayerSeated then
 			physmult = 1 / physdiff
-		obj:queueGameEngineLua("CEI.setPhysicsSpeed("..physmult..")")
+			obj:queueGameEngineLua("CEI.setPhysicsSpeed("..physmult..")")
 		end
 	end
 end
