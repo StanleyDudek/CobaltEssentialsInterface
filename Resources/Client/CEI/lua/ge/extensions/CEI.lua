@@ -2274,7 +2274,7 @@ local function drawCEI()
 					end
 				end
 ----------------------------------------------------------------------------------EXTRAS HEADER
-				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.extras then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.extras then
 					if im.CollapsingHeader1("Extras") then
 						im.Indent()
 						if im.TreeNode1("Simulation Speed") then
