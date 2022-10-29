@@ -781,7 +781,11 @@ local function txPlayersDatabase(player)
 		for a in pairs(playerPermissions) do
 			playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
 		end
-		playersDatabase[k].permissions.group = players.database[playerName].group
+		if players.database[k].group then
+			playersDatabase[k].permissions.group = players.database[k].group
+		elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+			playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+		end
 		playersDatabase[k].playerName = playerName
 		playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
 		playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
@@ -1393,9 +1397,11 @@ function CEISetGroup(senderID, data)
 		if player then
 			if group == "none" then
 				players.database[name].group = nil
+				CobaltDB.set("playersDB/" .. player.name, "group", "value", nil)
 			elseif players.database[group]:exists() then
 				if players[senderID].permissions.level >= (players.database[group].level or 0) then
 					players.database[name].group = string.gsub(group, "group:", "")
+					CobaltDB.set("playersDB/" .. player.name, "group", "value", string.gsub(group, "group:", ""))
 				else
 					MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s group to " .. string.gsub(group, "group:", "") .. " because it exceeds your own!")
 				end
@@ -1403,9 +1409,11 @@ function CEISetGroup(senderID, data)
 		else
 			if group == "none" then
 				players.database[name].group = nil
+				CobaltDB.set("playersDB/" .. player.name, "group", "value", nil)
 			elseif players.database[group]:exists() then
 				if players[senderID].permissions.level >= (players.database[group].level or 0) then
 					players.database[name].group = string.gsub(group, "group:", "")
+					CobaltDB.set("playersDB/" .. player.name, "group", "value", string.gsub(group, "group:", ""))
 				else
 					MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s group to " .. string.gsub(group, "group:", "") .. " because it exceeds your own!")
 				end
@@ -2108,8 +2116,16 @@ local function onPlayerJoining(player)
 end
 
 local function onPlayerJoin(player)
-	if player.permissions.group == "default" then
-		players.database[player.name].group = "default"
+	if player.permissions.group then
+		print(player.permissions.group)
+		if CobaltDB.query("playersDB/" .. player.name, "group", "value") then
+			print(CobaltDB.query("playersDB/" .. player.name, "group", "value"))
+			if CobaltDB.query("playersDB/" .. player.name, "group", "value") ~= player.permissions.group then
+				CobaltDB.set("playersDB/" .. player.name, "group", "value", player.permissions.group)
+			end
+		end
+	else
+		CobaltDB.set("playersDB/" .. player.name, "group", "value", "default")
 	end
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)

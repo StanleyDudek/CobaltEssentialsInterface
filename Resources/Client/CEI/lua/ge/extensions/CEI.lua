@@ -4026,7 +4026,6 @@ local function drawCEI()
 															im.SameLine()
 															im.Text(tostring(playersDatabase[k].permissions.UI))
 														end
-														
 														if im.TreeNode1("level:") then
 															im.SameLine()
 															im.Text(tostring(playersDatabase[k].permissions.level))
@@ -4094,8 +4093,8 @@ local function drawCEI()
 																im.Text("none")
 															end
 														end
+														im.TreePop()
 													end
-												
 												end
 												im.Separator()
 											end
