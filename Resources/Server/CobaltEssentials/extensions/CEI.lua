@@ -1409,11 +1409,11 @@ function CEISetGroup(senderID, data)
 		else
 			if group == "none" then
 				players.database[name].group = nil
-				CobaltDB.set("playersDB/" .. player.name, "group", "value", nil)
+				CobaltDB.set("playersDB/" .. name, "group", "value", nil)
 			elseif players.database[group]:exists() then
 				if players[senderID].permissions.level >= (players.database[group].level or 0) then
 					players.database[name].group = string.gsub(group, "group:", "")
-					CobaltDB.set("playersDB/" .. player.name, "group", "value", string.gsub(group, "group:", ""))
+					CobaltDB.set("playersDB/" .. name, "group", "value", string.gsub(group, "group:", ""))
 				else
 					MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s group to " .. string.gsub(group, "group:", "") .. " because it exceeds your own!")
 				end
