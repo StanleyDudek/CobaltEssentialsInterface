@@ -2149,6 +2149,7 @@ local function onPlayerJoin(player)
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 end
 
 local function onPlayerDisconnect(player)
