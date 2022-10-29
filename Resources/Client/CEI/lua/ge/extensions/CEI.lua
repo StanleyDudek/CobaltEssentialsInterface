@@ -1093,7 +1093,7 @@ local function drawCEI()
 		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.config then
 			if im.BeginTabItem("Config") then
 ----------------------------------------------------------------------------------COBALT HEADER
-				if currentUIPerm >= config.cobalt.interface.cobaltEssentials then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.cobaltEssentials then
 					if im.CollapsingHeader1("Cobalt Essentials") then
 						im.Indent()
 						local vehiclePerms = config.cobalt.permissions.vehiclePerm
@@ -2423,9 +2423,9 @@ local function drawCEI()
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 				end
-				if currentUIPerm >= config.cobalt.interface.sun then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.sun then
 					if im.TreeNode1("Sun") then
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.controlSun_description)
 							im.SameLine()
@@ -2968,7 +2968,7 @@ local function drawCEI()
 						end
 						im.TreePop()
 					else
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.controlSun_description)
 							im.SameLine()
@@ -2999,9 +2999,9 @@ local function drawCEI()
 					end
 					im.Separator()
 				end
-				if currentUIPerm >= config.cobalt.interface.weather then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.weather then
 					if im.TreeNode1("Weather") then
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.controlWeather_description)
 							if environment.controlWeather then
@@ -3398,7 +3398,7 @@ local function drawCEI()
 						end
 						im.TreePop()
 					else
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.controlSun_description)
 							if environment.controlWeather then
@@ -3428,9 +3428,9 @@ local function drawCEI()
 					end
 					im.Separator()
 				end
-				if currentUIPerm >= config.cobalt.interface.gravity then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.gravity then
 					if im.TreeNode1("Gravity") then
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.gravity_description)
 							if environment.controlGravity then
@@ -3464,7 +3464,7 @@ local function drawCEI()
 								local data = jsonEncode( { "gravity", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
-								if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 									data = jsonEncode( { "gravityControl", "default" } )
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
@@ -3593,7 +3593,7 @@ local function drawCEI()
 						end
 						im.TreePop()
 					else
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.gravity_description)
 							if environment.controlGravity then
@@ -3623,9 +3623,9 @@ local function drawCEI()
 					end
 					im.Separator()
 				end
-				if currentUIPerm >= config.cobalt.interface.temperature then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.temperature then
 					if im.TreeNode1("Temperature") then
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.useTempCurve_description)
 							if environment.useTempCurve then
@@ -3668,7 +3668,7 @@ local function drawCEI()
 								data = jsonEncode( { "tempCurveDawn", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
-								if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 									data = jsonEncode( { "useTempCurve", false } )
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
@@ -3759,7 +3759,7 @@ local function drawCEI()
 						end
 						im.TreePop()
 					else
-						if currentUIPerm >= config.cobalt.interface.environmentAdmin then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
 							im.ShowHelpMarker(environment.useTempCurve_description)
 							if environment.useTempCurve then
@@ -3797,7 +3797,7 @@ local function drawCEI()
 				im.Indent()
 				im.Text("Reason:")
 				im.SameLine()
-				if im.InputTextWithHint("##", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128) then
+				if im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128) then
 				end
 				im.Text("tempBan:")
 				im.SameLine()
@@ -3850,7 +3850,7 @@ local function drawCEI()
 												im.SameLine()
 												im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "> BANNED")
 											end
-											if currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+											if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 												if playersDatabase[k].banned then
 													im.Text("				  ")
 													im.SameLine()
@@ -3918,7 +3918,7 @@ local function drawCEI()
 												im.SameLine()
 												im.Text("banReason: " .. playersDatabase[k].banReason)
 											end
-											if currentUIPerm >= config.cobalt.interface.playerPermissions then
+											if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 												if playersDatabase[k].permissions then
 													im.Text("				  ")
 													im.SameLine()
