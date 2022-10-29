@@ -12,6 +12,7 @@ local loadedDatabases = {}
 
 local showCEI = {}
 local teleport = {}
+local resetExempt = {}
 
 local playersTable = {}
 
@@ -30,11 +31,11 @@ config.cobalt.interface = {}
 config.cobalt.interface.defaultState_default = true
 config.cobalt.interface.playerPermissions_default = 2
 config.cobalt.interface.playerPermissionsPlus_default = 3
-config.cobalt.interface.config_default = 3
+config.cobalt.interface.config_default = 2
 config.cobalt.interface.cobaltEssentials_default = 3
 config.cobalt.interface.server_default = 3
 config.cobalt.interface.interface_default = 3
-config.cobalt.interface.nametags_default = 3
+config.cobalt.interface.nametags_default = 2
 config.cobalt.interface.restrictions_default = 3
 config.cobalt.interface.extras_default = 3
 config.cobalt.interface.environmentAdmin_default = 3
@@ -509,6 +510,7 @@ local function onInit()
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
 	MP.RegisterEvent("CEISetTeleportPerm","CEISetTeleportPerm")
+	MP.RegisterEvent("CEISetResetPerm","CEISetResetPerm")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
@@ -665,6 +667,16 @@ local function CEI(player)
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 end
 
+local function txPlayersResetExempt()
+	for playerID, player in pairs(players) do
+		if type(playerID) == "number" then
+			if player.connectStage == "connected" then
+				MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { player.permissions.resetExempt } )
+			end
+		end
+	end
+end
+
 local function txPlayersGroup()
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
@@ -753,6 +765,7 @@ local function txPlayersData(player)
 						UI = player.permissions.UI
 						},
 					teleport = teleport[player.name],
+					resetExempt = resetExempt[player.name],
 					tempBanLength = tempPlayers[player.name].tempBanLength,
 					tempPermLevel = tempPlayers[player.name].tempPermLevel,
 					tempUIPermLevel = tempPlayers[player.name].tempUIPermLevel,
@@ -1844,6 +1857,20 @@ function CEITeleportFrom(senderID, data)
 	end
 end
 
+function CEISetResetPerm(senderID, data)
+	--CElog("CEISetResetPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		data = Util.JsonDecode(data)
+		playerName = data[1]
+		resetExempt[playerName] = data[2]
+		CobaltDB.set("playersDB/" .. playerName, "resetExempt", "value", data[2])
+		local player = players.getPlayerByName(playerName)
+		if player then
+			MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { data[2] } )
+		end
+	end
+end
+
 function CEISetTeleportPerm(senderID, data)
 	--CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
@@ -1977,38 +2004,26 @@ function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	tempPlayers[player_name].includeInRace = false
 	tempPlayers[player_name].votedFor = {}
 	tempPCV[player_name] = "none"
-end
-
-local function onPlayerConnecting(player)
-	local identifiers = MP.GetPlayerIdentifiers(player.playerID)
 	CobaltDB.new("playersDB/" .. identifiers.beammp)
-	if players.database[player.name].beammp == nil then
-		players.database[player.name].beammp = identifiers.beammp
-		CobaltDB.set("playersDB/" .. player.name, "beammp", "value", identifiers.beammp)
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
-	end
-	if players.database[player.name].ip == nil then
-		players.database[player.name].ip = identifiers.ip
-		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
-	else
-		players.database[player.name].ip = identifiers.ip
-		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
-	end
-	if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
-		local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
-		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
+	players.database[player_name].beammp = identifiers.beammp
+	CobaltDB.set("playersDB/" .. player_name, "beammp", "value", identifiers.beammp)
+	CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+	players.database[player_name].ip = identifiers.ip
+	CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
+	CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
+	if CobaltDB.query("playersDB/" .. player_name, "banned", "value") == true then
+		local reason = CobaltDB.query("playersDB/" .. player_name, "banReason", "value") or "You are banned from this server!"
+		return reason
 	end
 	if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
 		CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
-	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == false then
 	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
 		local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
-		CobaltDB.set("playersDB/" .. player.name, "banned", "value", true)
-		CobaltDB.set("playersDB/" .. player.name, "banReason", "value", reason)
-		players.database[player.name].banned = true
-		players.database[player.name].banReason = reason
-		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
+		CobaltDB.set("playersDB/" .. player_name, "banned", "value", true)
+		CobaltDB.set("playersDB/" .. player_name, "banReason", "value", reason)
+		players.database[player_name].banned = true
+		players.database[player_name].banReason = reason
+		return reason
 	end
 end
 
@@ -2033,6 +2048,12 @@ local function onPlayerJoin(player)
 		teleport[player.name] = false
 	else
 		teleport[player.name] = CobaltDB.query("playersDB/" .. player.name, "teleport", "value")
+	end
+	if CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value") == nil then
+		CobaltDB.set("playersDB/" ..  player.name, "resetExempt", "value", false)
+		resetExempt[player.name] = false
+	else
+		resetExempt[player.name] = CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value")
 	end
 	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
