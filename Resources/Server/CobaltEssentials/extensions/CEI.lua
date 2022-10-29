@@ -2117,15 +2117,14 @@ end
 
 local function onPlayerJoin(player)
 	if player.permissions.group then
-		print(player.permissions.group)
 		if CobaltDB.query("playersDB/" .. player.name, "group", "value") then
-			print(CobaltDB.query("playersDB/" .. player.name, "group", "value"))
 			if CobaltDB.query("playersDB/" .. player.name, "group", "value") ~= player.permissions.group then
 				CobaltDB.set("playersDB/" .. player.name, "group", "value", player.permissions.group)
 			end
 		end
 	else
 		CobaltDB.set("playersDB/" .. player.name, "group", "value", "default")
+		players.database[player_name].group = default
 	end
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
