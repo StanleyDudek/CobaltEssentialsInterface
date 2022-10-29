@@ -1396,11 +1396,11 @@ function CEISetGroup(senderID, data)
 		local player = players.getPlayerByName(name)
 		if player then
 			if group == "none" then
-				players.database[name].group = nil
+				players.database[player.name].group = nil
 				CobaltDB.set("playersDB/" .. player.name, "group", "value", nil)
 			elseif players.database[group]:exists() then
 				if players[senderID].permissions.level >= (players.database[group].level or 0) then
-					players.database[name].group = string.gsub(group, "group:", "")
+					players.database[player.name].group = string.gsub(group, "group:", "")
 					CobaltDB.set("playersDB/" .. player.name, "group", "value", string.gsub(group, "group:", ""))
 				else
 					MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s group to " .. string.gsub(group, "group:", "") .. " because it exceeds your own!")
@@ -1438,12 +1438,26 @@ function CEISetGroupPerms(senderID, data)
 				MP.SendChatMessage(senderID, "Cannot set " .. group .. "'s level to " .. value .. " because it exceeds your own!")
 			else
 				players.database[group].level = tonumber(value)
+				for k, v in pairs(players.database) do
+					if not string.find(k, "group:") then
+						if tempPlayers[k] then
+							tempPlayers[k].tempPermLevel = players.database[group].level
+						end
+					end
+				end
 			end
 		elseif permission == "UI" then
 			if players[senderID].permissions.UI <= tonumber(value) then
 				MP.SendChatMessage(senderID, "Cannot set " .. group .. "'s UI Level to " .. value .. " because it exceeds your own!")
 			else
 				players.database[group].UI = tonumber(value)
+				for k, v in pairs(players.database) do
+					if not string.find(k, "group:") then
+						if tempPlayers[k] then
+							tempPlayers[k].tempUIPermLevel = players.database[group].UI
+						end
+					end
+				end
 			end
 		elseif tonumber(value) then
 			if tonumber(value) >= 0 then
@@ -1457,6 +1471,8 @@ function CEISetGroupPerms(senderID, data)
 			players.database[group][permission] = value
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
 
