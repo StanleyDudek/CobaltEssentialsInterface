@@ -10,6 +10,9 @@ local tomlParser = require("toml")
 
 local loadedDatabases = {}
 
+local raceCountdown
+local raceCountdownStarted
+
 local showCEI = {}
 local teleport = {}
 local resetExempt = {}
@@ -459,9 +462,71 @@ local defaultInterfaceSettings = {
 	race = 					{value = config.cobalt.interface.race_default, 					description = config.cobalt.interface.race_description}
 }
 
+local CEICommands = {
+	CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
+	cei = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
+}
 
-local raceCountdown
-local raceCountdownStarted
+local function writeCfg(path, key, value)
+	local tomlFile, error = io.open(path, 'r')
+	if error then return nil, error end
+	local tomlText = tomlFile:read("*a")
+	local cfg = tomlParser.parse(tomlText)
+	if cfg.General then
+		cfg.General[key] = value
+		tomlText = tomlParser.encode(cfg)
+		tomlText = tomlText:gsub( '\\', '')
+		tomlFile, error = io.open(path, 'w')
+		if error then return nil, error end
+		tomlFile:write(tomlText)
+	end
+	tomlFile:close()
+end
+
+local function pairsByKeys(t, f)
+	local a = {}
+	for n in pairs(t) do
+		table.insert(a, n)
+	end
+	table.sort(a, f)
+	local i = 0
+	local iter = function ()
+		i = i + 1
+		if a[i] == nil then
+			return nil
+		else
+			return a[i], t[a[i]]
+		end
+	end
+	return iter
+end
+
+local function applyStuff(targetDatabase, tables)
+	local appliedTables = {}
+	for tableName, table in pairs(tables) do
+		if targetDatabase[tableName]:exists() == false then
+			for key, value in pairs(table) do
+				targetDatabase[tableName][key] = value
+			end
+			appliedTables[tableName] = tableName
+		end
+	end
+	return appliedTables
+end
+
+local function updateCobaltDatabase(DBname)
+	local filePath = dbpath .. DBname
+	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
+	if success then
+		success, error = FS.Remove(filePath .. ".json")
+		if success then
+			success, error = FS.Rename(filePath .. ".temp", filePath .. ".json")
+		end
+	end
+	if not success then
+		CElog('Failed to update database "'..DBname..'"on disk: '..tostring(error), "WARN")
+	end
+end
 
 local function onInit()
 	MP.RegisterEvent("onPlayerAuth", "onPlayerAuthHandler")
@@ -530,11 +595,40 @@ local function onInit()
 	config.server.map = utils.readCfg("ServerConfig.toml").General.Map
 	config.server.description = utils.readCfg("ServerConfig.toml").General.Description
 	
-	M.applyStuff(environmentJson, defaultEnvironment)
-	M.applyStuff(vehiclesJson, defaultVehicles)
-	M.applyStuff(nametagsJson, defaultNametagsSettings)
-	M.applyStuff(interfaceJson, defaultInterfaceSettings)
-	M.applyStuff(restrictionsJson, defaultRestrictions)
+	applyStuff(environmentJson, defaultEnvironment)
+	applyStuff(vehiclesJson, defaultVehicles)
+	applyStuff(nametagsJson, defaultNametagsSettings)
+	applyStuff(interfaceJson, defaultInterfaceSettings)
+	applyStuff(restrictionsJson, defaultRestrictions)
+	applyStuff(commands, CEICommands)
+
+	for k,v in pairs(players.database) do
+		if k == "group:inactive" then
+			if not players.database[k].UI then
+				players.database[k].UI = 0
+			end
+		elseif k == "group:guest" then
+			if not players.database[k].UI then
+				players.database[k].UI = 0
+			end
+		elseif k == "group:default" then
+			if not players.database[k].UI then
+				players.database[k].UI = 1
+			end
+		elseif k == "group:mod" then
+			if not players.database[k].UI then
+				players.database[k].UI = 2
+			end
+		elseif k == "group:admin" then
+			if not players.database[k].UI then
+				players.database[k].UI = 3
+			end
+		elseif k == "group:owner" then
+			if not players.database[k].UI then
+				players.database[k].UI = 4
+			end
+		end
+	end
 	
 	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultState", "value")
 	config.cobalt.interface.config = CobaltDB.query("interface", "config", "value")
@@ -634,26 +728,6 @@ local function onInit()
 		
 	CElog("CEI Loaded!", "CEI")
 end
-
-local function applyStuff(targetDatabase, tables)
-	local appliedTables = {}
-	for tableName, table in pairs(tables) do
-		if targetDatabase[tableName]:exists() == false then
-			for key, value in pairs(table) do
-				targetDatabase[tableName][key] = value
-			end
-			appliedTables[tableName] = tableName
-		end
-	end
-	return appliedTables
-end
-
-local CEICommands = {
-		CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
-		cei = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
-	}
-
-applyStuff(commands, CEICommands)
 
 local function CEI(player)
 	--CElog("CEI Called by: " .. player.name, "CEI")
@@ -958,7 +1032,7 @@ function CEIRemoveVehiclePerm(senderID, data)
 				loadedDatabases["vehicles"][k] = vehiclePerms
 			end
 		end
-		M.updateCobaltDatabase("vehicles")
+		updateCobaltDatabase("vehicles")
 		vehicles = CobaltDB.new("vehicles")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
@@ -1253,7 +1327,7 @@ function CEIRemoveGroup(senderID, data)
 				loadedDatabases["playerPermissions"][k] = v
 			end
 		end
-		M.updateCobaltDatabase("playerPermissions")
+		updateCobaltDatabase("playerPermissions")
 		playerPermissions = CobaltDB.new("playerPermissions")
 		config.cobalt.groups = {}
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
@@ -2028,7 +2102,6 @@ local function onPlayerJoining(player)
 	if player.permissions.UI then
 		tempPlayers[player.name].tempUIPermLevel = player.permissions.UI
 	else
-		players.database[player.name].UI = 1
 		CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
 	end
 	tempPlayers[player.name].player_id = player.playerID
@@ -2075,58 +2148,6 @@ local function onVehicleSpawn(player, vehID,  data)
 	tempPCV[player.name] = player.playerID .. "-" .. vehID
 end
 
-local function onVehicleReset(player, vehID,  data)
-
-end
-
-local function updateCobaltDatabase(DBname)
-	local filePath = dbpath .. DBname
-	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
-	if success then
-		success, error = FS.Remove(filePath .. ".json")
-		if success then
-			success, error = FS.Rename(filePath .. ".temp", filePath .. ".json")
-		end
-	end
-	if not success then
-		CElog('Failed to update database "'..DBname..'"on disk: '..tostring(error), "WARN")
-	end
-end
-
-function writeCfg(path, key, value)
-	local tomlFile, error = io.open(path, 'r')
-	if error then return nil, error end
-	local tomlText = tomlFile:read("*a")
-	local cfg = tomlParser.parse(tomlText)
-	if cfg.General then
-		cfg.General[key] = value
-		tomlText = tomlParser.encode(cfg)
-		tomlText = tomlText:gsub( '\\', '')
-		tomlFile, error = io.open(path, 'w')
-		if error then return nil, error end
-		tomlFile:write(tomlText)
-	end
-	tomlFile:close()
-end
-
-function pairsByKeys(t, f)
-	local a = {}
-	for n in pairs(t) do
-		table.insert(a, n)
-	end
-	table.sort(a, f)
-	local i = 0
-	local iter = function ()
-		i = i + 1
-		if a[i] == nil then
-			return nil
-		else
-			return a[i], t[a[i]]
-		end
-	end
-	return iter
-end
-
 M.applyStuff = applyStuff
 
 M.onInit = onInit
@@ -2136,9 +2157,6 @@ M.onPlayerJoining = onPlayerJoining
 M.onPlayerJoin = onPlayerJoin
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
-M.onVehicleReset = onVehicleReset
-
-M.updateCobaltDatabase = updateCobaltDatabase
 
 M.CEI = CEI
 M.cei = CEI
