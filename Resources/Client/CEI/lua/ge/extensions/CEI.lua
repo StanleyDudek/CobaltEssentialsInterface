@@ -9,6 +9,7 @@ local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
 local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
+local resetExempt
 local currentGroup
 local currentUIPerm
 local canTeleport
@@ -259,6 +260,11 @@ local function rxConfigData(data)
 		end
 		configValsSet = true
 	end
+end
+
+local function rxPlayersResetExempt(data)
+	data = jsonDecode(data)
+	resetExempt = data[1]
 end
 
 local function rxPlayerGroup(data)
@@ -864,6 +870,21 @@ local function drawCEI()
 											local data = jsonEncode( { players[k].playerName, false } )
 											TriggerServerEvent("CEISetTeleportPerm", data)
 											log('W', logTag, "CEISetTeleportPerm Called: " .. data)
+										end
+									end
+								end
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+									if players[k].resetExempt == false then
+										if im.SmallButton("Exempt Reset Bypass##"..tostring(k)) then
+											local data = jsonEncode( { players[k].playerName, true } )
+											TriggerServerEvent("CEISetResetPerm", data)
+											log('W', logTag, "CEISetResetPerm Called: " .. data)
+										end
+									elseif players[k].resetExempt == true then
+										if im.SmallButton("Revoke Reset Bypass##"..tostring(k)) then
+											local data = jsonEncode( { players[k].playerName, false } )
+											TriggerServerEvent("CEISetResetPerm", data)
+											log('W', logTag, "CEISetResetPerm Called: " .. data)
 										end
 									end
 								end
@@ -3943,7 +3964,21 @@ local function drawCEI()
 																log('W', logTag, "CEISetTeleportPerm Called: " .. data)
 															end
 														end
-														
+														if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+															if playersDatabase[k].permissions.resetExempt == false or playersDatabase[k].permissions.resetExempt == nil or playersDatabase[k].permissions.resetExempt == "nil" then
+																if im.SmallButton("Exempt Reset Bypass##"..tostring(k)) then
+																	local data = jsonEncode( { playersDatabase[k].playerName, true } )
+																	TriggerServerEvent("CEISetResetPerm", data)
+																	log('W', logTag, "CEISetResetPerm Called: " .. data)
+																end
+															elseif playersDatabase[k].permissions.resetExempt == true then
+																if im.SmallButton("Revoke Reset Bypass##"..tostring(k)) then
+																	local data = jsonEncode( { playersDatabase[k].playerName, false } )
+																	TriggerServerEvent("CEISetResetPerm", data)
+																	log('W', logTag, "CEISetResetPerm Called: " .. data)
+																end
+															end
+														end
 														if im.TreeNode1("UI Level:") then
 															im.SameLine()
 															if playersDatabase[k].permissions.UI then
@@ -3989,7 +4024,7 @@ local function drawCEI()
 															end
 														else
 															im.SameLine()
-															im.Text(tostring(players[k].permissions.UI))
+															im.Text(tostring(playersDatabase[k].permissions.UI))
 														end
 														
 														if im.TreeNode1("level:") then
@@ -4177,16 +4212,18 @@ local function setPhysicsSpeed(physmult)
 end
 
 local function resetsNotify(vehicleID)
-	if MPVehicleGE.isOwn(vehicleID) then
-		if not config.resets.enabled then
-			guihooks.trigger('toastrMsg', {type="error", title = config.resets.title, msg = config.resets.disabledMessage, config = {timeOut = config.resets.messageDuration * 1000}})
-			return
-		else
-			if #resetsBlockedInputActions > 0 then
-				resetsPlayerNotified = false
-				resetsTimerElapsedReset = 0
-				local message = config.resets.message:gsub("{secondsLeft}", math.floor(config.resets.timeout - resetsTimerElapsedReset))
-				guihooks.trigger('toastrMsg', {type="warning", title = config.resets.title, msg = message, config = {timeOut = config.resets.messageDuration * 1000}})
+	if not resetExempt then
+		if MPVehicleGE.isOwn(vehicleID) then
+			if not config.resets.enabled then
+				guihooks.trigger('toastrMsg', {type="error", title = config.resets.title, msg = config.resets.disabledMessage, config = {timeOut = config.resets.messageDuration * 1000}})
+				return
+			else
+				if #resetsBlockedInputActions > 0 then
+					resetsPlayerNotified = false
+					resetsTimerElapsedReset = 0
+					local message = config.resets.message:gsub("{secondsLeft}", math.floor(config.resets.timeout - resetsTimerElapsedReset))
+					guihooks.trigger('toastrMsg', {type="warning", title = config.resets.title, msg = message, config = {timeOut = config.resets.messageDuration * 1000}})
+				end
 			end
 		end
 	end
@@ -4667,23 +4704,25 @@ end
 
 local function checkResetState(dt)
 	resetsTimerElapsedReset = resetsTimerElapsedReset + dt
-	if config then
-		if config.resets then
-			if config.resets.control then
-				if not config.resets.enabled then
-					extensions.core_input_actionFilter.setGroup('cei', allResetsBlockedInputActions)
-					extensions.core_input_actionFilter.addAction(0, 'cei', true)
-				else
-					if resetsTimerElapsedReset <= tonumber(config.resets.timeout) then
-						extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
+	if not resetExempt then
+		if config then
+			if config.resets then
+				if config.resets.control then
+					if not config.resets.enabled then
+						extensions.core_input_actionFilter.setGroup('cei', allResetsBlockedInputActions)
 						extensions.core_input_actionFilter.addAction(0, 'cei', true)
 					else
-						if resetsPlayerNotified == true then
+						if resetsTimerElapsedReset <= tonumber(config.resets.timeout) then
 							extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
-							extensions.core_input_actionFilter.addAction(0, 'cei', false)
-						elseif resetsPlayerNotified == false then
-							guihooks.trigger('toastrMsg', {type="info", title = config.resets.title, msg = config.resets.elapsedMessage, config = {timeOut = config.resets.messageDuration * 1000 }})
-							resetsPlayerNotified = true
+							extensions.core_input_actionFilter.addAction(0, 'cei', true)
+						else
+							if resetsPlayerNotified == true then
+								extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
+								extensions.core_input_actionFilter.addAction(0, 'cei', false)
+							elseif resetsPlayerNotified == false then
+								guihooks.trigger('toastrMsg', {type="info", title = config.resets.title, msg = config.resets.elapsedMessage, config = {timeOut = config.resets.messageDuration * 1000 }})
+								resetsPlayerNotified = true
+							end
 						end
 					end
 				end
@@ -4843,6 +4882,7 @@ local function onExtensionLoaded()
 	AddEventHandler("rxPlayersData", rxPlayersData)
 	AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
 	AddEventHandler("rxPlayerGroup", rxPlayerGroup)
+	AddEventHandler("rxPlayersResetExempt", rxPlayersResetExempt)
 	AddEventHandler("rxConfigData", rxConfigData)
 	AddEventHandler("rxInputUpdate", rxInputUpdate)
 	AddEventHandler("rxEnvironment", rxEnvironment)
