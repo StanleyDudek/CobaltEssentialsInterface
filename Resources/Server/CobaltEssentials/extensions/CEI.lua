@@ -1412,6 +1412,7 @@ function CEISetGroup(senderID, data)
 				CobaltDB.set("playersDB/" .. name, "group", "value", nil)
 			elseif players.database[group]:exists() then
 				if players[senderID].permissions.level >= (players.database[group].level or 0) then
+					CobaltDB.new("playersDB/" .. name)
 					players.database[name].group = string.gsub(group, "group:", "")
 					CobaltDB.set("playersDB/" .. name, "group", "value", string.gsub(group, "group:", ""))
 				else
