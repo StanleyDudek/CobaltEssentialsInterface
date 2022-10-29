@@ -1,7 +1,7 @@
 # CobaltEssentialsInterface
 A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
-![image](https://user-images.githubusercontent.com/49531350/158417299-c2b3168d-e3b9-47d4-9c22-068679853464.png)
+![image](https://user-images.githubusercontent.com/49531350/198840124-8ed08ef6-7193-42ea-a3b5-54b3adcc4957.png)
 
 ## Features:
 
@@ -26,7 +26,7 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 5. Start the server, and join.
 6. The interface should be enabled by default. In the chat, enter the command /CEI to toggle the interface. You may set the default interface state in the Cobalt Essentials section of the interface's Config tab.
 
-## Updating from pre-v0.6 to v0.6:
+## Updating from pre-v0.7 to v0.7 and up:
 
 1. Grab the latest release from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
 2. Unpack it somewhere.
@@ -35,13 +35,17 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
 ## How it looks:
 
-![image](https://user-images.githubusercontent.com/49531350/158418129-5e165ad8-b11a-4596-8e8e-002ead2b027b.png)
-![image](https://user-images.githubusercontent.com/49531350/158417770-439511b4-d382-4343-a334-39037a81f051.png)
+![image](https://user-images.githubusercontent.com/49531350/198840298-9c8051d2-2af8-4c09-9510-7b38681c0a12.png)
+![image](https://user-images.githubusercontent.com/49531350/198840314-2020dd72-8167-418a-8690-ea62d573f0d9.png)
+![image](https://user-images.githubusercontent.com/49531350/198840327-046de3d6-88a1-48da-9e94-401a11204f66.png)
+![image](https://user-images.githubusercontent.com/49531350/198840338-05652513-452d-446a-a579-dd1d2be9e379.png)
+![image](https://user-images.githubusercontent.com/49531350/198840354-f2447b2e-1a2b-45eb-a129-8c6c6530c772.png)
+![image](https://user-images.githubusercontent.com/49531350/198840369-ad1ad214-5cb5-4b3d-aab7-20c6ef39c743.png)
+![image](https://user-images.githubusercontent.com/49531350/198840391-93c03f21-6f81-412e-a8e4-5da06ec9222d.png)
+![image](https://user-images.githubusercontent.com/49531350/198840408-e6bb4bfa-b49d-489d-b4af-169e54ab17b1.png)
+![image](https://user-images.githubusercontent.com/49531350/198840423-6c86d513-a0a9-4850-9b02-ea43ef4a0396.png)
+![image](https://user-images.githubusercontent.com/49531350/198840433-92d40023-0908-4074-aadf-4e07735e871a.png)
+![image](https://user-images.githubusercontent.com/49531350/198840445-cbff3513-6d94-4413-bc42-ac392af9060f.png)
+![image](https://user-images.githubusercontent.com/49531350/198840453-95532b39-2048-40b1-904b-7ad2eda28394.png)
 
-![image](https://user-images.githubusercontent.com/49531350/158418623-af96cd8e-87d7-43ce-8cf3-d70659699f48.png)
 
-![image](https://user-images.githubusercontent.com/49531350/158418747-62afe261-af52-476e-802d-d5d7143d648d.png)
-![image](https://user-images.githubusercontent.com/49531350/158418876-f8e3e10e-0895-447f-aa09-b18d0209a9f2.png)
-
-![image](https://user-images.githubusercontent.com/49531350/158419418-8dbba6e4-4b18-49dd-9979-47f2cd1d42ba.png)
-![image](https://user-images.githubusercontent.com/49531350/158420977-c2947fba-cc36-40a7-a968-c8d8f90fdd89.png)
