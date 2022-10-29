@@ -2099,26 +2099,31 @@ function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	tempPlayers[player_name].includeInRace = false
 	tempPlayers[player_name].votedFor = {}
 	tempPCV[player_name] = "none"
-	CobaltDB.new("playersDB/" .. identifiers.beammp)
-	players.database[player_name].beammp = identifiers.beammp
-	CobaltDB.set("playersDB/" .. player_name, "beammp", "value", identifiers.beammp)
-	CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
-	players.database[player_name].ip = identifiers.ip
-	CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
-	CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
-	if CobaltDB.query("playersDB/" .. player_name, "banned", "value") == true then
-		local reason = CobaltDB.query("playersDB/" .. player_name, "banReason", "value") or "You are banned from this server!"
-		return reason
-	end
-	if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
-	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
-		local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
-		CobaltDB.set("playersDB/" .. player_name, "banned", "value", true)
-		CobaltDB.set("playersDB/" .. player_name, "banReason", "value", reason)
-		players.database[player_name].banned = true
-		players.database[player_name].banReason = reason
-		return reason
+	if identifiers.beammp then
+		CobaltDB.new("playersDB/" .. identifiers.beammp)
+		players.database[player_name].beammp = identifiers.beammp
+		CobaltDB.set("playersDB/" .. player_name, "beammp", "value", identifiers.beammp)
+		CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+		CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
+		players.database[player_name].ip = identifiers.ip
+		CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
+		if CobaltDB.query("playersDB/" .. player_name, "banned", "value") == true then
+			local reason = CobaltDB.query("playersDB/" .. player_name, "banReason", "value") or "You are banned from this server!"
+			return reason
+		end
+		if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
+			CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
+		elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
+			local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
+			CobaltDB.set("playersDB/" .. player_name, "banned", "value", true)
+			CobaltDB.set("playersDB/" .. player_name, "banReason", "value", reason)
+			players.database[player_name].banned = true
+			players.database[player_name].banReason = reason
+			return reason
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
 
@@ -2130,6 +2135,9 @@ local function onPlayerJoining(player)
 		CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
 	end
 	tempPlayers[player.name].player_id = player.playerID
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 end
 
 local function onPlayerJoin(player)
@@ -2165,13 +2173,18 @@ local function onPlayerJoin(player)
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 end
 
 local function onPlayerDisconnect(player)
 	playersTable[player.playerID] = nil
 	tempPlayers[player.name] = nil
 	tempPCV[player.name] = nil
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 end
 
 local function onVehicleSpawn(player, vehID,  data)
