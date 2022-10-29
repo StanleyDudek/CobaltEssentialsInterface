@@ -44,7 +44,7 @@ config.cobalt.interface.sun_default = 2
 config.cobalt.interface.weather_default = 2
 config.cobalt.interface.gravity_default = 2
 config.cobalt.interface.temperature_default = 2
-config.cobalt.interface.database_default = 4
+config.cobalt.interface.database_default = 3
 config.cobalt.interface.race_default = 2
 config.cobalt.interface.defaultState_description = "The state of the interface for new players."
 config.cobalt.interface.playerPermissions_description = "The level required to access playerPermissions."
@@ -894,11 +894,7 @@ local function txData()
 				txNametagBlockerActive(player)
 				txConfigData(player)
 				txPlayersUIPerm(player)
-				if player.permissions.UI then
-					if player.permissions.UI >= config.cobalt.interface.database then
-						txPlayersDatabase(player)
-					end
-				end
+				txPlayersDatabase(player)
 			end
 		end
 	end
