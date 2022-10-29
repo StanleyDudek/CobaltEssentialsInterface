@@ -2029,7 +2029,12 @@ end
 
 local function onPlayerJoining(player)
 	tempPlayers[player.name].tempPermLevel = player.permissions.level
-	tempPlayers[player.name].tempPermLevel = player.permissions.UI
+	if player.permissions.UI then
+		tempPlayers[player.name].tempUIPermLevel = player.permissions.UI
+	else
+		players.database[player.name].UI = 1
+		CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
+	end
 	tempPlayers[player.name].player_id = player.playerID
 end
 
