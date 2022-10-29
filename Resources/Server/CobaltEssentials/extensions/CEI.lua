@@ -895,7 +895,7 @@ local function txData()
 				txConfigData(player)
 				txPlayersUIPerm(player)
 				if player.permissions.UI then
-					if player.permissions.UI > 1 then
+					if player.permissions.UI >= config.cobalt.interface.database then
 						txPlayersDatabase(player)
 					end
 				end
