@@ -10,8 +10,12 @@ local tomlParser = require("toml")
 
 local loadedDatabases = {}
 
+local raceCountdown
+local raceCountdownStarted
+
 local showCEI = {}
 local teleport = {}
+local resetExempt = {}
 
 local playersTable = {}
 
@@ -27,7 +31,60 @@ config.cobalt.whitelistedPlayers = {}
 config.cobalt.permissions = {}
 config.cobalt.permissions.vehiclePerm = {}
 config.cobalt.interface = {}
-config.cobalt.interface.defaultState = true
+config.cobalt.interface.defaultState_default = true
+config.cobalt.interface.playerPermissions_default = 2
+config.cobalt.interface.playerPermissionsPlus_default = 3
+config.cobalt.interface.config_default = 2
+config.cobalt.interface.cobaltEssentials_default = 3
+config.cobalt.interface.server_default = 3
+config.cobalt.interface.interface_default = 3
+config.cobalt.interface.nametags_default = 2
+config.cobalt.interface.restrictions_default = 3
+config.cobalt.interface.extras_default = 3
+config.cobalt.interface.environmentAdmin_default = 3
+config.cobalt.interface.environment_default = 2
+config.cobalt.interface.sun_default = 2
+config.cobalt.interface.weather_default = 2
+config.cobalt.interface.gravity_default = 2
+config.cobalt.interface.temperature_default = 2
+config.cobalt.interface.database_default = 3
+config.cobalt.interface.race_default = 2
+config.cobalt.interface.defaultState_description = "The state of the interface for new players."
+config.cobalt.interface.playerPermissions_description = "The level required to access playerPermissions."
+config.cobalt.interface.playerPermissionsPlus_description = "The level required to access more advanced playerPermissions."
+config.cobalt.interface.config_description = "The level required to access config."
+config.cobalt.interface.cobaltEssentials_description = "The level required to access CE settings."
+config.cobalt.interface.server_description = "The level required to access server settings."
+config.cobalt.interface.interface_description = "The level required to access interface settings."
+config.cobalt.interface.nametags_description = "The level required to access nametags settings."
+config.cobalt.interface.restrictions_description = "The level required to access restrictions settings."
+config.cobalt.interface.extras_description = "The level required to access extras settings."
+config.cobalt.interface.environmentAdmin_description = "The level required to access environment reset all."
+config.cobalt.interface.environment_description = "The level required to access environment settings."
+config.cobalt.interface.sun_description = "The level required to access sun settings."
+config.cobalt.interface.weather_description = "The level required to access weather settings."
+config.cobalt.interface.gravity_description = "The level required to access gravity settings."
+config.cobalt.interface.temperature_description = "The level required to access temperature settings."
+config.cobalt.interface.database_description = "The level required to access database settings."
+config.cobalt.interface.race_description = "The level required to access race countdown."
+config.cobalt.interface.defaultState = ""
+config.cobalt.interface.playerPermissions = ""
+config.cobalt.interface.playerPermissionsPlus = ""
+config.cobalt.interface.config = ""
+config.cobalt.interface.cobaltEssentials = ""
+config.cobalt.interface.server = ""
+config.cobalt.interface.interface = ""
+config.cobalt.interface.nametags = ""
+config.cobalt.interface.restrictions = ""
+config.cobalt.interface.extras = ""
+config.cobalt.interface.environmentAdmin = ""
+config.cobalt.interface.environment = ""
+config.cobalt.interface.sun = ""
+config.cobalt.interface.weather = ""
+config.cobalt.interface.gravity = ""
+config.cobalt.interface.temperature = ""
+config.cobalt.interface.database = ""
+config.cobalt.interface.race = ""
 config.cobalt.groups = {}
 config.nametags = {}
 config.nametags.whitelist = {}
@@ -41,6 +98,14 @@ config.resets.title_default = "Vehicle Reset Limiter"
 config.resets.elapsedMessage_default = "You can now reset your vehicle."
 config.resets.message_default = "You can reset your vehicle in {secondsLeft} seconds."
 config.resets.disabledMessage_default = "Vehicle resetting is disabled on this server."
+config.resets.control_description = "Are resets controlled?"
+config.resets.messageDuration_description = "How long does the toast show?"
+config.resets.enabled_description = "Are resets allowed?"
+config.resets.timeout_description = "How often can a vehicle be reset (in seconds)?"
+config.resets.title_description = "Title shown when resetting is limited or disabled."
+config.resets.elapsedMessage_description = "Message shown when reset timeout has elapsed."
+config.resets.message_description = "Message shown when resetting is limited."
+config.resets.disabledMessage_description = "Message shown when resetting is completely disabled."
 config.resets.control = ""
 config.resets.messageDuration = ""
 config.resets.enabled = ""
@@ -108,6 +173,56 @@ environment.tempCurveDusk_default = 12
 environment.tempCurveMidnight_default = -15
 environment.tempCurveDawn_default = 12
 environment.useTempCurve_default = false
+environment.controlSun_description = "Do we control everyone's sun?"
+environment.ToD_description = "What is the Time of Day?"
+environment.timePlay_description = "Does time progress?"
+environment.dayLength_description = "How long is the day?"
+environment.dayScale_description = "At what rate does daytime progress?"
+environment.nightScale_description = "At what rate does nighttime progress?"
+environment.sunAzimuthOverride_description = "At what position on the horizon does the sun rise and set?"
+environment.skyBrightness_description = "How bright is the sky?"
+environment.sunSize_description = "How big is the sun?"
+environment.rayleighScattering_description = "How much rayleigh scattering?"
+environment.sunLightBrightness_description = "How bright is the sunlight?"
+environment.flareScale_description = "How big is the sun lens flare?"
+environment.occlusionScale_description = "How occluded is the sun lens flare?"
+environment.exposure_description = "How exposed is the environment?"
+environment.shadowDistance_description = "How far are the shadows?"
+environment.shadowSoftness_description = "How soft are the shadows?"
+environment.shadowSplits_description = "How many splits are there for shadows?"
+environment.shadowTexSize_description = "What is the texture resolution for shadows?"
+environment.shadowLogWeight_description = "How much does the log weigh?"
+environment.visibleDistance_description = "How far can we see?"
+environment.moonAzimuth_description = "Horizontal position of moon."
+environment.moonElevation_description = "Vertical position of moon."
+environment.moonScale_description = "How big is the moon?"
+environment.controlWeather_description = "Do we control everyone's weather?"
+environment.fogDensity_description = "How thicc is the fog?"
+environment.fogDensityOffset_description = "How far away is the fog?"
+environment.fogAtmosphereHeight_description = "How high is the fog?"
+environment.cloudHeight_description = "How high are the clouds?"
+environment.cloudHeightOne_description = "How high are the clouds?"
+environment.cloudCover_description = "How thicc are the clouds?"
+environment.cloudCoverOne_description = "How thicc are the clouds?"
+environment.cloudSpeed_description = "How fast are the clouds?"
+environment.cloudSpeedOne_description = "How fast are the clouds?"
+environment.cloudExposure_description = "How exposed are the clouds?"
+environment.cloudExposureOne_description = "How exposed are the clouds?"
+environment.rainDrops_description = "How many rain drops are there?"
+environment.dropSize_description = "What size are the drops of precipitation?"
+environment.dropMinSpeed_description = "What is the minimum speed of precipitation?"
+environment.dropMaxSpeed_description = "What is the maximum speed of precipitation?"
+environment.precipType_description = "What type of precipitation do we use?"
+environment.teleportTimeout_description = "How long between telports?"
+environment.simSpeed_description = "At what rate does the simulation run?"
+environment.controlSimSpeed_description = "Do we control everyone's sim speed?"
+environment.gravity_description = "At what rate do objects fall towards the ground?"
+environment.controlGravity_description = "Do we control everyone's gravity?"
+environment.tempCurveNoon_description = "What is the custom temperature in C at noon?"
+environment.tempCurveDusk_description = "What is the custom temperature in C at dusk?"
+environment.tempCurveMidnight_description = "What is the custom temperature in C at midnight?"
+environment.tempCurveDawn_description = "What is the custom temperature in C at dawn?"
+environment.useTempCurve_description = "Do we use a custom temperature curve?"
 environment.controlSun = ""
 environment.ToD = ""
 environment.timePlay = ""
@@ -161,68 +276,68 @@ environment.useTempCurve = ""
 
 local environmentJson = CobaltDB.new("environment")
 local defaultEnvironment = {
-	controlSun = {value = environment.controlSun_default, description = "Do we control everyone's sun?"},
-	ToD = {value = environment.ToD_default, description = "What is the Time of Day?"},
-	timePlay = {value = environment.timePlay_default, description = "Does time progress?"},
-	dayLength = {value = environment.dayLength_default, description = "How long is the day?"},
-	dayScale = {value = environment.dayScale_default, description = "At what rate does daytime progress?"},
-	nightScale = {value = environment.nightScale_default, description = "At what rate does nighttime progress?"},
-	sunAzimuthOverride = {value = environment.sunAzimuthOverride_default, description = "At what position on the horizon does the sun rise and set?"},
-	skyBrightness = {value = environment.skyBrightness_default, description = "How bright is the sky?"},
-	sunSize = {value = environment.sunSize_default, description = "How big is the sun?"},
-	rayleighScattering = {value = environment.rayleighScattering_default, description = "How much rayleigh scattering"},
-	sunLightBrightness = {value = environment.sunLightBrightness_default, description = "How bright is the sunlight?"},
-	flareScale = {value = environment.flareScale_default, description = "How big is the sun lens flare?"},
-	occlusionScale = {value = environment.occlusionScale_default, description = "How occluded is the sun lens flare?"},
-	exposure = {value = environment.exposure_default, description = "How exposed is the environment?"},
-	shadowDistance = {value = environment.shadowDistance_default, description = "How far are the shadows?"},
-	shadowSoftness = {value = environment.shadowSoftness_default, description = "How soft are the shadows?"},
-	shadowSplits = {value = environment.shadowSplits_default, description = "How many splits are there for shadows?"},
-	shadowTexSize = {value = environment.shadowTexSize_default, description = "What is the texture resolution for shadows?"},
-	shadowLogWeight = {value = environment.shadowLogWeight_default, description = "How much does the log weigh?"},
-	visibleDistance = {value = environment.visibleDistance_default, description = "How far can we see?"},
-	moonAzimuth = {value = environment.moonAzimuth_default, description = "Horizontal position of moon."},
-	moonElevation = {value = environment.moonElevation_default, description = "Vertical position of moon."},
-	moonScale = {value = environment.moonScale_default, description = "How big is the moon?"},
-	controlWeather = {value = environment.controlWeather_default, description = "Do we control everyone's weather?"},
-	fogDensity = {value = environment.fogDensity_default, description = "How thicc is the fog?"},
-	fogDensityOffset = {value = environment.fogDensityOffset_default, description = "How far away is the fog?"},
-	fogAtmosphereHeight = {value = environment.fogAtmosphereHeight_default, description = "How high is the fog?"},
-	cloudHeight = {value = environment.cloudHeight_default, description = "How high are the clouds?"},
-	cloudHeightOne = {value = environment.cloudHeightOne_default, description = "How high are the clouds?"},
-	cloudCover = {value = environment.cloudCover_default, description = "How thicc are the clouds?"},
-	cloudCoverOne = {value = environment.cloudCoverOne_default, description = "How thicc are the clouds?"},
-	cloudSpeed = {value = environment.cloudSpeed_default, description = "How fast are the clouds?"},
-	cloudSpeedOne = {value = environment.cloudSpeedOne_default, description = "How fast are the clouds?"},
-	cloudExposure = {value = environment.cloudExposure_default, description = "How exposed are the clouds?"},
-	cloudExposureOne = {value = environment.cloudExposureOne_default, description = "How exposed are the clouds?"},
-	rainDrops = {value = environment.rainDrops_default, description = "How many rain drops are there?"},
-	dropSize = {value = environment.dropSize_default, description = "What size are the drops of precipitation?"},
-	dropMinSpeed = {value = environment.dropMinSpeed_default, description = "What is the minimum speed of precipitation?"},
-	dropMaxSpeed = {value = environment.dropMaxSpeed_default, description = "What is the maximum speed of precipitation?"},
-	precipType = {value = environment.precipType_default, description = "What type of precipitation do we use?"},
-	teleportTimeout = {value = environment.teleportTimeout_default, description = "How long between telports?"},
-	simSpeed = {value = environment.simSpeed_default, description = "At what rate does the simulation run?"},
-	controlSimSpeed = {value = environment.controlSimSpeed_default, description = "Do we control everyone's sim speed?"},
-	gravity = {value = environment.gravity_default, description = "At what rate do objects fall towards the ground?"},
-	controlGravity = {value = environment.controlGravity_default, description = "Do we control everyone's gravity?"},
-	tempCurveNoon = {value = environment.tempCurveNoon_default, description = "What is the custom temperature in C at noon?"},
-	tempCurveDusk = {value = environment.tempCurveDusk_default, description = "What is the custom temperature in C at dusk?"},
-	tempCurveMidnight = {value = environment.tempCurveMidnight_default, description = "What is the custom temperature in C at midnight?"},
-	tempCurveDawn = {value = environment.tempCurveDawn_default, description = "What is the custom temperature in C at dawn?"},
-	useTempCurve = {value = environment.useTempCurve_default, description = "Do we use a custom temperature curve?"}
+	controlSun = 			{value = environment.controlSun_default, 			description = environment.controlSun_description},
+	ToD = 					{value = environment.ToD_default, 					description = environment.ToD_description},
+	timePlay = 				{value = environment.timePlay_default, 				description = environment.timePlay_description},
+	dayLength = 			{value = environment.dayLength_default, 			description = environment.dayLength_description},
+	dayScale = 				{value = environment.dayScale_default, 				description = environment.dayScale_description},
+	nightScale = 			{value = environment.nightScale_default, 			description = environment.nightScale_description},
+	sunAzimuthOverride = 	{value = environment.sunAzimuthOverride_default, 	description = environment.sunAzimuthOverride_description},
+	skyBrightness = 		{value = environment.skyBrightness_default, 		description = environment.skyBrightness_description},
+	sunSize = 				{value = environment.sunSize_default, 				description = environment.sunSize_description},
+	rayleighScattering = 	{value = environment.rayleighScattering_default, 	description = environment.rayleighScattering_description},
+	sunLightBrightness = 	{value = environment.sunLightBrightness_default, 	description = environment.sunLightBrightness_description},
+	flareScale = 			{value = environment.flareScale_default, 			description = environment.flareScale_description},
+	occlusionScale = 		{value = environment.occlusionScale_default, 		description = environment.occlusionScale_description},
+	exposure = 				{value = environment.exposure_default, 				description = environment.exposure_description},
+	shadowDistance = 		{value = environment.shadowDistance_default, 		description = environment.shadowDistance_description},
+	shadowSoftness = 		{value = environment.shadowSoftness_default, 		description = environment.shadowSoftness_description},
+	shadowSplits = 			{value = environment.shadowSplits_default, 			description = environment.shadowSplits_description},
+	shadowTexSize = 		{value = environment.shadowTexSize_default, 		description = environment.shadowTexSize_description},
+	shadowLogWeight = 		{value = environment.shadowLogWeight_default, 		description = environment.shadowLogWeight_description},
+	visibleDistance = 		{value = environment.visibleDistance_default, 		description = environment.visibleDistance_description},
+	moonAzimuth = 			{value = environment.moonAzimuth_default, 			description = environment.moonAzimuth_description},
+	moonElevation = 		{value = environment.moonElevation_default, 		description = environment.moonElevation_description},
+	moonScale = 			{value = environment.moonScale_default, 			description = environment.moonScale_description},
+	controlWeather = 		{value = environment.controlWeather_default, 		description = environment.controlWeather_description},
+	fogDensity = 			{value = environment.fogDensity_default, 			description = environment.fogDensity_description},
+	fogDensityOffset = 		{value = environment.fogDensityOffset_default, 		description = environment.fogDensityOffset_description},
+	fogAtmosphereHeight = 	{value = environment.fogAtmosphereHeight_default, 	description = environment.fogAtmosphereHeight_description},
+	cloudHeight = 			{value = environment.cloudHeight_default, 			description = environment.cloudHeight_description},
+	cloudHeightOne = 		{value = environment.cloudHeightOne_default, 		description = environment.cloudHeightOne_description},
+	cloudCover = 			{value = environment.cloudCover_default, 			description = environment.cloudCover_description},
+	cloudCoverOne = 		{value = environment.cloudCoverOne_default, 		description = environment.cloudCoverOne_description},
+	cloudSpeed = 			{value = environment.cloudSpeed_default, 			description = environment.cloudSpeed_description},
+	cloudSpeedOne = 		{value = environment.cloudSpeedOne_default, 		description = environment.cloudSpeedOne_description},
+	cloudExposure = 		{value = environment.cloudExposure_default, 		description = environment.cloudExposure_description},
+	cloudExposureOne = 		{value = environment.cloudExposureOne_default, 		description = environment.cloudExposureOne_description},
+	rainDrops = 			{value = environment.rainDrops_default, 			description = environment.rainDrops_description},
+	dropSize = 				{value = environment.dropSize_default, 				description = environment.dropSize_description},
+	dropMinSpeed = 			{value = environment.dropMinSpeed_default, 			description = environment.dropMinSpeed_description},
+	dropMaxSpeed = 			{value = environment.dropMaxSpeed_default, 			description = environment.dropMaxSpeed_description},
+	precipType = 			{value = environment.precipType_default, 			description = environment.precipType_description},
+	teleportTimeout = 		{value = environment.teleportTimeout_default, 		description = environment.teleportTimeout_description},
+	simSpeed = 				{value = environment.simSpeed_default, 				description = environment.simSpeed_description},
+	controlSimSpeed = 		{value = environment.controlSimSpeed_default, 		description = environment.controlSimSpeed_description},
+	gravity = 				{value = environment.gravity_default, 				description = environment.gravity_description},
+	controlGravity = 		{value = environment.controlGravity_default, 		description = environment.controlGravity_description},
+	tempCurveNoon = 		{value = environment.tempCurveNoon_default, 		description = environment.tempCurveNoon_description},
+	tempCurveDusk = 		{value = environment.tempCurveDusk_default, 		description = environment.tempCurveDusk_description},
+	tempCurveMidnight = 	{value = environment.tempCurveMidnight_default, 	description = environment.tempCurveMidnight_description},
+	tempCurveDawn = 		{value = environment.tempCurveDawn_default, 		description = environment.tempCurveDawn_description},
+	useTempCurve = 			{value = environment.useTempCurve_default, 			description = environment.useTempCurve_description}
 }
 
 local restrictionsJson = CobaltDB.new("restrictions")
 local defaultRestrictions = {
-	control = {value = config.resets.control_default, description = "Are resets controlled?"},
-	messageDuration = {value = config.resets.messageDuration_default, description = "How long does the toast show?"},
-	enabled = {value = config.resets.enabled_default, description = "Are resets allowed?"},
-	timeout = {value = config.resets.timeout_default, description = "How often can a vehicle be reset (in seconds)?"},
-	title = {value = config.resets.title_default, description = "Title shown when resetting is limited or disabled."},
-	elapsedMessage = {value = config.resets.elapsedMessage_default, description = "Message shown when reset timeout has elapsed."},
-	message = {value = config.resets.message_default, description = "Message shown when resetting is limited."},
-	disabledMessage = {value = config.resets.disabledMessage_default, description = "Message shown when resetting is completely disabled."},
+	control = 			{value = config.resets.control_default, 		description = config.resets.control_description},
+	messageDuration = 	{value = config.resets.messageDuration_default, description = config.resets.messageDuration_description},
+	enabled = 			{value = config.resets.enabled_default, 		description = config.resets.enabled_description},
+	timeout = 			{value = config.resets.timeout_default, 		description = config.resets.timeout_description},
+	title = 			{value = config.resets.title_default, 			description = config.resets.title_description},
+	elapsedMessage = 	{value = config.resets.elapsedMessage_default, 	description = config.resets.elapsedMessage_description},
+	message = 			{value = config.resets.message_default, 		description = config.resets.message_description},
+	disabledMessage = 	{value = config.resets.disabledMessage_default, description = config.resets.disabledMessage_description}
 }
 
 local vehiclesJson = CobaltDB.new("vehicles")
@@ -320,19 +435,98 @@ local defaultVehicles = {
 
 local nametagsJson = CobaltDB.new("nametags")
 local defaultNametagsSettings = {
-	blockingEnabled = {value = defaultNametagsBlockingEnabled, description = "Are nametags blocked?"},
-	blockingTimeout = {value = defaultNametagsBlockingTimeout, description = "For how long are nametags blocked?"},
-	nametagsWhitelist = {exampleName = defaultNametagsBlockingWhitelist, description = "Who is immune to nametag blocking?"}
+	blockingEnabled = 	{value = defaultNametagsBlockingEnabled, 			description = "Are nametags blocked?"},
+	blockingTimeout = 	{value = defaultNametagsBlockingTimeout, 			description = "For how long are nametags blocked?"},
+	nametagsWhitelist = {exampleName = defaultNametagsBlockingWhitelist, 	description = "Who is immune to nametag blocking?"}
 }
 
 local interfaceJson = CobaltDB.new("interface")
 local defaultInterfaceSettings = {
-	defaultCEIState = {value = config.cobalt.interface.defaultState, description = "The state of the interface for new players."}
+	defaultState = 			{value = config.cobalt.interface.defaultState_default, 					description = config.cobalt.interface.defaultState_description},
+	playerPermissions = 	{value = config.cobalt.interface.playerPermissions_default, 	description = config.cobalt.interface.playerPermissions_description},
+	playerPermissionsPlus = {value = config.cobalt.interface.playerPermissionsPlus_default, description = config.cobalt.interface.playerPermissionsPlus_description},
+	config = 				{value = config.cobalt.interface.config_default, 				description = config.cobalt.interface.config_description},
+	cobaltEssentials = 		{value = config.cobalt.interface.cobaltEssentials_default, 		description = config.cobalt.interface.cobaltEssentials_description},
+	server = 				{value = config.cobalt.interface.server_default, 				description = config.cobalt.interface.server_description},
+	interface = 			{value = config.cobalt.interface.interface_default, 			description = config.cobalt.interface.interface_description},
+	nametags = 				{value = config.cobalt.interface.nametags_default, 				description = config.cobalt.interface.nametags_description},
+	restrictions = 			{value = config.cobalt.interface.restrictions_default, 			description = config.cobalt.interface.restrictions_description},
+	extras = 				{value = config.cobalt.interface.extras_default, 				description = config.cobalt.interface.extras_description},
+	environmentAdmin = 		{value = config.cobalt.interface.environmentAdmin_default, 		description = config.cobalt.interface.environmentAdmin_description},
+	environment = 			{value = config.cobalt.interface.environment_default, 			description = config.cobalt.interface.environment_description},
+	sun = 					{value = config.cobalt.interface.sun_default, 					description = config.cobalt.interface.sun_description},
+	weather = 				{value = config.cobalt.interface.weather_default, 				description = config.cobalt.interface.weather_description},
+	gravity = 				{value = config.cobalt.interface.gravity_default, 				description = config.cobalt.interface.gravity_description},
+	temperature = 			{value = config.cobalt.interface.temperature_default, 			description = config.cobalt.interface.temperature_description},
+	database = 				{value = config.cobalt.interface.database_default, 				description = config.cobalt.interface.database_description},
+	race = 					{value = config.cobalt.interface.race_default, 					description = config.cobalt.interface.race_description}
 }
 
+local CEICommands = {
+	CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
+	cei = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
+}
 
-local raceCountdown
-local raceCountdownStarted
+local function writeCfg(path, key, value)
+	local tomlFile, error = io.open(path, 'r')
+	if error then return nil, error end
+	local tomlText = tomlFile:read("*a")
+	local cfg = tomlParser.parse(tomlText)
+	if cfg.General then
+		cfg.General[key] = value
+		tomlText = tomlParser.encode(cfg)
+		tomlText = tomlText:gsub( '\\', '')
+		tomlFile, error = io.open(path, 'w')
+		if error then return nil, error end
+		tomlFile:write(tomlText)
+	end
+	tomlFile:close()
+end
+
+local function pairsByKeys(t, f)
+	local a = {}
+	for n in pairs(t) do
+		table.insert(a, n)
+	end
+	table.sort(a, f)
+	local i = 0
+	local iter = function ()
+		i = i + 1
+		if a[i] == nil then
+			return nil
+		else
+			return a[i], t[a[i]]
+		end
+	end
+	return iter
+end
+
+local function applyStuff(targetDatabase, tables)
+	local appliedTables = {}
+	for tableName, table in pairs(tables) do
+		if targetDatabase[tableName]:exists() == false then
+			for key, value in pairs(table) do
+				targetDatabase[tableName][key] = value
+			end
+			appliedTables[tableName] = tableName
+		end
+	end
+	return appliedTables
+end
+
+local function updateCobaltDatabase(DBname)
+	local filePath = dbpath .. DBname
+	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
+	if success then
+		success, error = FS.Remove(filePath .. ".json")
+		if success then
+			success, error = FS.Rename(filePath .. ".temp", filePath .. ".json")
+		end
+	end
+	if not success then
+		CElog('Failed to update database "'..DBname..'"on disk: '..tostring(error), "WARN")
+	end
+end
 
 local function onInit()
 	MP.RegisterEvent("onPlayerAuth", "onPlayerAuthHandler")
@@ -347,7 +541,9 @@ local function onInit()
 	MP.RegisterEvent("CEISetGroupLevel","CEISetGroupLevel")
 	MP.RegisterEvent("CEISetGroupPerms","CEISetGroupPerms")
 	MP.RegisterEvent("CEISetPerm","CEISetPerm")
+	MP.RegisterEvent("CEISetUIPerm","CEISetUIPerm")
 	MP.RegisterEvent("CEISetTempPerm","CEISetTempPerm")
+	MP.RegisterEvent("CEISetTempUIPerm","CEISetTempUIPerm")
 	MP.RegisterEvent("CEISetVehiclePerms","CEISetVehiclePerms")
 	MP.RegisterEvent("CEIRemoveVehiclePerm","CEIRemoveVehiclePerm")
 	MP.RegisterEvent("CEIRemoveVehiclePart","CEIRemoveVehiclePart")
@@ -374,10 +570,12 @@ local function onInit()
 	MP.RegisterEvent("CEIRemoveNametagWhitelist","CEIRemoveNametagWhitelist")
 	MP.RegisterEvent("CEINametagSetting","CEINametagSetting")
 	MP.RegisterEvent("CEIStop","CEIStop")
+	MP.RegisterEvent("CEISetInterface","CEISetInterface")
 	MP.RegisterEvent("CEISetRestrictions","CEISetRestrictions")
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
 	MP.RegisterEvent("CEISetTeleportPerm","CEISetTeleportPerm")
+	MP.RegisterEvent("CEISetResetPerm","CEISetResetPerm")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
@@ -397,11 +595,59 @@ local function onInit()
 	config.server.map = utils.readCfg("ServerConfig.toml").General.Map
 	config.server.description = utils.readCfg("ServerConfig.toml").General.Description
 	
-	M.applyStuff(environmentJson, defaultEnvironment)
-	M.applyStuff(vehiclesJson, defaultVehicles)
-	M.applyStuff(nametagsJson, defaultNametagsSettings)
-	M.applyStuff(interfaceJson, defaultInterfaceSettings)
-	M.applyStuff(restrictionsJson, defaultRestrictions)
+	applyStuff(environmentJson, defaultEnvironment)
+	applyStuff(vehiclesJson, defaultVehicles)
+	applyStuff(nametagsJson, defaultNametagsSettings)
+	applyStuff(interfaceJson, defaultInterfaceSettings)
+	applyStuff(restrictionsJson, defaultRestrictions)
+	applyStuff(commands, CEICommands)
+
+	for k,v in pairs(players.database) do
+		if k == "group:inactive" then
+			if not players.database[k].UI then
+				players.database[k].UI = 0
+			end
+		elseif k == "group:guest" then
+			if not players.database[k].UI then
+				players.database[k].UI = 0
+			end
+		elseif k == "group:default" then
+			if not players.database[k].UI then
+				players.database[k].UI = 1
+			end
+		elseif k == "group:mod" then
+			if not players.database[k].UI then
+				players.database[k].UI = 2
+			end
+		elseif k == "group:admin" then
+			if not players.database[k].UI then
+				players.database[k].UI = 3
+			end
+		elseif k == "group:owner" then
+			if not players.database[k].UI then
+				players.database[k].UI = 4
+			end
+		end
+	end
+	
+	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultState", "value")
+	config.cobalt.interface.config = CobaltDB.query("interface", "config", "value")
+	config.cobalt.interface.playerPermissions = CobaltDB.query("interface", "playerPermissions", "value")
+	config.cobalt.interface.playerPermissionsPlus = CobaltDB.query("interface", "playerPermissionsPlus", "value")
+	config.cobalt.interface.cobaltEssentials = CobaltDB.query("interface", "cobaltEssentials", "value")
+	config.cobalt.interface.server = CobaltDB.query("interface", "server", "value")
+	config.cobalt.interface.interface = CobaltDB.query("interface", "interface", "value")
+	config.cobalt.interface.nametags = CobaltDB.query("interface", "nametags", "value")
+	config.cobalt.interface.restrictions = CobaltDB.query("interface", "restrictions", "value")
+	config.cobalt.interface.extras = CobaltDB.query("interface", "extras", "value")
+	config.cobalt.interface.environmentAdmin = CobaltDB.query("interface", "environmentAdmin", "value")
+	config.cobalt.interface.environment = CobaltDB.query("interface", "environment", "value")
+	config.cobalt.interface.sun = CobaltDB.query("interface", "sun", "value")
+	config.cobalt.interface.weather = CobaltDB.query("interface", "weather", "value")
+	config.cobalt.interface.gravity = CobaltDB.query("interface", "gravity", "value")
+	config.cobalt.interface.temperature = CobaltDB.query("interface", "temperature", "value")
+	config.cobalt.interface.database = CobaltDB.query("interface", "database", "value")
+	config.cobalt.interface.race = CobaltDB.query("interface", "race", "value")
 	
 	config.resets.control = CobaltDB.query("restrictions", "control", "value")
 	config.resets.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
@@ -467,8 +713,6 @@ local function onInit()
 	environment.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
 	environment.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
 	
-	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultCEIState", "value")
-	
 	local playersDatabase
 	if FS.Exists("Resources/Server/CobaltEssentials/CobaltDB/playersDB") then
 		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
@@ -476,7 +720,7 @@ local function onInit()
 		playersDatabase = {}
 	end
 	
-	for k,v in pairs(playersDatabase) do
+	for _, v in pairs(playersDatabase) do
 		local playerName = string.gsub(v, ".json", "")
 		CobaltDB.new("playersDB/" .. playerName)
 		tempPlayers[playerName] = {}
@@ -484,26 +728,6 @@ local function onInit()
 		
 	CElog("CEI Loaded!", "CEI")
 end
-
-local function applyStuff(targetDatabase, tables)
-	local appliedTables = {}
-	for tableName, table in pairs(tables) do
-		if targetDatabase[tableName]:exists() == false then
-			for key, value in pairs(table) do
-				targetDatabase[tableName][key] = value
-			end
-			appliedTables[tableName] = tableName
-		end
-	end
-	return appliedTables
-end
-
-local CEICommands = {
-		CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
-		cei = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
-	}
-
-applyStuff(commands, CEICommands)
 
 local function CEI(player)
 	--CElog("CEI Called by: " .. player.name, "CEI")
@@ -517,7 +741,17 @@ local function CEI(player)
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 end
 
-local function txPlayersGroup(player)
+local function txPlayersResetExempt()
+	for playerID, player in pairs(players) do
+		if type(playerID) == "number" then
+			if player.connectStage == "connected" then
+				MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { player.permissions.resetExempt } )
+			end
+		end
+	end
+end
+
+local function txPlayersGroup()
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			if player.connectStage == "connected" then
@@ -527,26 +761,11 @@ local function txPlayersGroup(player)
 	end
 end
 
-local function txData()
+local function txPlayersUIPerm()
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			if player.connectStage == "connected" then
-				if player.permissions.group == "owner"  or player.permissions.group == "admin" or player.permissions.group == "mod" then
-					M.txPlayersData(player)
-					M.txPlayersDatabase(player)
-					M.txConfigData(player)
-					M.txPlayersGroup(player)
-					M.txEnvironment(player)
-					M.txNametagWhitelisted(player)
-					M.txNametagBlockerActive(player)
-				else
-					M.txPlayersData(player)
-					M.txPlayersGroup(player)
-					M.txEnvironment(player)
-					M.txNametagWhitelisted(player)
-					M.txNametagBlockerActive(player)
-					M.txConfigData(player)
-				end
+				MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
 			end
 		end
 	end
@@ -559,7 +778,7 @@ local function txPlayersDatabase(player)
 		playersDatabase[k] = {}
 		local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
 		playersDatabase[k].permissions = {}
-		for a,b in pairs(playerPermissions) do
+		for a in pairs(playerPermissions) do
 			playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
 		end
 		playersDatabase[k].permissions.group = players.database[playerName].group
@@ -567,7 +786,7 @@ local function txPlayersDatabase(player)
 		playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
 		playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
 		if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
-			playersDatabase[k].UI = CobaltDB.query("playersDB/" .. playerName, "UI", "value")
+			playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
 		end
 		playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
 		if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
@@ -593,14 +812,11 @@ local function txPlayersData(player)
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			local connectedTime
-			connectedTime = os.clock() * 1000 - player.joinTime
+			connectedTime = ageTimer:GetCurrent()*1000 - player.joinTime
 			connectedTime = connectedTime / 1000
 			playersTable[player.playerID] = {
 					playerID = player.playerID,
 					playerName = player.name,
-					beammp = player.beammp,
-					ip = player.ip,
-					UI = player.UI,
 					connectStage = player.connectStage,
 					guest = player.guest,
 					joinTime = player.joinTime / 1000,
@@ -617,16 +833,21 @@ local function txPlayersData(player)
 						group = player.permissions.group,
 						muted = player.permissions.muted,
 						muteReason = (player.permissions.muteReason or ""),
-						banned = player.permissions.banned
+						banned = player.permissions.banned,
+						ip = player.permissions.ip,
+						beammp = player.permissions.beammp,
+						UI = player.permissions.UI
 						},
 					teleport = teleport[player.name],
+					resetExempt = resetExempt[player.name],
 					tempBanLength = tempPlayers[player.name].tempBanLength,
 					tempPermLevel = tempPlayers[player.name].tempPermLevel,
+					tempUIPermLevel = tempPlayers[player.name].tempUIPermLevel,
 					includeInRace = tempPlayers[player.name].includeInRace,
 					currentVehicle = tempPCV[player.name],
 					vehicles = (player.vehicles or {})
 					}
-			for k,v in pairs(playersTable[player.playerID].vehicles) do
+			for k in pairs(playersTable[player.playerID].vehicles) do
 				playersTable[player.playerID].vehicles[k].vehicleID = k
 				playersTable[player.playerID].vehicles[k].rot = nil
 				playersTable[player.playerID].vehicles[k].pos = nil
@@ -647,7 +868,7 @@ local function txConfigData(player)
 	local playerGroupsLength = 0
 	local whitelistLength = 0
 	local groupPlayerLength = 0
-	for k,v in pairs(players.database) do
+	for k in pairs(players.database) do
 		if string.find(k, "group") then
 			playerGroupsLength = playerGroupsLength + 1
 			config.cobalt.groups[playerGroupsLength] = {}
@@ -674,7 +895,7 @@ local function txConfigData(player)
 	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
 	local vehicleCapsLength = 0
 	config.cobalt.permissions.vehicleCap = {}
-	for k,v in pairs(vehicleCaps) do
+	for k in pairs(vehicleCaps) do
 		if string.find(k, "%d+") then
 			vehicleCapsLength = vehicleCapsLength + 1
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
@@ -685,7 +906,7 @@ local function txConfigData(player)
 	local vehiclePerms = CobaltDB.getTables("vehicles")
 	local vehiclePermsLength = 0
 	local vehiclePermsPartLevelsLength = 0
-	for k,v in pairsByKeys(vehiclePerms) do
+	for _, v in pairsByKeys(vehiclePerms) do
 		vehiclePermsLength = vehiclePermsLength + 1
 		config.cobalt.permissions.vehiclePerm[vehiclePermsLength] = {}
 		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
@@ -717,7 +938,7 @@ function txNametagWhitelisted(player)
 	local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 	local nametagWhitelistIterator = 0
 	config.nametags.whitelist = {}
-	for k,v in pairs(nametagsBlockingWhitelist) do
+	for k in pairs(nametagsBlockingWhitelist) do
 		if k ~= "description" then
 			nametagWhitelistIterator = nametagWhitelistIterator + 1
 			config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
@@ -736,6 +957,23 @@ function txNametagBlockerTimeout(senderID, data)
 	MP.TriggerClientEvent(-1, "rxNametagBlockerTimeout", tostring(data[1]))
 end
 
+local function txData()
+	for playerID, player in pairs(players) do
+		if type(playerID) == "number" then
+			if player.connectStage == "connected" then
+				txPlayersData(player)
+				txPlayersGroup(player)
+				txEnvironment(player)
+				txNametagWhitelisted(player)
+				txNametagBlockerActive(player)
+				txConfigData(player)
+				txPlayersUIPerm(player)
+				txPlayersDatabase(player)
+			end
+		end
+	end
+end
+
 function CEIPreRace(senderID, data)
 	--CElog("CEIStartRace Called by: " .. senderID .. ": " .. data, "CEI")
 	if not raceCountdownStarted then
@@ -746,16 +984,16 @@ end
 
 function CEISetDefaultState(senderID, data)
 	--CElog("CEISetDefaultState Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
-		CobaltDB.set("interface", "defaultCEIState", "value", data[1])
+		CobaltDB.set("interface", "defaultState", "value", data[1])
 		config.cobalt.interface.defaultState = data[1]
 	end
 end
 
 function CEISetNewVehiclePerm(senderID, data)
 	--CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local vehiclePermLevel = 1
@@ -770,7 +1008,7 @@ end
 
 function CEISetVehiclePermLevel(senderID, data)
 	--CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local vehiclePermLevel = tonumber(data[2])
@@ -781,7 +1019,7 @@ end
 
 function CEIRemoveVehiclePerm(senderID, data)
 	--CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local removeVehicle = vehicleName
@@ -794,7 +1032,7 @@ function CEIRemoveVehiclePerm(senderID, data)
 				loadedDatabases["vehicles"][k] = vehiclePerms
 			end
 		end
-		M.updateCobaltDatabase("vehicles")
+		updateCobaltDatabase("vehicles")
 		vehicles = CobaltDB.new("vehicles")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
@@ -802,7 +1040,7 @@ end
 
 function CEISetNewVehiclePart(senderID, data)
 	--CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local partName = data[2]
@@ -819,7 +1057,7 @@ end
 
 function CEISetVehiclePartLevel(senderID, data)
 	--CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local partName = "partlevel:" .. data[2]
@@ -830,11 +1068,10 @@ end
 
 function CEIRemoveVehiclePart(senderID, data)
 	--CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local partName = "partlevel:" .. data[2]
-		local targetLevel = data
 		if CobaltDB.query("vehicles", vehicleName, partName) then
 			CobaltDB.set("vehicles", vehicleName, partName, nil)
 		else
@@ -846,7 +1083,7 @@ end
 
 function CEISetVehiclePartLevel(senderID, data)
 	--CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
 		local vehiclePartName = "partlevel:" .. data[2]
@@ -858,7 +1095,7 @@ end
 
 function CEISetTempBan(senderID, data)
 	--CElog("CEISetTempBan Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetID = tonumber(data[1])
 		local name = players[targetID].name
@@ -881,39 +1118,54 @@ function logEnvironment()
 	end
 end
 
-function logRestrictions()
-	local restrictionsTables = CobaltDB.getTables("restrictions")
-	for k,v in pairs(restrictionsTables) do
-		local currentRestrictionTable = CobaltDB.getTable("restrictions",v)
-		for x,y in pairs(currentRestrictionTable) do
-			if x == "value" then
-				if config.resets[k] ~= y then
-					CobaltDB.set("restrictions", k, "value", config.resets[k])
+function CEISetInterface(senderID, data)
+	--CElog("CEISetInterface Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
+		data = Util.JsonDecode(data)
+		local key = data[1]
+		local value = tonumber(data[2])
+		if key == "all" then
+			for k in pairs(config.cobalt.interface) do
+				if k ~= config.cobalt.interface.defaultState then
+					config.cobalt.interface[k] = config.cobalt.interface[k .. "_default"]
+					CobaltDB.set("interface", k, "value", config.cobalt.interface[k .. "_default"])
+				end
+			end
+		elseif value == "default" then
+			config.cobalt.interface[key] = config.cobalt.interface[key .. "_default"]
+			CobaltDB.set("interface", key, "value", config.cobalt.interface[key .. "_default"])
+		else
+			config.cobalt.interface[key] = value
+			CobaltDB.set("interface", key, "value", value)
+		end
+		for playerID, player in pairs(players) do
+			if type(playerID) == "number" then
+				if player.connectStage == "connected" then
+					txConfigData(player)
 				end
 			end
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
 function CEISetRestrictions(senderID, data)
-	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	--CElog("CEISetRestrictions Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.restrictions then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
 		if key == "all" then
-			config.resets.control = config.resets.control_default
-			config.resets.messageDuration = config.resets.messageDuration_default
-			config.resets.enabled = config.resets.enabled_default
-			config.resets.timeout = config.resets.timeout_default
-			config.resets.title = config.resets.title_default
-			config.resets.elapsedMessage = config.resets.elapsedMessage_default
-			config.resets.message = config.resets.message_default
-			config.resets.disabledMessage = config.resets.disabledMessage_default
+			for k in pairs(config.resets) do
+				config.resets[k] = config.resets[k .. "_default"]
+				CobaltDB.set("restrictions", k, "value", config.resets[k .. "_default"])
+			end
 		elseif value == "default" then
 			config.resets[key] = config.resets[key .. "_default"]
+			CobaltDB.set("restrictions", key, "value", config.resets[key .. "_default"])
 		else
 			config.resets[key] = value
+			CobaltDB.set("restrictions", key, "value", value)
 		end
 		for playerID, player in pairs(players) do
 			if type(playerID) == "number" then
@@ -928,12 +1180,14 @@ end
 
 function CEISetEnv(senderID, data)
 	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.environment then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
 		if key == "allWeather" then
-			environment.controlWeather = environment.controlWeather_default
+			if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
+				environment.controlWeather = environment.controlWeather_default
+			end
 			environment.fogDensity = environment.fogDensity_default
 			environment.fogDensityOffset = environment.fogDensityOffset_default
 			environment.fogAtmosphereHeight = environment.fogAtmosphereHeight_default
@@ -951,7 +1205,9 @@ function CEISetEnv(senderID, data)
 			environment.dropMaxSpeed = environment.dropMaxSpeed_default
 			environment.precipType = environment.precipType_default
 		elseif key == "allSun" then
-			environment.controlSun = environment.controlSun_default
+			if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
+				environment.controlSun = environment.controlSun_default
+			end
 			environment.ToD = environment.ToD_default
 			environment.timePlay = environment.timePlay_default
 			environment.dayScale = environment.dayScale_default
@@ -975,7 +1231,7 @@ function CEISetEnv(senderID, data)
 			environment.moonElevation = environment.moonElevation_default
 			environment.moonScale = environment.moonScale_default
 		elseif key == "all" then
-			for k,v in pairs(environment) do
+			for k in pairs(environment) do
 				if not string.find(k, "default") then
 					environment[k] = environment[k .. "_default"]
 				end
@@ -1000,7 +1256,7 @@ end
 
 function CEIToggleIgnition(senderID, data)
 	--CElog("CEIToggleIgnition Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(tempData[1])].name .. "!")
@@ -1012,7 +1268,7 @@ end
 
 function CEIToggleLock(senderID, data)
 	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(tempData[1])].name .. "!")
@@ -1024,7 +1280,7 @@ end
 
 function CEIToggleRaceLock(senderID, data)
 	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.group == "default" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		MP.TriggerClientEvent(-1, "CEIToggleLock", data)
 	end
 end
@@ -1037,7 +1293,7 @@ end
 
 function CEIStop(senderID, data)
 	--CElog("CEIStop Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.server then
 		MP.SendChatMessage(-1, "Good-bye!")
 		exit()
 	end
@@ -1045,7 +1301,7 @@ end
 
 function CEISetNewGroup(senderID, data)
 	--CElog("CEISetNewGroup Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local group = data[1]
 		if group == nil or group == "" then
@@ -1061,7 +1317,7 @@ end
 
 function CEIRemoveGroup(senderID, data)
 	--CElog("CEIRemoveGroup Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local group = data[1]
 		loadedDatabases["playerPermissions"] = {}
@@ -1071,7 +1327,7 @@ function CEIRemoveGroup(senderID, data)
 				loadedDatabases["playerPermissions"][k] = v
 			end
 		end
-		M.updateCobaltDatabase("playerPermissions")
+		updateCobaltDatabase("playerPermissions")
 		playerPermissions = CobaltDB.new("playerPermissions")
 		config.cobalt.groups = {}
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
@@ -1080,7 +1336,7 @@ end
 
 function CEISetNewVehiclePermsLevel(senderID, data)
 	--CElog("CEISetNewVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
 		if targetLevel == nil or targetLevel == "" then
@@ -1098,7 +1354,7 @@ end
 
 function CEIRemoveVehiclePermsLevel(senderID, data)
 	--CElog("CEIRemoveVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = tostring(data[1])
 		if CobaltDB.query("permissions", "vehicleCap", targetLevel) then
@@ -1112,7 +1368,7 @@ end
 
 function CEISetVehiclePerms(senderID, data)
 	--CElog("CEISetVehiclePerms Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
 		local targetVehicles = tonumber(data[2])
@@ -1123,7 +1379,7 @@ end
 
 function CEISetGroup(senderID, data)
 	--CElog("CEISetGroup Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local name
 		if tonumber(data[1]) then
@@ -1163,12 +1419,24 @@ end
 
 function CEISetGroupPerms(senderID, data)
 	--CElog("CEISetGroupPerms Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local group = data[1]
 		local permission = data[2]
 		local value = data[3]
-		if tonumber(value) then
+		if permission == "level" then
+			if players[senderID].permissions.level <= tonumber(value) then
+				MP.SendChatMessage(senderID, "Cannot set " .. group .. "'s level to " .. value .. " because it exceeds your own!")
+			else
+				players.database[group].level = tonumber(value)
+			end
+		elseif permission == "UI" then
+			if players[senderID].permissions.UI <= tonumber(value) then
+				MP.SendChatMessage(senderID, "Cannot set " .. group .. "'s UI Level to " .. value .. " because it exceeds your own!")
+			else
+				players.database[group].UI = tonumber(value)
+			end
+		elseif tonumber(value) then
 			if tonumber(value) >= 0 then
 				players.database[group][permission] = tonumber(value)
 			elseif tonumber(value) < 0 then
@@ -1183,9 +1451,37 @@ function CEISetGroupPerms(senderID, data)
 	end
 end
 
+function CEISetUIPerm(senderID, data)
+	--CElog("CEISetUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
+		data = Util.JsonDecode(data)
+		local targetName = data[1]
+		local player = players.getPlayerByName(targetName)
+		local UIPermLvl = tonumber(data[2])
+		if player then
+			if players[senderID].permissions.UI <= UIPermLvl then
+				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s UI Level to " .. UIPermLvl .. " because it exceeds your own!")
+			else
+				players.database[targetName].UI = UIPermLvl
+				tempPlayers[targetName].tempUIPermLevel = players[player.playerID].permissions.UI
+				CobaltDB.set("playersDB/" .. targetName, "UI", "value", UIPermLvl)
+			end
+		else
+			if players[senderID].permissions.UI <= UIPermLvl then
+				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s UI Level to " .. UIPermLvl .. " because it exceeds your own!")
+			else
+				CobaltDB.set("playersDB/" .. targetName, "UI", "value", UIPermLvl)
+				players.database[targetName].UI = UIPermLvl
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+	end
+end
+
 function CEISetPerm(senderID, data)
 	--CElog("CEISetPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1211,9 +1507,20 @@ function CEISetPerm(senderID, data)
 	end
 end
 
+function CEISetTempUIPerm(senderID, data)
+	--CElog("CEISetTempUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
+		data = Util.JsonDecode(data)
+		local targetName = data[1]
+		local UIPermLvl = tonumber(data[2])
+		tempPlayers[targetName].tempUIPermLevel = UIPermLvl
+	end
+end
+
+
 function CEISetTempPerm(senderID, data)
 	--CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local permLvl = tonumber(data[2])
@@ -1223,7 +1530,7 @@ end
 
 function CEISetCfg(senderID, data)
 	--CElog("CEISetCfg Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.server then
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
@@ -1294,7 +1601,7 @@ end
 
 function CEISetMaxActivePlayers(senderID, data)
 	--CElog("CEISetMaxActivePlayers Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		data = tonumber(data[1])
 		CobaltDB.set("config", "maxActivePlayers", "value", data)
@@ -1304,7 +1611,7 @@ end
 
 function CEIRemoveVehicle(senderID, data)
 	--CElog("CEIRemoveVehicle Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local tempPlayerID = tonumber(data[1])
 		local tempVehicleID = tonumber(data[2])
@@ -1348,7 +1655,7 @@ end
 
 function CEIKick(senderID, data)
 	--CElog("CEIKick Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local target = players.getPlayerByName(data[1])
 		local reason = data[2]
@@ -1367,7 +1674,7 @@ end
 
 function CEIUnban(senderID, data)
 	--CElog("CEIUnban Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		MP.SendChatMessage(-1, targetName .. " was unbanned")
@@ -1385,7 +1692,7 @@ end
 
 function CEIBan(senderID, data)
 	--CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local reason = data[2]
@@ -1421,7 +1728,7 @@ end
 
 function CEITempBan(senderID, data)
 	--CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local length = data[2]
@@ -1461,7 +1768,7 @@ end
 
 function CEIMute(senderID, data)
 	--CElog("CEIMute Called by: " .. senderID, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1490,7 +1797,7 @@ end
 
 function CEIUnmute(senderID, data)
 	--CElog("CEIMute Called by: " .. senderID, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local player = players.getPlayerByName(targetName)
@@ -1511,7 +1818,7 @@ end
 
 function CEIWhitelist(senderID, data)
 	--CElog("CEIWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local arguments
 		local tempPlayerID
@@ -1546,14 +1853,14 @@ end
 
 function CEIRaceInclude(senderID, data)
 	--CElog("CEIRaceInclude Called by: " .. senderID .. ": " .. data, "CEI")
-	playerName = players[senderID].name
+	local playerName = players[senderID].name
 	data = Util.JsonDecode(data)
 	tempPlayers[playerName].includeInRace = data[1]
 end
 
 function CEISetNametagWhitelist(senderID, data)
 	--CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		if targetName == nil or targetName == "" then
@@ -1563,7 +1870,7 @@ function CEISetNametagWhitelist(senderID, data)
 			local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 			local nametagWhitelistIterator = 0
 			config.nametags.whitelist = {}
-			for k,v in pairs(nametagsBlockingWhitelist) do
+			for k in pairs(nametagsBlockingWhitelist) do
 				if k ~= "description" then
 					nametagWhitelistIterator = nametagWhitelistIterator + 1
 					config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
@@ -1576,14 +1883,14 @@ end
 
 function CEIRemoveNametagWhitelist(senderID, data)
 	--CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		CobaltDB.set("nametags", "nametagsWhitelist", targetName, nil)
 		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 		local nametagWhitelistIterator = 0
 		config.nametags.whitelist = {}
-		for k,v in pairs(nametagsBlockingWhitelist) do
+		for k in pairs(nametagsBlockingWhitelist) do
 			if k ~= "description" then
 				nametagWhitelistIterator = nametagWhitelistIterator + 1
 				config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
@@ -1595,7 +1902,7 @@ end
 
 function CEINametagSetting(senderID, data)
 	--CElog("CEINametagSetting Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		if tonumber(data[1]) then
 			CobaltDB.set("nametags", "blockingTimeout", "value", tonumber(data[1]))
@@ -1610,7 +1917,7 @@ end
 
 function CEITeleportFrom(senderID, data)
 	--CElog("CEITeleportFrom Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		if players[tonumber(senderID)].permissions.level < players[tonumber(data)].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data)].name .. "!")
 		else
@@ -1620,9 +1927,23 @@ function CEITeleportFrom(senderID, data)
 	end
 end
 
+function CEISetResetPerm(senderID, data)
+	--CElog("CEISetResetPerm Called by: " .. senderID .. ": " .. data, "CEI")
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		data = Util.JsonDecode(data)
+		playerName = data[1]
+		resetExempt[playerName] = data[2]
+		CobaltDB.set("playersDB/" .. playerName, "resetExempt", "value", data[2])
+		local player = players.getPlayerByName(playerName)
+		if player then
+			MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { data[2] } )
+		end
+	end
+end
+
 function CEISetTeleportPerm(senderID, data)
 	--CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
-	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" then
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		playerName = data[1]
 		teleport[playerName] = data[2]
@@ -1652,7 +1973,6 @@ local function onTick(age)
 	if logTimer >= logInterval then
 		CobaltDB.set("environment", "ToD", "value", environment.ToD)
 		logEnvironment()
-		logRestrictions()
 		logTimer = 0
 	end
 	if raceCountdown ~= nil then
@@ -1670,13 +1990,13 @@ local function onTick(age)
 				if tempPlayers[player.name].kickVotes then
 					if tempPlayers[player.name].kickVotes > kickThresh then
 						MP.SendChatMessage(-1, player.name .. " was VoteKicked with " .. tempPlayers[player.name].kickVotes .. " votes")
-						for k,v in pairs(tempPlayers) do
+						for k in pairs(tempPlayers) do
 							if tempPlayers[k].votedFor then
 								tempPlayers[k].votedFor[player.name] = false
 							end
 						end
 						player:kick("VoteKicked with " .. tempPlayers[player.name].kickVotes .. " votes")
-						for k,v in pairs(tempPlayers) do
+						for k in pairs(tempPlayers) do
 							tempPlayers[k].kickVotes = 0
 						end
 					end
@@ -1688,7 +2008,7 @@ end
 
 function raceTimer()
 	if raceCountdown == 15 then
-		for k,v in pairs(tempPlayers) do
+		for _, v in pairs(tempPlayers) do
 			if v.includeInRace == true then
 				MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "3ping")
 				local data = { "You have been frozen, prepare to race!", 5 }
@@ -1696,20 +2016,20 @@ function raceTimer()
 			end
 		end
 	elseif raceCountdown == 11 then
-		for k,v in pairs(tempPlayers) do
+		for _, v in pairs(tempPlayers) do
 			if v.includeInRace == true then
 				MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "countTenHorn")
 			end
 		end
 	elseif raceCountdown < 11 and raceCountdown > 0 then
-		for k,v in pairs(tempPlayers) do
+		for _, v in pairs(tempPlayers) do
 			if v.includeInRace == true then
 				local data = { raceCountdown .. "...", 1, true }
 				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
 			end
 		end
 	elseif raceCountdown == 0 then
-		for k,v in pairs(tempPlayers) do
+		for _, v in pairs(tempPlayers) do
 			if v.includeInRace == true then
 				local data = { "GO!!!", 3, true }
 				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
@@ -1720,11 +2040,25 @@ function raceTimer()
 end
 
 function raceStart()
-	for k,v in pairs(playersTable) do
-		for x,y in pairs(playersTable[k].vehicles) do
+	for k in pairs(playersTable) do
+		for x in pairs(playersTable[k].vehicles) do
 			local data = { playersTable[k].playerID, tostring(playersTable[k].vehicles[x].vehicleID), false }
 			MP.TriggerClientEventJson(-1, "CEIToggleLock", data)
 		end
+	end
+end
+
+local function sendDelayedMessage(player_id, message)
+	local connected
+	for playerID, player in pairs(players) do
+		if type(playerID) == "number" then
+			if player.connectStage == "connected" then
+				connected = true
+			end
+		end
+	end
+	if connected then
+		MP.SendChatMessage(player_id, message)
 	end
 end
 
@@ -1735,51 +2069,41 @@ function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	end
 	tempPlayers[player_name] = {}
 	tempPlayers[player_name].tempPermLevel = 0
+	tempPlayers[player_name].tempUIPermLevel = 1
 	tempPlayers[player_name].tempBanLength = 1
 	tempPlayers[player_name].includeInRace = false
 	tempPlayers[player_name].votedFor = {}
 	tempPCV[player_name] = "none"
-end
-
-local function onPlayerConnecting(player)
 	CobaltDB.new("playersDB/" .. identifiers.beammp)
-	if players.database[player.name].beammp == nil then
-		players.database[player.name].beammp = identifiers.beammp
-		CobaltDB.set("playersDB/" .. player.name, "beammp", "value", identifiers.beammp)
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+	players.database[player_name].beammp = identifiers.beammp
+	CobaltDB.set("playersDB/" .. player_name, "beammp", "value", identifiers.beammp)
+	CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+	players.database[player_name].ip = identifiers.ip
+	CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
+	CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
+	if CobaltDB.query("playersDB/" .. player_name, "banned", "value") == true then
+		local reason = CobaltDB.query("playersDB/" .. player_name, "banReason", "value") or "You are banned from this server!"
+		return reason
 	end
-	if players.database[player.name].ip == nil then
-		players.database[player.name].ip = identifiers.ip
-		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
-	else
-		players.database[player.name].ip = identifiers.ip
-		CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
-	end
-	if players.database[player.name].UI == nil then
-		players.database[player.name].UI = true
-		CobaltDB.set("playersDB/" .. player.name, "UI", "value", true)
-	end
-	if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
-		local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
-		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
-	end
-	
 	if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
 		CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
-	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == false then
 	elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
 		local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
-		CobaltDB.set("playersDB/" .. player.name, "banned", "value", true)
-		CobaltDB.set("playersDB/" .. player.name, "banReason", "value", reason)
-		players.database[player.name].banned = true
-		players.database[player.name].banReason = reason
-		MP.DropPlayer(MP.GetPlayerIDByName(player.name), reason)
+		CobaltDB.set("playersDB/" .. player_name, "banned", "value", true)
+		CobaltDB.set("playersDB/" .. player_name, "banReason", "value", reason)
+		players.database[player_name].banned = true
+		players.database[player_name].banReason = reason
+		return reason
 	end
 end
 
 local function onPlayerJoining(player)
 	tempPlayers[player.name].tempPermLevel = player.permissions.level
+	if player.permissions.UI then
+		tempPlayers[player.name].tempUIPermLevel = player.permissions.UI
+	else
+		CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
+	end
 	tempPlayers[player.name].player_id = player.playerID
 end
 
@@ -1799,18 +2123,22 @@ local function onPlayerJoin(player)
 	else
 		teleport[player.name] = CobaltDB.query("playersDB/" .. player.name, "teleport", "value")
 	end
+	if CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value") == nil then
+		CobaltDB.set("playersDB/" ..  player.name, "resetExempt", "value", false)
+		resetExempt[player.name] = false
+	else
+		resetExempt[player.name] = CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value")
+	end
 	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
-	CE.delayExec( 2000 , MP.SendChatMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
-	CE.delayExec( 2500 , MP.SendChatMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
-	
+	CE.delayExec( 3000 , sendDelayedMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
+	CE.delayExec( 6000 , sendDelayedMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
 end
 
 local function onPlayerDisconnect(player)
-	local data = tostring(player.playerID)
 	playersTable[player.playerID] = nil
 	tempPlayers[player.name] = nil
 	tempPCV[player.name] = nil
@@ -1820,79 +2148,17 @@ local function onVehicleSpawn(player, vehID,  data)
 	tempPCV[player.name] = player.playerID .. "-" .. vehID
 end
 
-local function onVehicleReset(player, vehID,  data)
-
-end
-
-local function updateCobaltDatabase(DBname)
-	local filePath = dbpath .. DBname
-	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
-	if success then
-		success, error = FS.Remove(filePath .. ".json")
-		if success then
-			success, error = FS.Rename(filePath .. ".temp", filePath .. ".json")
-		end
-	end
-	if not success then
-		CElog('Failed to update database "'..DBname..'"on disk: '..tostring(error), "WARN")
-	end
-end
-
-function writeCfg(path, key, value)
-	local tomlFile, error = io.open(path, 'r')
-	if error then return nil, error end
-	local tomlText = tomlFile:read("*a")
-	local cfg = tomlParser.parse(tomlText)
-	if cfg.General then
-		cfg.General[key] = value
-		tomlText = tomlParser.encode(cfg)
-		tomlText = tomlText:gsub( '\\', '')
-		tomlFile, error = io.open(path, 'w')
-		if error then return nil, error end
-		tomlFile:write(tomlText)
-	end
-	tomlFile:close()
-end
-
-function pairsByKeys(t, f)
-	local a = {}
-	for n in pairs(t) do
-		table.insert(a, n)
-	end
-	table.sort(a, f)
-	local i = 0
-	local iter = function ()
-		i = i + 1
-		if a[i] == nil then
-			return nil
-		else
-			return a[i], t[a[i]]
-		end
-	end
-	return iter
-end
-
 M.applyStuff = applyStuff
 
 M.onInit = onInit
 M.onTick = onTick
+M.onPlayerConnecting = onPlayerConnecting
 M.onPlayerJoining = onPlayerJoining
 M.onPlayerJoin = onPlayerJoin
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
-M.onVehicleReset = onVehicleReset
-
-M.updateCobaltDatabase = updateCobaltDatabase
 
 M.CEI = CEI
 M.cei = CEI
-
-M.txPlayersData = txPlayersData
-M.txPlayersDatabase = txPlayersDatabase
-M.txConfigData = txConfigData
-M.txPlayersGroup = txPlayersGroup
-M.txEnvironment = txEnvironment
-M.txNametagWhitelisted = txNametagWhitelisted
-M.txNametagBlockerActive = txNametagBlockerActive
 
 return M

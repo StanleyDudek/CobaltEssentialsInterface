@@ -9,7 +9,9 @@ local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
 local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
+local resetExempt
 local currentGroup
+local currentUIPerm
 local canTeleport
 local includeInRace = false
 local nametagWhitelisted = false
@@ -18,10 +20,8 @@ local nametagBlockerTimeout
 local nametagsValsSet = {}
 local ignitionEnabled = {}
 local isFrozen = {}
-
 local firstReset = false
 local firstTeleport = false
-
 local resetsBlockedInputActions = {}
 local allResetsBlockedInputActions = {
 	"loadHome",
@@ -32,7 +32,6 @@ local allResetsBlockedInputActions = {
 	"reset_all_physics",
 	"reset_physics"
 }
-
 local environmentValsSet = false
 local environmentVals = {}
 local environment = {}
@@ -43,21 +42,16 @@ local playersDatabaseValsSet = false
 local playersDatabaseVals = {}
 local playersDatabase = {}
 local playersDatabaseFiltering = {}
-playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
-
+	  playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 local configValsSet = false
 local configVals = {}
 local config = {}
-
 local resetsPlayerNotified = true
 local resetsTimerElapsedReset = 0
-
 local vehiclePermsFiltering = {}
-vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
-
+	  vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
 local physics = {}
-physics.physmult = 1
-
+	  physics.physmult = 1
 local timeUpdateQueued = false
 local timeUpdateTimer = 0
 local timeUpdateTimeout = 0.05
@@ -181,19 +175,39 @@ local function rxConfigData(data)
 	if configValsSet == false then
 		configVals.server = {}
 		configVals.cobalt = {}
+		configVals.cobalt.groups = {}
+		configVals.cobalt.permissions = {}
+		configVals.cobalt.permissions.vehicleCap = {}
+		configVals.cobalt.permissions.vehiclePerm = {}
+		configVals.cobalt.interface = {}
 		configVals.resets = {}
+		configVals.nametags = {}
+		configVals.nametags.settings = {}
+		
+		configVals.cobalt.interface.playerPermissions = im.IntPtr(tonumber(config.cobalt.interface.playerPermissions))
+		configVals.cobalt.interface.playerPermissionsPlus = im.IntPtr(tonumber(config.cobalt.interface.playerPermissionsPlus))
+		configVals.cobalt.interface.config = im.IntPtr(tonumber(config.cobalt.interface.config))
+		configVals.cobalt.interface.cobaltEssentials = im.IntPtr(tonumber(config.cobalt.interface.cobaltEssentials))
+		configVals.cobalt.interface.server = im.IntPtr(tonumber(config.cobalt.interface.server))
+		configVals.cobalt.interface.interface = im.IntPtr(tonumber(config.cobalt.interface.interface))
+		configVals.cobalt.interface.nametags = im.IntPtr(tonumber(config.cobalt.interface.nametags))
+		configVals.cobalt.interface.restrictions = im.IntPtr(tonumber(config.cobalt.interface.restrictions))
+		configVals.cobalt.interface.extras = im.IntPtr(tonumber(config.cobalt.interface.extras))
+		configVals.cobalt.interface.environment = im.IntPtr(tonumber(config.cobalt.interface.environment))
+		configVals.cobalt.interface.environmentAdmin = im.IntPtr(tonumber(config.cobalt.interface.environmentAdmin))
+		configVals.cobalt.interface.sun = im.IntPtr(tonumber(config.cobalt.interface.sun))
+		configVals.cobalt.interface.weather = im.IntPtr(tonumber(config.cobalt.interface.weather))
+		configVals.cobalt.interface.gravity = im.IntPtr(tonumber(config.cobalt.interface.gravity))
+		configVals.cobalt.interface.temperature = im.IntPtr(tonumber(config.cobalt.interface.temperature))
+		configVals.cobalt.interface.database = im.IntPtr(tonumber(config.cobalt.interface.database))
+		configVals.cobalt.interface.race = im.IntPtr(tonumber(config.cobalt.interface.race))
+		
 		configVals.resets.messageDuration = im.IntPtr(tonumber(config.resets.messageDuration))
 		configVals.resets.timeout = im.IntPtr(tonumber(config.resets.timeout))
 		configVals.resets.title = im.ArrayChar(128)
 		configVals.resets.elapsedMessage = im.ArrayChar(256)
 		configVals.resets.message = im.ArrayChar(256)
 		configVals.resets.disabledMessage = im.ArrayChar(256)
-		configVals.cobalt.groups = {}
-		configVals.cobalt.permissions = {}
-		configVals.cobalt.permissions.vehicleCap = {}
-		configVals.cobalt.permissions.vehiclePerm = {}
-		configVals.nametags = {}
-		configVals.nametags.settings = {}
 		configVals.server.nameInput = im.ArrayChar(128)
 		configVals.server.mapInput = im.ArrayChar(128)
 		configVals.server.descriptionInput = im.ArrayChar(256)
@@ -208,32 +222,37 @@ local function rxConfigData(data)
 		configVals.cobalt.permissions.newLevelInput = im.ArrayChar(128)
 		configVals.cobalt.permissions.newVehicleInput = im.ArrayChar(128)
 		local tempFilterTable = {}
-		for k,v in pairs(config.cobalt.permissions.vehiclePerm) do
+		for k in pairs(config.cobalt.permissions.vehiclePerm) do
 			tempFilterTable[k] = config.cobalt.permissions.vehiclePerm[k].name
 		end
 		vehiclePermsFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 		configVals.nametags.whitelistNameInput = im.ArrayChar(128)
 		configVals.nametags.settings.blockingTimeoutInt = im.IntPtr(tonumber(config.nametags.settings.blockingTimeout))
-		for k,v in pairs(config.cobalt.groups) do
+		for k in pairs(config.cobalt.groups) do
 			configVals.cobalt.groups[k] = {}
 			configVals.cobalt.groups[k].groupPerms = {}
-			configVals.cobalt.groups[k].groupPerms.groupLevelInt = im.IntPtr(tonumber(config.cobalt.groups[k].groupPerms.level)) or im.IntPtr(0)
+			configVals.cobalt.groups[k].groupPerms.groupLevelInt = im.IntPtr(tonumber(config.cobalt.groups[k].groupPerms.level))
+			if config.cobalt.groups[k].groupPerms.UI then
+				configVals.cobalt.groups[k].groupPerms.groupUILevelInt = im.IntPtr(tonumber(config.cobalt.groups[k].groupPerms.UI))
+			else
+				configVals.cobalt.groups[k].groupPerms.groupUILevelInt = im.IntPtr(1)
+			end
 			configVals.cobalt.groups[k].groupPerms.groupBanReasonInput = im.ArrayChar(128)
 			configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput = im.ArrayChar(128)
 			configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput = im.ArrayChar(128)
 		end
-		for k,v in pairs(config.cobalt.permissions.vehicleCap) do
+		for k in pairs(config.cobalt.permissions.vehicleCap) do
 			configVals.cobalt.permissions.vehicleCap[k] = {}
 			configVals.cobalt.permissions.vehicleCap[k].vehiclesInt = im.IntPtr(tonumber(config.cobalt.permissions.vehicleCap[k].vehicles))
 		end
-		for k,v in pairs(config.cobalt.permissions.vehiclePerm) do
-		configVals.cobalt.permissions.vehiclePerm[k] = {}
+		for k in pairs(config.cobalt.permissions.vehiclePerm) do
+			configVals.cobalt.permissions.vehiclePerm[k] = {}
 			configVals.cobalt.permissions.vehiclePerm[k].nameInput = im.ArrayChar(128)
 			configVals.cobalt.permissions.vehiclePerm[k].levelInt = im.IntPtr(tonumber(config.cobalt.permissions.vehiclePerm[k].level))
 			configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput = im.ArrayChar(128)
 			if config.cobalt.permissions.vehiclePerm[k].partLevel then
 				configVals.cobalt.permissions.vehiclePerm[k].partLevel = {}
-				for i,j in pairs(config.cobalt.permissions.vehiclePerm[k].partLevel) do
+				for i in pairs(config.cobalt.permissions.vehiclePerm[k].partLevel) do
 					configVals.cobalt.permissions.vehiclePerm[k].partLevel[i] = {}
 					configVals.cobalt.permissions.vehiclePerm[k].partLevel[i].levelInt = im.IntPtr(tonumber(config.cobalt.permissions.vehiclePerm[k].partLevel[i].level))
 				end
@@ -243,21 +262,35 @@ local function rxConfigData(data)
 	end
 end
 
+local function rxPlayersResetExempt(data)
+	data = jsonDecode(data)
+	resetExempt = data[1]
+end
+
 local function rxPlayerGroup(data)
 	currentGroup = data
+end
+
+local function rxPlayersUIPerm(data)
+	currentUIPerm = tonumber(data)
 end
 
 local function rxPlayersDatabase(data)
 	playersDatabase = jsonDecode(data)
 	if playersDatabaseValsSet == false then
-		for k,v in pairs(playersDatabase) do
+		for k in pairs(playersDatabase) do
 			playersDatabaseVals[k] = {}
 			playersDatabaseVals[k].permissions = {}
 			if playersDatabase[k].permissions then
 				if tonumber(playersDatabase[k].permissions.level) then
-					playersDatabaseVals[k].permissions.levelInt = im.IntPtr(playersDatabase[k].permissions.level)
+					playersDatabaseVals[k].permissions.levelInt = im.IntPtr(tonumber(playersDatabase[k].permissions.level))
 				else
 					playersDatabaseVals[k].permissions.levelInt = im.IntPtr(1)
+				end
+				if tonumber(playersDatabase[k].permissions.UI) then
+					playersDatabaseVals[k].permissions.UILevelInt = im.IntPtr(tonumber(playersDatabase[k].permissions.UI))
+				else
+					playersDatabaseVals[k].permissions.UILevelInt = im.IntPtr(1)
 				end
 			end
 			playersDatabaseVals[k].permissions.groupInput = im.ArrayChar(128)
@@ -267,7 +300,7 @@ local function rxPlayersDatabase(data)
 		playersDatabaseValsSet = true
 	end
 	local tempFilterTable = {}
-	for k,v in pairs(playersDatabase) do
+	for k in pairs(playersDatabase) do
 		local i = playersDatabase[k].playerName
 		tempFilterTable[k] = i
 	end
@@ -276,7 +309,7 @@ end
 
 local function rxPlayersData(data)
 	players = jsonDecode(data)
-	for playerID, data in pairs(players) do
+	for playerID in pairs(players) do
 		if playersValsSet[playerID] == false or playersValsSet[playerID] == nil then
 			playersVals[playerID] = {}
 			playersVals[playerID].permissions = {}
@@ -284,6 +317,7 @@ local function rxPlayersData(data)
 			playersVals[playerID].tempBanLength = im.FloatPtr(tonumber(players[playerID].tempBanLength))
 			playersVals[playerID].vehDeleteReason = im.ArrayChar(128)
 			playersVals[playerID].permissions.levelInt = im.IntPtr(tonumber(players[playerID].tempPermLevel))
+			playersVals[playerID].permissions.UILevelInt = im.IntPtr(tonumber(players[playerID].tempUIPermLevel))
 			playersVals[playerID].permissions.groupInput = im.ArrayChar(128)
 			playersValsSet[playerID] = true
 		end
@@ -308,7 +342,7 @@ local function rxNametagBlockerTimeout(data)
 	end
 end
 
-local function teleportPlayerToVeh(targetName, player_id)
+local function teleportPlayerToVeh(player_id)
 	TriggerServerEvent("CEITeleportFrom", player_id)
 end
 
@@ -326,7 +360,7 @@ local function CEIRaceCountSound(data)
 	Engine.Audio.playOnce('AudioGui', '/art/sound/' .. data)
 end
 
-local function drawCEI(dt)
+local function drawCEI()
 	if tableIsEmpty(players) then
 		return
 	end
@@ -356,34 +390,52 @@ local function drawCEI(dt)
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
 	im.Begin("Cobalt Essentials Interface")
+	im.Text("Nametags")
+	if nametagBlockerTimeout ~= nil then
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
+		im.SameLine()
+		im.Text(string.format("%.2f", nametagBlockerTimeout) .. "s")
+	elseif nametagBlockerActive == true then
+		im.SameLine()
+		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
+	else
+		im.SameLine()
+		im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
+	end
 	if config.resets then
 		if firstReset then
 			if not config.resets.enabled then
 				if config.resets.control then
-					im.Text("Vehicle resetting")
 					im.SameLine()
-					im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "DISABLED")
+					im.Text("| Vehicle resetting")
+					im.SameLine()
+					im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
 				else
-					im.Text("Vehicle reset")
 					im.SameLine()
-					im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), "AVAILABLE")
+					im.Text("| Vehicle reset")
+					im.SameLine()
+					im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 				end
 				
 			elseif config.resets.timeout - resetsTimerElapsedReset > 0 then
-				im.Text("Vehicle reset")
 				im.SameLine()
-				im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "TIMEOUT")
+				im.Text("| Vehicle reset")
+				im.SameLine()
+				im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
 				im.SameLine()
 				im.Text(string.format("%.2f",config.resets.timeout - resetsTimerElapsedReset) .. "s")
 			else
-				im.Text("Vehicle reset")
 				im.SameLine()
-				im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), "AVAILABLE")
+				im.Text("| Vehicle reset")
+				im.SameLine()
+				im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 			end
 		else
-			im.Text("Vehicle reset")
 			im.SameLine()
-			im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), "AVAILABLE")
+			im.Text("| Vehicle reset")
+			im.SameLine()
+			im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 		end
 	end
 	if environment.teleportTimeout then
@@ -392,25 +444,25 @@ local function drawCEI(dt)
 				im.SameLine()
 				im.Text("| Teleport")
 				im.SameLine()
-				im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "DISABLED")
+				im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
 			elseif tonumber(environment.teleportTimeout) - lastTeleport > 0 then
 				im.SameLine()
 				im.Text("| Teleport")
 				im.SameLine()
-				im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "TIMEOUT")
+				im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
 				im.SameLine()
 				im.Text(string.format("%.2f",tonumber(environment.teleportTimeout) - lastTeleport) .. "s")
 			else
 				im.SameLine()
 				im.Text("| Teleport")
 				im.SameLine()
-				im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), "AVAILABLE")
+				im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 			end
 		else
 			im.SameLine()
 			im.Text("| Teleport")
 			im.SameLine()
-			im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), "AVAILABLE")
+			im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 		end
 	end
 	local tempToD = core_environment.getTimeOfDay()
@@ -425,29 +477,20 @@ local function drawCEI(dt)
 		curSecs = curSecs - curHours * 3600
 		local curMins = math.floor(curSecs / 60) 
 		curSecs = curSecs - curMins * 60
-		local currentTime = string.format("%02d:%02d:%02d",curHours,curMins,curSecs)
+		local currentTime = string.format("%02d:%02d:%02d", curHours, curMins, curSecs)
 		im.Text("Current time: " .. currentTime)
 		local currentTempC = core_environment.getTemperatureK() - 273.15
-		local currentTempCString = string.format("%.2f",core_environment.getTemperatureK() - 273.15)
 		local currentTempF = currentTempC * 9/5 + 32
-		local currentTempFString = string.format("%.2f",currentTempC * 9/5 + 32)
+		local currentTempCString = string.format("%.2f", currentTempC)
+		local currentTempFString = string.format("%.2f", currentTempF)
 		im.SameLine()
 		im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
-	end
-	if nametagBlockerTimeout ~= nil then
-		im.Text("Nametags Blocked for:")
-		im.SameLine()
-		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), string.format("%.2f",nametagBlockerTimeout))
-		im.SameLine()
-		im.Text("seconds")
-	elseif nametagBlockerActive == true then
-		im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "Nametags Blocked")
 	end
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
 		local playersCounter = 0
-		for k,v in pairs(players) do
+		for _ in pairs(players) do
 			playersCounter = playersCounter + 1
 		end
 		if im.BeginTabItem("Players") then
@@ -458,12 +501,12 @@ local function drawCEI(dt)
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.5, 0.0, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.6, 0.0, 0.5))
 			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.4, 0.0, 0.999))
-			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentGroup == "default" then
+			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.race then
 				if im.SmallButton("Race Countdown!") then
-					for k,v in pairs(players) do
+					for k in pairs(players) do
 						if players[k].includeInRace == true then
 							if players[k].vehicles then
-								for x,y in pairs(players[k].vehicles) do
+								for x in pairs(players[k].vehicles) do
 									local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
 									TriggerServerEvent("CEIToggleRaceLock", data)
 									log('W', logTag, "CEIToggleRaceLock Called: " .. data)
@@ -502,13 +545,13 @@ local function drawCEI(dt)
 				im.PopStyleColor(3)
 			end
 			im.Separator()
-			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 				im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
 				if im.SmallButton("Remote Stop All") then
-					for k,v in pairs(players) do
-						for x,y in pairs(players[k].vehicles) do
+					for k in pairs(players) do
+						for x in pairs(players[k].vehicles) do
 							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
 							TriggerServerEvent("CEIToggleIgnition", data)
 							log('W', logTag, "CEIToggleIgnition Called: " .. data)
@@ -521,8 +564,8 @@ local function drawCEI(dt)
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 				if im.SmallButton("Freeze All") then
-					for k,v in pairs(players) do
-						for x,y in pairs(players[k].vehicles) do
+					for k in pairs(players) do
+						for x in pairs(players[k].vehicles) do
 							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
 							TriggerServerEvent("CEIToggleLock", data)
 							log('W', logTag, "CEIToggleLock Called: " .. data)
@@ -534,8 +577,8 @@ local function drawCEI(dt)
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
 				if im.SmallButton("Remote Start All") then
-					for k,v in pairs(players) do
-						for x,y in pairs(players[k].vehicles) do
+					for k in pairs(players) do
+						for x in pairs(players[k].vehicles) do
 							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
 							TriggerServerEvent("CEIToggleIgnition", data)
 							log('W', logTag, "CEIToggleIgnition Called: " .. data)
@@ -548,8 +591,8 @@ local function drawCEI(dt)
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
 				if im.SmallButton("Unfreeze All") then
-					for k,v in pairs(players) do
-						for x,y in pairs(players[k].vehicles) do
+					for k in pairs(players) do
+						for x in pairs(players[k].vehicles) do
 							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
 							TriggerServerEvent("CEIToggleLock", data)
 							log('W', logTag, "CEIToggleLock Called: " .. data)
@@ -560,10 +603,10 @@ local function drawCEI(dt)
 				im.Separator()
 			end
 ----------------------------------------------------------------------------------PLAYER HEADER
-			for k,v in pairs(players) do
+			for k in pairs(players) do
 				local vehiclesCounter = 0
 				if players[k].vehicles then
-					for x,y in pairs(players[k].vehicles) do
+					for _ in pairs(players[k].vehicles) do
 						vehiclesCounter = vehiclesCounter + 1
 					end
 				end
@@ -604,12 +647,14 @@ local function drawCEI(dt)
 				if im.CollapsingHeader1(players[k].playerName) then
 					im.PopStyleColor(4)
 					im.Indent()
-					if im.SmallButton("Vote Kick##"..tostring(k)) then
-					local data = jsonEncode( { players[k].playerName } )
-						TriggerServerEvent("CEIVoteKick", data)
-						log('W', logTag, "CEIVoteKick Called: " .. data)
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentGroup == "default" or currentUIPerm >= 1 then
+						if im.SmallButton("Vote Kick##"..tostring(k)) then
+						local data = jsonEncode( { players[k].playerName } )
+							TriggerServerEvent("CEIVoteKick", data)
+							log('W', logTag, "CEIVoteKick Called: " .. data)
+						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -617,7 +662,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
 							local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -631,7 +676,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
@@ -663,7 +708,7 @@ local function drawCEI(dt)
 					end
 					if vehiclesCounter > 0 then
 						if canTeleport then
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
 							else
 								im.SameLine()
 							end
@@ -681,12 +726,12 @@ local function drawCEI(dt)
 							end
 							im.SameLine()
 							im.ShowHelpMarker("Teleport to this player's current vehicle.")
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
 								im.SameLine()
 								if im.SmallButton("Teleport From##" .. tostring(k)) then
 									if lastTeleport >= tonumber(environment.teleportTimeout) then
 										lastTeleport = 0
-										teleportPlayerToVeh(players[k].playerName,players[k].playerID)
+										teleportPlayerToVeh(players[k].playerID)
 									end
 								end
 								im.SameLine()
@@ -694,7 +739,7 @@ local function drawCEI(dt)
 							end
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						im.Text("		")
 						im.SameLine()
 						im.Text("Reason:")
@@ -702,7 +747,7 @@ local function drawCEI(dt)
 						if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", playersVals[k].kickBanMuteReason, 128) then
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 						im.Text("		")
 						im.SameLine()
 						im.Text("tempBan:")
@@ -727,7 +772,7 @@ local function drawCEI(dt)
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 								im.Text("		")
 								im.SameLine()
 								im.Text("Reason:")
@@ -735,7 +780,7 @@ local function drawCEI(dt)
 								if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", playersVals[k].vehDeleteReason, 128) then
 								end
 							end
-							for x,y in pairs(players[k].vehicles) do
+							for x in pairs(players[k].vehicles) do
 								if players[k].currentVehicle == tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID) then
 									im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "	@")
 									im.SameLine()
@@ -746,7 +791,7 @@ local function drawCEI(dt)
 								im.Text(tostring(players[k].vehicles[x].vehicleID) .. ":")
 								im.SameLine()
 								im.Text(players[k].vehicles[x].jbm)
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 									for i,j in pairs(ignitionEnabled) do
 										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
 											if j == true then
@@ -767,7 +812,7 @@ local function drawCEI(dt)
 										end
 									end
 								end
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 									for i,j in pairs(isFrozen) do
 										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
 											if j == false then
@@ -803,7 +848,7 @@ local function drawCEI(dt)
 							im.Separator()
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						if im.TreeNode1("info##"..tostring(k)) then
 							im.Text("		playerID: " .. players[k].playerID)
 							im.Text("		connectStage: " .. players[k].connectStage)
@@ -813,7 +858,7 @@ local function drawCEI(dt)
 							im.Text("| connectedTime: " .. string.format("%.2f",players[k].connectedTime))
 							im.Separator()
 							if im.TreeNode1("permissions##"..tostring(k)) then
-								if currentGroup == "owner" or currentGroup == "admin" then
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 									if players[k].teleport == false then
 										if im.SmallButton("Allow Teleport##"..tostring(k)) then
 											local data = jsonEncode( { players[k].playerName, true } )
@@ -828,21 +873,61 @@ local function drawCEI(dt)
 										end
 									end
 								end
-								if im.TreeNode1("level:") then
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+									if players[k].resetExempt == false then
+										if im.SmallButton("Exempt Reset Bypass##"..tostring(k)) then
+											local data = jsonEncode( { players[k].playerName, true } )
+											TriggerServerEvent("CEISetResetPerm", data)
+											log('W', logTag, "CEISetResetPerm Called: " .. data)
+										end
+									elseif players[k].resetExempt == true then
+										if im.SmallButton("Revoke Reset Bypass##"..tostring(k)) then
+											local data = jsonEncode( { players[k].playerName, false } )
+											TriggerServerEvent("CEISetResetPerm", data)
+											log('W', logTag, "CEISetResetPerm Called: " .. data)
+										end
+									end
+								end
+								if im.TreeNode1("UI Level:") then
 									im.SameLine()
-									im.Text(tostring(players[k].permissions.level))
-									if currentGroup == "owner" or currentGroup == "admin" then
+									im.Text(tostring(players[k].permissions.UI))
+									if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
 										im.Text("		")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("", playersVals[k].permissions.levelInt, 1) then
+										if im.InputInt("##UILevel", playersVals[k].permissions.UILevelInt, 1) then
+											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
+											TriggerServerEvent("CEISetTempUIPerm", data)
+											log('W', logTag, "CEISetTempUIPerm Called: " .. data)
+										end
+										im.PopItemWidth()
+										im.SameLine()
+										if im.Button("Apply##UILevelPlayer") then
+											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
+											TriggerServerEvent("CEISetUIPerm", data)
+											log('W', logTag, "CEISetUIPerm Called: " .. data)
+										end
+									end
+									im.TreePop()
+								else
+									im.SameLine()
+									im.Text(tostring(players[k].permissions.UI))
+								end
+								if im.TreeNode1("level:") then
+									im.SameLine()
+									im.Text(tostring(players[k].permissions.level))
+									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+										im.Text("		")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("##level", playersVals[k].permissions.levelInt, 1) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetTempPerm", data)
 											log('W', logTag, "CEISetTempPerm Called: " .. data)
 										end
 										im.PopItemWidth()
 										im.SameLine()
-										if im.Button("Apply##level"..tostring(x)) then
+										if im.Button("Apply##levelPlayer") then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetPerm", data)
 											log('W', logTag, "CEISetPerm Called: " .. data)
@@ -860,7 +945,7 @@ local function drawCEI(dt)
 								if im.TreeNode1("group:##"..tostring(k)) then
 									im.SameLine()
 									im.Text(players[k].permissions.group)
-									if currentGroup == "owner" or currentGroup == "admin" then
+									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 										im.Text("		")
 										im.SameLine()
 										if im.InputTextWithHint("##newGroup", "Group Name", playersVals[k].permissions.groupInput, 128) then
@@ -907,12 +992,14 @@ local function drawCEI(dt)
 				else
 					im.PopStyleColor(4)
 					im.Indent()
-					if im.SmallButton("Vote Kick##"..tostring(k)) then
-					local data = jsonEncode( { players[k].playerName } )
-						TriggerServerEvent("CEIVoteKick", data)
-						log('W', logTag, "CEIVoteKick Called: " .. data)
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentGroup == "default" or currentUIPerm >= 1 then
+						if im.SmallButton("Vote Kick##"..tostring(k)) then
+						local data = jsonEncode( { players[k].playerName } )
+							TriggerServerEvent("CEIVoteKick", data)
+							log('W', logTag, "CEIVoteKick Called: " .. data)
+						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -920,7 +1007,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEIKick Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 						im.SameLine()
 						if im.SmallButton("Ban##"..tostring(k)) then
 							local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
@@ -934,7 +1021,7 @@ local function drawCEI(dt)
 							log('W', logTag, "CEITempBan Called: " .. data)
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						im.SameLine()
 						if players[k].permissions.muted == false then
 							if im.SmallButton("Mute##"..tostring(k)) then
@@ -966,7 +1053,7 @@ local function drawCEI(dt)
 					end
 					if vehiclesCounter > 0 then
 						if canTeleport then
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
 							else
 								im.SameLine()
 							end
@@ -984,12 +1071,12 @@ local function drawCEI(dt)
 							end
 							im.SameLine()
 							im.ShowHelpMarker("Teleport to this player's current vehicle.")
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 								im.SameLine()
 								if im.SmallButton("Teleport From##" .. tostring(k)) then
 									if lastTeleport >= tonumber(environment.teleportTimeout) then
 										lastTeleport = 0
-										teleportPlayerToVeh(players[k].playerName,players[k].playerID)
+										teleportPlayerToVeh(players[k].playerID)
 									end
 								end
 								im.SameLine()
@@ -1003,583 +1090,603 @@ local function drawCEI(dt)
 			im.EndTabItem()
 		end
 ----------------------------------------------------------------------------------CONFIG TAB
-		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.config then
 			if im.BeginTabItem("Config") then
 ----------------------------------------------------------------------------------COBALT HEADER
-				if im.CollapsingHeader1("Cobalt Essentials") then
-					im.Indent()
-					local vehiclePerms = config.cobalt.permissions.vehiclePerm
-					local vehiclePermsCounter = 0
-					for a,b in pairs(vehiclePerms) do
-						vehiclePermsCounter = vehiclePermsCounter + 1
-					end
-					if currentGroup == "owner" or currentGroup == "admin" then
-						if im.TreeNode1("vehiclePerms:") then
-							im.SameLine()
-							im.Text(tostring(vehiclePermsCounter))
-							im.Text("	Add vehicle: ")
-							im.SameLine()
-							if im.InputTextWithHint("##newVehicle", "New Vehicle", configVals.cobalt.permissions.newVehicleInput, 128) then
-							end
-							im.Text("	")
-							im.SameLine()
-							if im.SmallButton("Apply##newVehPerm") then
-								local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newVehicleInput) } )
-								TriggerServerEvent("CEISetNewVehiclePerm", data)
-								log('W', logTag, "CEISetNewVehiclePerm Called: " .. data)
-							end
-							im.SameLine()
-							im.ShowHelpMarker("Enter new vehicle and press Apply")
-							im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter[0])
-							for k,v in pairs(vehiclePerms) do
-								local vehiclePermsPartLevels = config.cobalt.permissions.vehiclePerm[k].partLevel
-								for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
-									if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter[0], vehiclePermsFiltering.lines[i]) then
-										if config.cobalt.permissions.vehiclePerm[k].name == ffi.string(vehiclePermsFiltering.lines[i]) then
-											if im.TreeNode1(ffi.string(vehiclePermsFiltering.lines[i]) .. ":") then
-												im.SameLine()
-												im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].level)
-												im.Text("	")
-												im.SameLine()
-												im.PushItemWidth(100)
-												if im.InputInt("", configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
-													local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, tostring(configVals.cobalt.permissions.vehiclePerm[k].levelInt[0]) } )
-													TriggerServerEvent("CEISetVehiclePermLevel", data)
-													log('W', logTag, "CEISetVehiclePermLevel Called: " .. data)
-												end
-												im.PopItemWidth()
-												im.SameLine()
-												if im.SmallButton("Remove##vehPerm") then
-													local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name } )
-													TriggerServerEvent("CEIRemoveVehiclePerm", data)
-													log('W', logTag, "CEIRemoveVehiclePerm Called: " .. data)
-												end
-												im.SameLine()
-												im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
-												im.Text("	Add part: ")
-												im.SameLine()
-												if im.InputTextWithHint("##newPart", "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128) then
-												end
-												im.Text("	")
-												im.SameLine()
-												if im.SmallButton("Apply##newVehPart") then
-													local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, ffi.string(configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput) } )
-													TriggerServerEvent("CEISetNewVehiclePart", data)
-													log('W', logTag, "CEISetNewVehiclePart Called: " .. data)
-												end
-												im.SameLine()
-												im.ShowHelpMarker("Enter new part and press Apply")
-												if vehiclePermsPartLevels then
-													for a,b in pairs(vehiclePermsPartLevels) do
-														local partName = string.gsub(config.cobalt.permissions.vehiclePerm[k].partLevel[a].name, "partlevel:", "")
-														if im.TreeNode1(partName .. ":") then
-															im.SameLine()
-															im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].partLevel[a].level)
-															im.Text("	")
-															im.SameLine()
-															im.PushItemWidth(100)
-															if im.InputInt("", configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
-																local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName, tostring(configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt[0]) } )
-																TriggerServerEvent("CEISetVehiclePartLevel", data)
-																log('W', logTag, "CEISetVehiclePartLevel Called: " .. data)
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.cobaltEssentials then
+					if im.CollapsingHeader1("Cobalt Essentials") then
+						im.Indent()
+						local vehiclePerms = config.cobalt.permissions.vehiclePerm
+						local vehiclePermsCounter = 0
+						for _ in pairs(vehiclePerms) do
+							vehiclePermsCounter = vehiclePermsCounter + 1
+						end
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.config then
+							if im.TreeNode1("vehiclePerms:") then
+								im.SameLine()
+								im.Text(tostring(vehiclePermsCounter))
+								im.Text("	Add vehicle: ")
+								im.SameLine()
+								if im.InputTextWithHint("##newVehicle", "New Vehicle", configVals.cobalt.permissions.newVehicleInput, 128) then
+								end
+								im.Text("	")
+								im.SameLine()
+								if im.SmallButton("Apply##newVehPerm") then
+									local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newVehicleInput) } )
+									TriggerServerEvent("CEISetNewVehiclePerm", data)
+									log('W', logTag, "CEISetNewVehiclePerm Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter new vehicle and press Apply")
+								im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter[0])
+								for k in pairs(vehiclePerms) do
+									local vehiclePermsPartLevels = config.cobalt.permissions.vehiclePerm[k].partLevel
+									for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
+										if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter[0], vehiclePermsFiltering.lines[i]) then
+											if config.cobalt.permissions.vehiclePerm[k].name == ffi.string(vehiclePermsFiltering.lines[i]) then
+												if im.TreeNode1(ffi.string(vehiclePermsFiltering.lines[i]) .. ":") then
+													im.SameLine()
+													im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].level)
+													im.Text("	")
+													im.SameLine()
+													im.PushItemWidth(100)
+													if im.InputInt("##level", configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
+														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, tostring(configVals.cobalt.permissions.vehiclePerm[k].levelInt[0]) } )
+														TriggerServerEvent("CEISetVehiclePermLevel", data)
+														log('W', logTag, "CEISetVehiclePermLevel Called: " .. data)
+													end
+													im.PopItemWidth()
+													im.SameLine()
+													if im.SmallButton("Remove##vehPerm") then
+														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name } )
+														TriggerServerEvent("CEIRemoveVehiclePerm", data)
+														log('W', logTag, "CEIRemoveVehiclePerm Called: " .. data)
+													end
+													im.SameLine()
+													im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
+													im.Text("	Add part: ")
+													im.SameLine()
+													if im.InputTextWithHint("##newPart", "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128) then
+													end
+													im.Text("	")
+													im.SameLine()
+													if im.SmallButton("Apply##newVehPart") then
+														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, ffi.string(configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput) } )
+														TriggerServerEvent("CEISetNewVehiclePart", data)
+														log('W', logTag, "CEISetNewVehiclePart Called: " .. data)
+													end
+													im.SameLine()
+													im.ShowHelpMarker("Enter new part and press Apply")
+													if vehiclePermsPartLevels then
+														for a in pairs(vehiclePermsPartLevels) do
+															local partName = string.gsub(config.cobalt.permissions.vehiclePerm[k].partLevel[a].name, "partlevel:", "")
+															if im.TreeNode1(partName .. ":") then
+																im.SameLine()
+																im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].partLevel[a].level)
+																im.Text("	")
+																im.SameLine()
+																im.PushItemWidth(100)
+																if im.InputInt("##level", configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
+																	local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName, tostring(configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt[0]) } )
+																	TriggerServerEvent("CEISetVehiclePartLevel", data)
+																	log('W', logTag, "CEISetVehiclePartLevel Called: " .. data)
+																end
+																im.PopItemWidth()
+																im.SameLine()
+																if im.SmallButton("Remove##vehPart") then
+																	local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName } )
+																	TriggerServerEvent("CEIRemoveVehiclePart", data)
+																	log('W', logTag, "CEIRemoveVehiclePart Called: " .. data)
+																end
+																im.SameLine()
+																im.ShowHelpMarker("In-/Decrease vehicle part permission level requirement or Remove vehicle part entry")
+																im.TreePop()
+															else
+																im.SameLine()
+																im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].partLevel[a].level)
 															end
-															im.PopItemWidth()
-															im.SameLine()
-															if im.SmallButton("Remove##vehPart") then
-																local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName } )
-																TriggerServerEvent("CEIRemoveVehiclePart", data)
-																log('W', logTag, "CEIRemoveVehiclePart Called: " .. data)
-															end
-															im.SameLine()
-															im.ShowHelpMarker("In-/Decrease vehicle part permission level requirement or Remove vehicle part entry")
-															im.TreePop()
-														else
-															im.SameLine()
-															im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].partLevel[a].level)
 														end
 													end
+													im.TreePop()
+												else
+													im.SameLine()
+													im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].level)
 												end
-												im.TreePop()
-											else
-												im.SameLine()
-												im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].level)
 											end
 										end
 									end
 								end
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(vehiclePermsCounter))
 							end
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(tostring(vehiclePermsCounter))
-						end
-						im.Separator()
-						local vehicleCaps = config.cobalt.permissions.vehicleCap
-						local vehicleCapsCounter = 0
-						for a,b in pairs(vehicleCaps) do
-							vehicleCapsCounter = vehicleCapsCounter + 1
-						end
-						if im.TreeNode1("vehicleCaps:") then
-							im.SameLine()
-							im.Text(tostring(vehicleCapsCounter))
-							for k,v in pairs(vehicleCaps) do
-								if im.TreeNode1("level: " .. config.cobalt.permissions.vehicleCap[k].level .. " =") then
-									im.SameLine()
-									im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
-									im.Text("		")
-									im.SameLine()
-									im.PushItemWidth(100)
-									if im.InputInt("", configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
-										local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
-										TriggerServerEvent("CEISetVehiclePerms", data)
-										log('W', logTag, "CEISetVehiclePerms Called: " .. data)
-									end
-									im.PopItemWidth()
-									im.SameLine()
-									if im.SmallButton("Remove##"..tostring(k)) then
-										local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level } )
-										TriggerServerEvent("CEIRemoveVehiclePermsLevel", data)
-										log('W', logTag, "CEIRemoveVehiclePermsLevel Called: " .. data)
-									end
-									im.SameLine()
-									im.ShowHelpMarker("In-/Decrease vehicles for level or Remove level entry")
-									im.TreePop()
-								else
-									im.SameLine()
-									im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
-								end
+							im.Separator()
+							local vehicleCaps = config.cobalt.permissions.vehicleCap
+							local vehicleCapsCounter = 0
+							for _ in pairs(vehicleCaps) do
+								vehicleCapsCounter = vehicleCapsCounter + 1
 							end
-							im.Text("		Add level: ")
-							im.SameLine()
-							im.PushItemWidth(100)
-							if im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128) then
-							end
-							im.PopItemWidth()
-							im.Text("		")
-							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
-								local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newLevelInput) } )
-								TriggerServerEvent("CEISetNewVehiclePermsLevel", data)
-								log('W', logTag, "CEISetNewVehiclePermsLevel Called: " .. data)
-							end
-							im.SameLine()
-							im.ShowHelpMarker("Enter new level and press Apply")
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(tostring(vehicleCapsCounter))
-						end
-						im.Separator()
-						if im.TreeNode1("maxActivePlayers:") then
-							im.SameLine()
-							im.Text(config.cobalt.maxActivePlayers)
-							im.Text("		")
-							im.SameLine()
-							im.PushItemWidth(100)
-							if im.InputInt("", configVals.cobalt.maxActivePlayersInt, 1) then
-								local data = jsonEncode( { tostring(configVals.cobalt.maxActivePlayersInt[0]) } )
-								TriggerServerEvent("CEISetMaxActivePlayers", data)
-								log('W', logTag, "CEISetMaxActivePlayers Called: " .. data)
-							end
-							im.PopItemWidth()
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(config.cobalt.maxActivePlayers)
-						end
-						im.Separator()
-						local groupCounter = 0
-						for a,b in pairs(config.cobalt.groups) do
-							groupCounter = groupCounter + 1
-						end
-						if im.TreeNode1("groups:") then
-							im.SameLine()
-							im.Text(tostring(groupCounter))
-							for k,v in pairs(config.cobalt.groups) do
-								im.Separator()
-								local groupName = ( string.gsub(config.cobalt.groups[k].groupName, "group:", "") .. ":")
-								if im.TreeNode1(groupName) then
-									local groupPlayers = config.cobalt.groups[k].groupPlayers
-									local groupPlayersCounter = 0
-									if groupPlayers then
-										for c,d in pairs(groupPlayers) do
-											groupPlayersCounter = groupPlayersCounter + 1
-										end
-									end
-									im.SameLine()
-									im.Text(tostring(groupPlayersCounter))
-									if config.cobalt.groups[k].groupPerms.level then
-										if im.TreeNode1("group players:") then
-											im.Separator()
-											if groupPlayers then
-												for w,z in pairs(groupPlayers) do
-													im.Text("		")
-													im.SameLine()
-													im.Text(tostring(groupPlayers[w]))
-													im.SameLine()
-													im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-													im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-													im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-													if im.SmallButton("Remove##"..tostring(w)) then
-														local data = jsonEncode( { groupPlayers[w], "none" } )
-														TriggerServerEvent("CEISetGroup", data)
-														log('W', logTag, "CEISetGroup Called: " .. data)
-													end
-													im.PopStyleColor(3)
-												end
-											end
-											im.Text("		Add Player to Group: ")
-											im.Text("		")
-											im.SameLine()
-											if im.InputTextWithHint("##groupPlayerName"..tostring(k), "Player Name", configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput, 128) then
-											end
-											im.Text("		")
-											im.SameLine()
-											if im.SmallButton("Add##groupPlayerName"..tostring(k)) then
-												local data = jsonEncode( { ffi.string(configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput), config.cobalt.groups[k].groupName } )
-												TriggerServerEvent("CEISetGroup", data)
-												log('W', logTag, "CEISetGroup Called: " .. data)
-											end
-											im.SameLine()
-											im.ShowHelpMarker("Enter Player Name to Add to Group and press Apply")
-											im.Separator()
-											im.TreePop()
-										end
-										im.Text("		level: ")
+							if im.TreeNode1("vehicleCaps:") then
+								im.SameLine()
+								im.Text(tostring(vehicleCapsCounter))
+								for k in pairs(vehicleCaps) do
+									if im.TreeNode1("level: " .. config.cobalt.permissions.vehicleCap[k].level .. " =") then
+										im.SameLine()
+										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
+										im.Text("		")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
+										if im.InputInt("##level", configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
+											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
+											TriggerServerEvent("CEISetVehiclePerms", data)
+											log('W', logTag, "CEISetVehiclePerms Called: " .. data)
 										end
 										im.PopItemWidth()
+										im.SameLine()
+										if im.SmallButton("Remove##"..tostring(k)) then
+											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level } )
+											TriggerServerEvent("CEIRemoveVehiclePermsLevel", data)
+											log('W', logTag, "CEIRemoveVehiclePermsLevel Called: " .. data)
+										end
+										im.SameLine()
+										im.ShowHelpMarker("In-/Decrease vehicles for level or Remove level entry")
+										im.TreePop()
 									else
-										im.Text("		level: ")
 										im.SameLine()
-										im.PushItemWidth(100)
-										if im.InputInt("", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
-										end
-										im.PopItemWidth()
+										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
 									end
-									for a,b in pairs(config.cobalt.groups[k].groupPerms) do
-										if a ~= "level"
-										and a ~= "whitelisted"
-										and a ~= "muted"
-										and a ~= "banned"
-										and a ~= "banReason" then
-											im.Text("		" .. a .. ": " .. tostring(b))
-											im.SameLine()
-											if config.cobalt.groups[k].groupPerms[a] == false then
-												if im.SmallButton("Toggle##" .. a) then
-													local data = jsonEncode( { config.cobalt.groups[k].groupName, a, true } )
-													TriggerServerEvent("CEISetGroupPerms", data)
-													log('W', logTag, "CEISetGroupPerms Called: " .. data)
-												end
-											else
-												if im.SmallButton("Toggle##" .. a) then
-													local data = jsonEncode( { config.cobalt.groups[k].groupName, a, false } )
-													TriggerServerEvent("CEISetGroupPerms", data)
-													log('W', logTag, "CEISetGroupPerms Called: " .. data)
-												end
+								end
+								im.Text("		Add level: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128) then
+								end
+								im.PopItemWidth()
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##newLevel") then
+									local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newLevelInput) } )
+									TriggerServerEvent("CEISetNewVehiclePermsLevel", data)
+									log('W', logTag, "CEISetNewVehiclePermsLevel Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter new level and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(vehicleCapsCounter))
+							end
+							im.Separator()
+							if im.TreeNode1("maxActivePlayers:") then
+								im.SameLine()
+								im.Text(config.cobalt.maxActivePlayers)
+								im.Text("		")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputInt("##maxActivePlayers", configVals.cobalt.maxActivePlayersInt, 1) then
+									local data = jsonEncode( { tostring(configVals.cobalt.maxActivePlayersInt[0]) } )
+									TriggerServerEvent("CEISetMaxActivePlayers", data)
+									log('W', logTag, "CEISetMaxActivePlayers Called: " .. data)
+								end
+								im.PopItemWidth()
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(config.cobalt.maxActivePlayers)
+							end
+							im.Separator()
+							local groupCounter = 0
+							for _ in pairs(config.cobalt.groups) do
+								groupCounter = groupCounter + 1
+							end
+							if im.TreeNode1("groups:") then
+								im.SameLine()
+								im.Text(tostring(groupCounter))
+								for k in pairs(config.cobalt.groups) do
+									im.Separator()
+									local groupName = ( string.gsub(config.cobalt.groups[k].groupName, "group:", "") .. ":")
+									if im.TreeNode1(groupName) then
+										local groupPlayers = config.cobalt.groups[k].groupPlayers
+										local groupPlayersCounter = 0
+										if groupPlayers then
+											for _ in pairs(groupPlayers) do
+												groupPlayersCounter = groupPlayersCounter + 1
 											end
+										end
+										im.SameLine()
+										im.Text(tostring(groupPlayersCounter))
+										if config.cobalt.groups[k].groupPerms.level then
+											if im.TreeNode1("group players:") then
+												im.Separator()
+												if groupPlayers then
+													for w in pairs(groupPlayers) do
+														im.Text("		")
+														im.SameLine()
+														im.Text(tostring(groupPlayers[w]))
+														im.SameLine()
+														im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+														im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+														im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+														if im.SmallButton("Remove##"..tostring(w)) then
+															local data = jsonEncode( { groupPlayers[w], "none" } )
+															TriggerServerEvent("CEISetGroup", data)
+															log('W', logTag, "CEISetGroup Called: " .. data)
+														end
+														im.PopStyleColor(3)
+													end
+												end
+												im.Text("		Add Player to Group: ")
+												im.Text("		")
+												im.SameLine()
+												if im.InputTextWithHint("##groupPlayerName"..tostring(k), "Player Name", configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput, 128) then
+												end
+												im.Text("		")
+												im.SameLine()
+												if im.SmallButton("Add##groupPlayerName"..tostring(k)) then
+													local data = jsonEncode( { ffi.string(configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput), config.cobalt.groups[k].groupName } )
+													TriggerServerEvent("CEISetGroup", data)
+													log('W', logTag, "CEISetGroup Called: " .. data)
+												end
+												im.SameLine()
+												im.ShowHelpMarker("Enter Player Name to Add to Group and press Apply")
+												im.Separator()
+												im.TreePop()
+											end
+											im.Text("		level: ")
 											im.SameLine()
-											im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-											im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-											im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-											if im.SmallButton("Remove Permission##" .. config.cobalt.groups[k].groupName) then
-												local data = jsonEncode( { config.cobalt.groups[k].groupName, a, "null" } )
+											im.PushItemWidth(100)
+											if im.InputInt("##level", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
 											end
-											im.PopStyleColor(3)
+											im.PopItemWidth()
+											im.Text("		UI: ")
+											im.SameLine()
+											im.PushItemWidth(100)
+											if im.InputInt("##UILevel", configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
+												TriggerServerEvent("CEISetGroupPerms", data)
+												log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											end
+											im.PopItemWidth()
+										else
+											im.Text("		level: ")
+											im.SameLine()
+											im.PushItemWidth(100)
+											if im.InputInt("##level", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
+												TriggerServerEvent("CEISetGroupPerms", data)
+												log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											end
+											im.PopItemWidth()
+											im.Text("		UI: ")
+											im.SameLine()
+											im.PushItemWidth(100)
+											if im.InputInt("##UILevel", configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
+												TriggerServerEvent("CEISetGroupPerms", data)
+												log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											end
+											im.PopItemWidth()
 										end
-									end
-											
-									if config.cobalt.groups[k].groupPerms.whitelisted then
-										im.Text("		whitelisted: " .. tostring(config.cobalt.groups[k].groupPerms.whitelisted))
-										im.SameLine()
-										if config.cobalt.groups[k].groupPerms.whitelisted == false then
+										for a,b in pairs(config.cobalt.groups[k].groupPerms) do
+											if a ~= "level"
+											and a ~= "UI"
+											and a ~= "whitelisted"
+											and a ~= "muted"
+											and a ~= "banned"
+											and a ~= "banReason" then
+												im.Text("		" .. a .. ": " .. tostring(b))
+												im.SameLine()
+												if config.cobalt.groups[k].groupPerms[a] == false then
+													if im.SmallButton("Toggle##" .. a) then
+														local data = jsonEncode( { config.cobalt.groups[k].groupName, a, true } )
+														TriggerServerEvent("CEISetGroupPerms", data)
+														log('W', logTag, "CEISetGroupPerms Called: " .. data)
+													end
+												else
+													if im.SmallButton("Toggle##" .. a) then
+														local data = jsonEncode( { config.cobalt.groups[k].groupName, a, false } )
+														TriggerServerEvent("CEISetGroupPerms", data)
+														log('W', logTag, "CEISetGroupPerms Called: " .. data)
+													end
+												end
+												im.SameLine()
+												im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+												im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+												im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+												if im.SmallButton("Remove Permission##" .. config.cobalt.groups[k].groupName) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, a, "null" } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+												im.PopStyleColor(3)
+											end
+										end
+										if config.cobalt.groups[k].groupPerms.whitelisted then
+											im.Text("		whitelisted: " .. tostring(config.cobalt.groups[k].groupPerms.whitelisted))
+											im.SameLine()
+											if config.cobalt.groups[k].groupPerms.whitelisted == false then
+												if im.SmallButton("Whitelist##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "whitelisted", true } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+											elseif config.cobalt.groups[k].groupPerms.whitelisted == true then
+												if im.SmallButton("Unwhitelist##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "whitelisted", false } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+												
+											end
+										else
+											im.Text("		whitelisted: false")
+											im.SameLine()
 											if im.SmallButton("Whitelist##"..tostring(k)) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "whitelisted", true } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
 											end
-										elseif config.cobalt.groups[k].groupPerms.whitelisted == true then
-											if im.SmallButton("Unwhitelist##"..tostring(k)) then
-												local data = jsonEncode( { config.cobalt.groups[k].groupName, "whitelisted", false } )
-												TriggerServerEvent("CEISetGroupPerms", data)
-												log('W', logTag, "CEISetGroupPerms Called: " .. data)
-											end
 											
 										end
-									else
-										im.Text("		whitelisted: false")
-										im.SameLine()
-										if im.SmallButton("Whitelist##"..tostring(k)) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "whitelisted", true } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
-										end
-										
-									end
-									if config.cobalt.groups[k].groupPerms.muted  then
-										im.Text("		muted: " .. tostring(config.cobalt.groups[k].groupPerms.muted))
-										im.SameLine()
-										if config.cobalt.groups[k].groupPerms.muted  == false then
+										if config.cobalt.groups[k].groupPerms.muted  then
+											im.Text("		muted: " .. tostring(config.cobalt.groups[k].groupPerms.muted))
+											im.SameLine()
+											if config.cobalt.groups[k].groupPerms.muted  == false then
+												if im.SmallButton("Mute##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "muted", true } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+											elseif config.cobalt.groups[k].groupPerms.muted  == true then
+												if im.SmallButton("Unmute##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "muted", false } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+												
+											end
+										else
+											im.Text("		muted: false")
+											im.SameLine()
 											if im.SmallButton("Mute##"..tostring(k)) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "muted", true } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
 											end
-										elseif config.cobalt.groups[k].groupPerms.muted  == true then
-											if im.SmallButton("Unmute##"..tostring(k)) then
-												local data = jsonEncode( { config.cobalt.groups[k].groupName, "muted", false } )
+											
+										end
+										if config.cobalt.groups[k].groupPerms.banned then
+											im.Text("		banned: " .. tostring(config.cobalt.groups[k].groupPerms.banned))
+											im.SameLine()
+											if config.cobalt.groups[k].groupPerms.banned == false then
+												if im.SmallButton("Ban##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "banned", true } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+												
+											elseif config.cobalt.groups[k].groupPerms.banned == true then
+												if im.SmallButton("Unban##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "banned", false } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+												end
+												
+											end
+										else
+											im.Text("		banned: false")
+											im.SameLine()
+											if im.SmallButton("Ban##"..tostring(k)) then
+													local data = jsonEncode( { config.cobalt.groups[k].groupName, "banned", true } )
+													TriggerServerEvent("CEISetGroupPerms", data)
+													log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											end
+										end
+										if config.cobalt.groups[k].groupPerms.banReason then
+											im.Text("		banReason: " .. config.cobalt.groups[k].groupPerms.banReason)
+											im.Text("		")
+											im.SameLine()
+											if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
+											end
+											im.Text("		")
+											im.SameLine()
+											if im.SmallButton("Apply##"..tostring(k)) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "banReason", ffi.string(configVals.cobalt.groups[k].groupPerms.groupBanReasonInput) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
 											end
-											
-										end
-									else
-										im.Text("		muted: false")
-										im.SameLine()
-										if im.SmallButton("Mute##"..tostring(k)) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "muted", true } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											im.SameLine()
+											if im.SmallButton("Remove##"..tostring(k)) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "banReason" } )
+												TriggerServerEvent("CEISetGroupPerms", data)
+												log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											end
+											im.SameLine()
+											im.ShowHelpMarker("Remove banReason or enter new banReason and press Apply")
+										else
+											im.Text("		banReason: null")
+											im.Text("		")
+											im.SameLine()
+											if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
+											end
+											im.Text("		")
+											im.SameLine()
+											if im.SmallButton("Apply##"..tostring(k)) then
+												local data = jsonEncode( { config.cobalt.groups[k].groupName, "banReason", ffi.string(configVals.cobalt.groups[k].groupPerms.groupBanReasonInput) } )
+												TriggerServerEvent("CEISetGroupPerms", data)
+												log('W', logTag, "CEISetGroupPerms Called: " .. data)
+											end
+											im.SameLine()
+											im.ShowHelpMarker("Enter new banReason and press Apply")
 										end
 										
-									end
-									if config.cobalt.groups[k].groupPerms.banned then
-										im.Text("		banned: " .. tostring(config.cobalt.groups[k].groupPerms.banned))
+										im.Text("		")
+										im.Text("		Add New Permission to Group: ")
+										im.Text("		")
 										im.SameLine()
-										if config.cobalt.groups[k].groupPerms.banned == false then
-											if im.SmallButton("Ban##"..tostring(k)) then
-												local data = jsonEncode( { config.cobalt.groups[k].groupName, "banned", true } )
-												TriggerServerEvent("CEISetGroupPerms", data)
-												log('W', logTag, "CEISetGroupPerms Called: " .. data)
-											end
-											
-										elseif config.cobalt.groups[k].groupPerms.banned == true then
-											if im.SmallButton("Unban##"..tostring(k)) then
-												local data = jsonEncode( { config.cobalt.groups[k].groupName, "banned", false } )
-												TriggerServerEvent("CEISetGroupPerms", data)
-												log('W', logTag, "CEISetGroupPerms Called: " .. data)
-											end
-											
+										if im.InputTextWithHint("##groupPermission"..tostring(k), "Permission Name", configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput, 128) then
 										end
+										im.Text("		")
+										im.SameLine()
+										if im.SmallButton("Add##groupPermission"..tostring(k)) then
+											local data = jsonEncode( { config.cobalt.groups[k].groupName, ffi.string(configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput), true } )
+											TriggerServerEvent("CEISetGroupPerms", data)
+											log('W', logTag, "CEISetGroupPerms Called: " .. data)
+										end
+										im.SameLine()
+										im.ShowHelpMarker("Enter Permission Name to Add to Group and press Apply")
+										im.Text("		")
+										
+										im.Text("		")
+										im.SameLine()
+										im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+										im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+										im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+										if im.SmallButton("Remove Group##"..config.cobalt.groups[k].groupName) then
+											local data = jsonEncode( { config.cobalt.groups[k].groupName } )
+											TriggerServerEvent("CEIRemoveGroup", data)
+											log('W', logTag, "CEIRemoveGroup Called: " .. data)
+										end
+										im.PopStyleColor(3)
+										im.SameLine()
+										im.ShowHelpMarker("Remove Group... CAREFUL WITH THIS")
+										im.Text("		")
+										im.TreePop()
 									else
-										im.Text("		banned: false")
+										local groupPlayers = config.cobalt.groups[k].groupPlayers
+										local groupPlayersCounter = 0
+										if groupPlayers then
+											for _ in pairs(groupPlayers) do
+												groupPlayersCounter = groupPlayersCounter + 1
+											end
+										end
 										im.SameLine()
-										if im.SmallButton("Ban##"..tostring(k)) then
-												local data = jsonEncode( { config.cobalt.groups[k].groupName, "banned", true } )
-												TriggerServerEvent("CEISetGroupPerms", data)
-												log('W', logTag, "CEISetGroupPerms Called: " .. data)
+										im.Text(tostring(groupPlayersCounter))
+									end
+								end
+								im.Separator()
+								im.Text("		Add Group: ")
+								im.SameLine()
+								if im.InputTextWithHint("##groupName", "Group Name", configVals.cobalt.newGroupInput, 128) then
+								end
+								im.Indent()
+								im.Indent()
+								im.Indent()
+								im.Text("		")
+								im.SameLine()
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##"..tostring(k)) then
+									local data = jsonEncode( { ffi.string(configVals.cobalt.newGroupInput) } )
+									TriggerServerEvent("CEISetNewGroup", data)
+									log('W', logTag, "CEISetNewGroup Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter new Group Name and press Apply")
+								im.Unindent()
+								im.Unindent()
+								im.Unindent()
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(groupCounter))
+							end
+							im.Separator()
+						end
+						if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.config then
+							local whitelistPlayersCounter = 0
+							if config.cobalt.whitelistedPlayers then
+								for _ in pairs(config.cobalt.whitelistedPlayers) do
+									whitelistPlayersCounter = whitelistPlayersCounter + 1
+								end
+								for k in pairs(config.cobalt.groups) do
+									if config.cobalt.groups[k].whitelisted then
+										if config.cobalt.groups[k].groupPlayers then
+											for _ in pairs(config.cobalt.groups[k].groupPlayers) do
+												whitelistPlayersCounter = whitelistPlayersCounter + 1
+											end
 										end
 									end
-									if config.cobalt.groups[k].groupPerms.banReason then
-										im.Text("		banReason: " .. config.cobalt.groups[k].groupPerms.banReason)
+								end
+							end
+							if im.TreeNode1("whitelisted players:") then
+								im.SameLine()
+								im.Text(tostring(whitelistPlayersCounter))
+								if config.cobalt.whitelistedPlayers then
+									for x in pairs(config.cobalt.whitelistedPlayers) do
 										im.Text("		")
 										im.SameLine()
-										if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
-										end
-										im.Text("		")
+										im.Text(config.cobalt.whitelistedPlayers[x])
 										im.SameLine()
-										if im.SmallButton("Apply##"..tostring(k)) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "banReason", ffi.string(configVals.cobalt.groups[k].groupPerms.groupBanReasonInput) } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
-										end
-										im.SameLine()
-										if im.SmallButton("Remove##"..tostring(k)) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "banReason" } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
-										end
-										im.SameLine()
-										im.ShowHelpMarker("Remove banReason or enter new banReason and press Apply")
-									else
-										im.Text("		banReason: null")
-										im.Text("		")
-										im.SameLine()
-										if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
-										end
-										im.Text("		")
-										im.SameLine()
-										if im.SmallButton("Apply##"..tostring(k)) then
-											local data = jsonEncode( { config.cobalt.groups[k].groupName, "banReason", ffi.string(configVals.cobalt.groups[k].groupPerms.groupBanReasonInput) } )
-											TriggerServerEvent("CEISetGroupPerms", data)
-											log('W', logTag, "CEISetGroupPerms Called: " .. data)
-										end
-										im.SameLine()
-										im.ShowHelpMarker("Enter new banReason and press Apply")
-									end
-									
-									im.Text("		")
-									im.Text("		Add New Permission to Group: ")
-									im.Text("		")
-									im.SameLine()
-									if im.InputTextWithHint("##groupPermission"..tostring(k), "Permission Name", configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput, 128) then
-									end
-									im.Text("		")
-									im.SameLine()
-									if im.SmallButton("Add##groupPermission"..tostring(k)) then
-										local data = jsonEncode( { config.cobalt.groups[k].groupName, ffi.string(configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput), true } )
-										TriggerServerEvent("CEISetGroupPerms", data)
-										log('W', logTag, "CEISetGroupPerms Called: " .. data)
-									end
-									im.SameLine()
-									im.ShowHelpMarker("Enter Permission Name to Add to Group and press Apply")
-									im.Text("		")
-									
-									im.Text("		")
-									im.SameLine()
-									im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-									im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-									im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-									if im.SmallButton("Remove Group##"..config.cobalt.groups[k].groupName) then
-										local data = jsonEncode( { config.cobalt.groups[k].groupName } )
-										TriggerServerEvent("CEIRemoveGroup", data)
-										log('W', logTag, "CEIRemoveGroup Called: " .. data)
-									end
-									im.PopStyleColor(3)
-									im.SameLine()
-									im.ShowHelpMarker("Remove Group... CAREFUL WITH THIS")
-									im.Text("		")
-									im.TreePop()
-								else
-									local groupPlayers = config.cobalt.groups[k].groupPlayers
-									local groupPlayersCounter = 0
-									if groupPlayers then
-										for c,d in pairs(groupPlayers) do
-											groupPlayersCounter = groupPlayersCounter + 1
+										if im.SmallButton("Remove##"..tostring(x)) then
+											local data = jsonEncode( { "remove", config.cobalt.whitelistedPlayers[x] } )
+											TriggerServerEvent("CEIWhitelist", data)
+											log('W', logTag, "CEIWhitelist Called: " .. data)
 										end
 									end
-									im.SameLine()
-									im.Text(tostring(groupPlayersCounter))
+								end
+								im.Text("		Add Name to Whitelist: ")
+								im.Text("		")
+								im.SameLine()
+								if im.InputTextWithHint("##whitelistName", "Player Name", configVals.cobalt.whitelistNameInput, 128) then
+								end
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Add##whitelistName") then
+										local data = jsonEncode( { "add", ffi.string(configVals.cobalt.whitelistNameInput) } )
+										TriggerServerEvent("CEIWhitelist", data)
+										log('W', logTag, "CEIWhitelist Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter Player Name to Add to Whitelist and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(whitelistPlayersCounter))
+							end
+							im.Text("		")
+							im.SameLine()
+							if config.cobalt.enableWhitelist == false then
+								if im.SmallButton("Enable Whitelist##"..tostring(k)) then
+									local data = jsonEncode( { "enable" } )
+									TriggerServerEvent("CEIWhitelist", data)
+									log('W', logTag, "CEIWhitelist Called: " .. data)
+								end
+							elseif config.cobalt.enableWhitelist == true then
+								if im.SmallButton("Disable Whitelist##"..tostring(k)) then
+									local data = jsonEncode( { "disable" } )
+									TriggerServerEvent("CEIWhitelist", data)
+									log('W', logTag, "CEIWhitelist Called: " .. data)
 								end
 							end
 							im.Separator()
-							im.Text("		Add Group: ")
-							im.SameLine()
-							if im.InputTextWithHint("##groupName", "Group Name", configVals.cobalt.newGroupInput, 128) then
-							end
-							im.Indent()
-							im.Indent()
-							im.Indent()
-							im.Text("		")
-							im.SameLine()
-							im.Text("		")
-							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
-								local data = jsonEncode( { ffi.string(configVals.cobalt.newGroupInput) } )
-								TriggerServerEvent("CEISetNewGroup", data)
-								log('W', logTag, "CEISetNewGroup Called: " .. data)
-							end
-							im.SameLine()
-							im.ShowHelpMarker("Enter new Group Name and press Apply")
-							im.Unindent()
-							im.Unindent()
-							im.Unindent()
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(tostring(groupCounter))
 						end
-						im.Separator()
-					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
-						local whitelistPlayersCounter = 0
-						if config.cobalt.whitelistedPlayers then
-							for a,b in pairs(config.cobalt.whitelistedPlayers) do
-								whitelistPlayersCounter = whitelistPlayersCounter + 1
-							end
-							for k,v in pairs(config.cobalt.groups) do
-								if config.cobalt.groups[k].whitelisted then
-									if config.cobalt.groups[k].groupPlayers then
-										for c,d in pairs(config.cobalt.groups[k].groupPlayers) do
-											whitelistPlayersCounter = whitelistPlayersCounter + 1
-										end
-									end
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.config then
+							im.Text('		Default CEI State:')
+							im.SameLine()
+							if config.cobalt.interface.defaultState == true then
+								if im.SmallButton("Shown##") then
+									local data = jsonEncode( { false } )
+									TriggerServerEvent("CEISetDefaultState", data)
+									log('W', logTag, "CEISetDefaultState Called: " .. data)
+								end
+							elseif config.cobalt.interface.defaultState == false then
+								if im.SmallButton("Hidden##") then
+									local data = jsonEncode( { true } )
+									TriggerServerEvent("CEISetDefaultState", data)
+									log('W', logTag, "CEISetDefaultState Called: " .. data)
 								end
 							end
 						end
-						if im.TreeNode1("whitelisted players:") then
-							im.SameLine()
-							im.Text(tostring(whitelistPlayersCounter))
-							if config.cobalt.whitelistedPlayers then
-								for x,y in pairs(config.cobalt.whitelistedPlayers) do
-									im.Text("		")
-									im.SameLine()
-									im.Text(config.cobalt.whitelistedPlayers[x])
-									im.SameLine()
-									if im.SmallButton("Remove##"..tostring(x)) then
-										local data = jsonEncode( { "remove", config.cobalt.whitelistedPlayers[x] } )
-										TriggerServerEvent("CEIWhitelist", data)
-										log('W', logTag, "CEIWhitelist Called: " .. data)
-									end
-								end
-							end
-							im.Text("		Add Name to Whitelist: ")
-							im.Text("		")
-							im.SameLine()
-							if im.InputTextWithHint("##whitelistName", "Player Name", configVals.cobalt.whitelistNameInput, 128) then
-							end
-							im.Text("		")
-							im.SameLine()
-							if im.SmallButton("Add##whitelistName") then
-									local data = jsonEncode( { "add", ffi.string(configVals.cobalt.whitelistNameInput) } )
-									TriggerServerEvent("CEIWhitelist", data)
-									log('W', logTag, "CEIWhitelist Called: " .. data)
-							end
-							im.SameLine()
-							im.ShowHelpMarker("Enter Player Name to Add to Whitelist and press Apply")
-							im.TreePop()
-						else
-							im.SameLine()
-							im.Text(tostring(whitelistPlayersCounter))
-						end
-						im.Text("		")
-						im.SameLine()
-						if config.cobalt.enableWhitelist == false then
-							if im.SmallButton("Enable Whitelist##"..tostring(k)) then
-								local data = jsonEncode( { "enable" } )
-								TriggerServerEvent("CEIWhitelist", data)
-								log('W', logTag, "CEIWhitelist Called: " .. data)
-							end
-						elseif config.cobalt.enableWhitelist == true then
-							if im.SmallButton("Disable Whitelist##"..tostring(k)) then
-								local data = jsonEncode( { "disable" } )
-								TriggerServerEvent("CEIWhitelist", data)
-								log('W', logTag, "CEIWhitelist Called: " .. data)
-							end
-						end
-						im.Separator()
+						im.Unindent()
 					end
-					if currentGroup == "owner" or currentGroup == "admin" then
-						im.Text('		Default CEI State:')
-						im.SameLine()
-						if config.cobalt.interface.defaultState == true then
-							if im.SmallButton("Shown##") then
-								local data = jsonEncode( { false } )
-								TriggerServerEvent("CEISetDefaultState", data)
-								log('W', logTag, "CEISetDefaultState Called: " .. data)
-							end
-						elseif config.cobalt.interface.defaultState == false then
-							if im.SmallButton("Hidden##") then
-								local data = jsonEncode( { true } )
-								TriggerServerEvent("CEISetDefaultState", data)
-								log('W', logTag, "CEISetDefaultState Called: " .. data)
-							end
-						end
-					end
-					im.Unindent()
 				end
 ----------------------------------------------------------------------------------SERVER HEADER
-				if currentGroup == "owner" or currentGroup == "admin" then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.server then
 					if im.CollapsingHeader1("Server") then
 						im.Indent()
 						if im.TreeNode1("name:") then
@@ -1610,7 +1717,7 @@ local function drawCEI(dt)
 							im.Text("		")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("", configVals.server.maxCarsInt, 1) then
+							if im.InputInt("##maxCars", configVals.server.maxCarsInt, 1) then
 								local data = jsonEncode( { "MaxCars", tostring(configVals.server.maxCarsInt[0]) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -1628,7 +1735,7 @@ local function drawCEI(dt)
 							im.Text("		")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("", configVals.server.maxPlayersInt, 1) then
+							if im.InputInt("##maxPlayers", configVals.server.maxPlayersInt, 1) then
 								local data = jsonEncode( { "MaxPlayers", tostring(configVals.server.maxPlayersInt[0]) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -1732,12 +1839,223 @@ local function drawCEI(dt)
 						im.Unindent()
 					end
 				end
+----------------------------------------------------------------------------------INTERFACE HEADER
+				if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
+					if im.CollapsingHeader1("Interface") then
+						im.Indent()
+						im.ShowHelpMarker(config.cobalt.interface.playerPermissions_description)
+						im.SameLine()
+						im.Text("playerPermissions: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##playerPermissions", configVals.cobalt.interface.playerPermissions, 1) then
+							local data = jsonEncode( { "playerPermissions", tostring(configVals.cobalt.interface.playerPermissions[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.playerPermissionsPlus_description)
+						im.SameLine()
+						im.Text("playerPermissionsPlus: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##playerPermissionsPlus", configVals.cobalt.interface.playerPermissionsPlus, 1) then
+							local data = jsonEncode( { "playerPermissionsPlus", tostring(configVals.cobalt.interface.playerPermissionsPlus[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.config_description)
+						im.SameLine()
+						im.Text("config: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##config", configVals.cobalt.interface.config, 1) then
+							local data = jsonEncode( { "config", tostring(configVals.cobalt.interface.config[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.cobaltEssentials_description)
+						im.SameLine()
+						im.Text("cobaltEssentials: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##cobaltEssentials", configVals.cobalt.interface.cobaltEssentials, 1) then
+							local data = jsonEncode( { "cobaltEssentials", tostring(configVals.cobalt.interface.cobaltEssentials[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.server_description)
+						im.SameLine()
+						im.Text("server: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##server", configVals.cobalt.interface.server, 1) then
+							local data = jsonEncode( { "server", tostring(configVals.cobalt.interface.server[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.interface_description)
+						im.SameLine()
+						im.Text("interface: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##interface", configVals.cobalt.interface.interface, 1) then
+							local data = jsonEncode( { "interface", tostring(configVals.cobalt.interface.interface[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.nametags_description)
+						im.SameLine()
+						im.Text("nametags: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##nametags", configVals.cobalt.interface.nametags, 1) then
+							local data = jsonEncode( { "nametags", tostring(configVals.cobalt.interface.nametags[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.restrictions_description)
+						im.SameLine()
+						im.Text("restrictions: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##restrictions", configVals.cobalt.interface.restrictions, 1) then
+							local data = jsonEncode( { "restrictions", tostring(configVals.cobalt.interface.restrictions[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.extras_description)
+						im.SameLine()
+						im.Text("extras: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##extras", configVals.cobalt.interface.extras, 1) then
+							local data = jsonEncode( { "extras", tostring(configVals.cobalt.interface.extras[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.environmentAdmin_description)
+						im.SameLine()
+						im.Text("environmentAdmin: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##environmentAdmin", configVals.cobalt.interface.environmentAdmin, 1) then
+							local data = jsonEncode( { "environmentAdmin", tostring(configVals.cobalt.interface.environmentAdmin[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.environment_description)
+						im.SameLine()
+						im.Text("environment: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##environment", configVals.cobalt.interface.environment, 1) then
+							local data = jsonEncode( { "environment", tostring(configVals.cobalt.interface.environment[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.sun_description)
+						im.SameLine()
+						im.Text("sun: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##sun", configVals.cobalt.interface.sun, 1) then
+							local data = jsonEncode( { "sun", tostring(configVals.cobalt.interface.sun[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.weather_description)
+						im.SameLine()
+						im.Text("weather: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##weather", configVals.cobalt.interface.weather, 1) then
+							local data = jsonEncode( { "weather", tostring(configVals.cobalt.interface.weather[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.gravity_description)
+						im.SameLine()
+						im.Text("gravity: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##gravity", configVals.cobalt.interface.gravity, 1) then
+							local data = jsonEncode( { "gravity", tostring(configVals.cobalt.interface.gravity[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.temperature_description)
+						im.SameLine()
+						im.Text("temperature: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##temperature", configVals.cobalt.interface.temperature, 1) then
+							local data = jsonEncode( { "temperature", tostring(configVals.cobalt.interface.temperature[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.database_description)
+						im.SameLine()
+						im.Text("database: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##database", configVals.cobalt.interface.database, 1) then
+							local data = jsonEncode( { "database", tostring(configVals.cobalt.interface.database[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.ShowHelpMarker(config.cobalt.interface.race_description)
+						im.SameLine()
+						im.Text("race: ")
+						im.SameLine()
+						im.PushItemWidth(100)
+						if im.InputInt("##race", configVals.cobalt.interface.race, 1) then
+							local data = jsonEncode( { "race", tostring(configVals.cobalt.interface.race[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.Separator()
+						im.Unindent()
+					end
+				end
 ----------------------------------------------------------------------------------NAMETAGS HEADER
-				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.nametags then
 					if im.CollapsingHeader1("Nametags") then
 						local nametagWhitelist = config.nametags.whitelist
 						local nametagWhitelistCounter = 0
-						for a,b in pairs(nametagWhitelist) do
+						for _ in pairs(nametagWhitelist) do
 							nametagWhitelistCounter = nametagWhitelistCounter + 1
 						end
 						im.Indent()
@@ -1806,7 +2124,7 @@ local function drawCEI(dt)
 						if im.TreeNode1("Nametag Whitelist: ") then
 							im.SameLine()
 							im.Text(tostring(nametagWhitelistCounter))
-							for k,v in pairs(config.nametags.whitelist) do
+							for k in pairs(config.nametags.whitelist) do
 								im.Text("		")
 								im.SameLine()
 								im.Text(config.nametags.whitelist[k])
@@ -1839,6 +2157,7 @@ local function drawCEI(dt)
 					end
 				end
 ----------------------------------------------------------------------------------GLOBAL RESTRICTIONS HEADER
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.restrictions then
 					if im.CollapsingHeader1("Global Restrictions") then
 						im.Indent()
 						if im.TreeNode1("Resets") then
@@ -1941,7 +2260,6 @@ local function drawCEI(dt)
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-
 							im.TreePop()
 							im.Unindent()
 						else
@@ -1954,8 +2272,9 @@ local function drawCEI(dt)
 						end
 						im.Unindent()
 					end
+				end
 ----------------------------------------------------------------------------------EXTRAS HEADER
-				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.extras then
 					if im.CollapsingHeader1("Extras") then
 						im.Indent()
 						if im.TreeNode1("Simulation Speed") then
@@ -2089,1213 +2408,1396 @@ local function drawCEI(dt)
 						end
 						im.Unindent()
 					end
-					im.EndTabItem()
 				end
+				im.EndTabItem()
 			end
 		end
 ----------------------------------------------------------------------------------ENVIRONMENT TAB
-		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+		if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environment then
 			if im.BeginTabItem("Environment") then
 				im.Indent()
-				if im.SmallButton("Reset All##ENV") then
-					local data = jsonEncode( { "all", "default" } )
-					TriggerServerEvent("CEISetEnv", data)
-					log('W', logTag, "CEISetEnv Called: " .. data)
-				end
-				if im.TreeNode1("Sun") then
-					im.SameLine()
-					if im.SmallButton("Reset##SUN") then
-						local data = jsonEncode( { "allSun", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Indent()
-					im.Text("Sun Control: ")
-					if environment.controlSun then
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
-						if im.SmallButton("Enabled") then
-							local data = jsonEncode( { "controlSun", false } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopStyleColor(3)
-					else
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-						if im.SmallButton("Disabled") then
-							local data = jsonEncode( { "controlSun", true } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopStyleColor(3)
-					end
-					im.Text("Time Play: ")
-					im.SameLine()
-					local timePlay = environment.timePlay
-					if timePlay == false then
-						if im.SmallButton("Play") then
-							local data = jsonEncode( { "timePlay", true } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-					elseif timePlay == true then
-						if im.SmallButton("Stop") then
-							local timeOfDay = core_environment.getTimeOfDay()
-							local data = jsonEncode( { "timePlay", false } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-							data = jsonEncode( { "ToD", tostring(timeOfDay.time) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-					end
-					im.Text("Time of Day: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##ToD", environmentVals.ToDVal, 0.001, 0.01) then
-						if environmentVals.ToDVal[0] < 0 then
-							environmentVals.ToDVal = im.FloatPtr(1)
-						elseif environmentVals.ToDVal[0] > 1 then
-							environmentVals.ToDVal = im.FloatPtr(0)
-						end
-						local data = jsonEncode( { "ToD", tostring(environmentVals.ToDVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						timeUpdateQueued = true
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##ToD") then
-						local data = jsonEncode( { "ToD", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						timeUpdateQueued = true
-					end
-					im.Text("Day Length: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputInt("##dayLength", environmentVals.dayLengthInt, 1, 10) then
-						if environmentVals.dayLengthInt[0] < 1 then
-							environmentVals.dayLengthInt = im.IntPtr(1)
-						elseif environmentVals.dayLengthInt[0] > 14400 then
-							environmentVals.dayLengthInt = im.IntPtr(14400)
-						end
-						local data = jsonEncode( { "dayLength", tostring(environmentVals.dayLengthInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##DL") then
-						local data = jsonEncode( { "dayLength", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("Realtime##DS") then
-						local data = jsonEncode( { "dayLength", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "dayScale", 0.0208333333 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "nightScale", 0.0208333333 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Day Scale: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputFloat("##dayScale", environmentVals.dayScaleVal, 0.01, 0.1) then
-						if environmentVals.dayScaleVal[0] < 0.01 then
-							environmentVals.dayScaleVal = im.FloatPtr(0.01)
-						elseif environmentVals.dayScaleVal[0] > 100 then
-							environmentVals.dayScaleVal = im.FloatPtr(100)
-						end
-						local data = jsonEncode( { "dayScale", tostring(environmentVals.dayScaleVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##DS") then
-						local data = jsonEncode( { "dayScale", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Night Scale: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputFloat("##nightScale", environmentVals.nightScaleVal, 0.01, 0.1) then
-						if environmentVals.nightScaleVal[0] < 0.01 then
-							environmentVals.nightScaleVal = im.FloatPtr(0.01)
-						elseif environmentVals.nightScaleVal[0] > 100 then
-							environmentVals.nightScaleVal = im.FloatPtr(100)
-						end
-						local data = jsonEncode( { "nightScale", tostring(environmentVals.nightScaleVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##NS") then
-						local data = jsonEncode( { "nightScale", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Sun Azimuth: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##sunAzimuthOverride", environmentVals.sunAzimuthOverrideVal,  0.001, 0.01) then
-						if environmentVals.sunAzimuthOverrideVal[0] < 0 then
-							environmentVals.sunAzimuthOverrideVal = im.FloatPtr(6.25)
-						elseif environmentVals.sunAzimuthOverrideVal[0] > 6.25 then
-							environmentVals.sunAzimuthOverrideVal = im.FloatPtr(0)
-						end
-						local data = jsonEncode( { "sunAzimuthOverride", tostring(environmentVals.sunAzimuthOverrideVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SA") then
-						local data = jsonEncode( { "sunAzimuthOverride", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Sun Size: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##sunSize", environmentVals.sunSizeVal, 0.01, 0.1) then
-						if environmentVals.sunSizeVal[0] < 0 then
-							environmentVals.sunSizeVal = im.FloatPtr(0)
-						elseif environmentVals.sunSizeVal[0] > 100 then
-							environmentVals.sunSizeVal = im.FloatPtr(100)
-						end
-						local data = jsonEncode( { "sunSize", tostring(environmentVals.sunSizeVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SS") then
-						local data = jsonEncode( { "sunSize", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Sky Brightness: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputFloat("##skyBrightness", environmentVals.skyBrightnessVal, 0.1, 1.0) then
-						if environmentVals.skyBrightnessVal[0] < 0 then
-							environmentVals.skyBrightnessVal = im.FloatPtr(0)
-						elseif environmentVals.skyBrightnessVal[0] > 200 then
-							environmentVals.skyBrightnessVal = im.FloatPtr(200)
-						end
-						local data = jsonEncode( { "skyBrightness", tostring(environmentVals.skyBrightnessVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SB") then
-						local data = jsonEncode( { "skyBrightness", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Sunlight Brightness: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##sunLightBrightness", environmentVals.sunLightBrightnessVal, 0.01, 0.1) then
-						if environmentVals.sunLightBrightnessVal[0] < 0 then
-							environmentVals.sunLightBrightnessVal = im.FloatPtr(0)
-						elseif environmentVals.sunLightBrightnessVal[0] > 10 then
-							environmentVals.sunLightBrightnessVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "sunLightBrightness", tostring(environmentVals.sunLightBrightnessVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##GB") then
-						local data = jsonEncode( { "sunLightBrightness", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Rayleigh Scattering: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##rayleighScattering", environmentVals.rayleighScatteringVal, 0.0001, 0.001) then
-						if environmentVals.rayleighScatteringVal[0] < 0.0001 then
-							environmentVals.rayleighScatteringVal = im.FloatPtr(0.0001)
-						elseif environmentVals.rayleighScatteringVal[0] > 0.15 then
-							environmentVals.rayleighScatteringVal = im.FloatPtr(0.15)
-						end
-						local data = jsonEncode( { "rayleighScattering", tostring(environmentVals.rayleighScatteringVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##RS") then
-						local data = jsonEncode( { "rayleighScattering", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Flare Scale: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##flareScale", environmentVals.flareScaleVal, 0.01, 0.1) then
-						if environmentVals.flareScaleVal[0] < 0 then
-							environmentVals.flareScaleVal = im.FloatPtr(0)
-						elseif environmentVals.flareScaleVal[0] > 25 then
-							environmentVals.flareScaleVal = im.FloatPtr(25)
-						end
-						local data = jsonEncode( { "flareScale", tostring(environmentVals.flareScaleVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##FS") then
-						local data = jsonEncode( { "flareScale", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Occlusion Scale: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##occlusionScale", environmentVals.occlusionScaleVal, 0.001, 0.01) then
-						if environmentVals.occlusionScaleVal[0] < 0 then
-							environmentVals.occlusionScaleVal = im.FloatPtr(0)
-						elseif environmentVals.occlusionScaleVal[0] > 1 then
-							environmentVals.occlusionScaleVal = im.FloatPtr(1)
-						end
-						local data = jsonEncode( { "occlusionScale", tostring(environmentVals.occlusionScaleVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##OS") then
-						local data = jsonEncode( { "occlusionScale", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Exposure: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputFloat("##exposure", environmentVals.exposureVal, 0.01, 0.1) then
-						if environmentVals.exposureVal[0] < 0 then
-							environmentVals.exposureVal = im.FloatPtr(0)
-						elseif environmentVals.exposureVal[0] > 3 then
-							environmentVals.exposureVal = im.FloatPtr(3)
-						end
-						local data = jsonEncode( { "exposure", tostring(environmentVals.exposureVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##EX") then
-						local data = jsonEncode( { "exposure", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Shadow Distance: ")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputInt("##shadowDistance", environmentVals.shadowDistanceInt, 1) then
-						if environmentVals.shadowDistanceInt[0] < 0 then
-							environmentVals.shadowDistanceInt = im.FloatPtr(0)
-						elseif environmentVals.shadowDistanceInt[0] > 12800 then
-							environmentVals.shadowDistanceInt = im.FloatPtr(12800)
-						end
-						local data = jsonEncode( { "shadowDistance", tostring(environmentVals.shadowDistanceInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SD") then
-						local data = jsonEncode( { "shadowDistance", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Shadow Softness: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputFloat("##shadowSoftness", environmentVals.shadowSoftnessVal, 0.001, 0.01) then
-						if environmentVals.shadowSoftnessVal[0] < -10 then
-							environmentVals.shadowSoftnessVal = im.FloatPtr(-10)
-						elseif environmentVals.shadowSoftnessVal[0] > 10 then
-							environmentVals.shadowSoftnessVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "shadowSoftness", tostring(environmentVals.shadowSoftnessVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SSFT") then
-						local data = jsonEncode( { "shadowSoftness", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Shadow Splits: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##shadowSplits", environmentVals.shadowSplitsInt, 1) then
-						if environmentVals.shadowSplitsInt[0] < 0 then
-							environmentVals.shadowSplitsInt = im.IntPtr(0)
-						elseif environmentVals.shadowSplitsInt[0] > 4 then
-							environmentVals.shadowSplitsInt = im.IntPtr(4)
-						end
-						local data = jsonEncode( { "shadowSplits", tostring(environmentVals.shadowSplitsInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SSPL") then
-						local data = jsonEncode( { "shadowSplits", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Shadow Tex Size: ")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputInt("##shadowTexSize", environmentVals.shadowTexSizeInt, 1) then
-						if environmentVals.shadowTexSizeInt[0] < 32 then
-							environmentVals.shadowTexSizeInt = im.IntPtr(32)
-						elseif environmentVals.shadowTexSizeInt[0] > 2048 then
-							environmentVals.shadowTexSizeInt = im.IntPtr(2048)
-						elseif environmentVals.shadowTexSizeInt[0] < environment.shadowTexSize then
-							environmentVals.shadowTexSizeInt = im.IntPtr(environment.shadowTexSize / 2)
-						elseif environmentVals.shadowTexSizeInt[0] > environment.shadowTexSize then
-							environmentVals.shadowTexSizeInt = im.IntPtr(environment.shadowTexSize * 2)
-						end
-						local data = jsonEncode( { "shadowTexSize", tostring(environmentVals.shadowTexSizeInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##STS") then
-						local data = jsonEncode( { "shadowTexSize", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Shadow Log Weight: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputFloat("##shadowLogWeight", environmentVals.shadowLogWeightVal, 0.001, 0.01) then
-						if environmentVals.shadowLogWeightVal[0] < 0.001 then
-							environmentVals.shadowLogWeightVal = im.FloatPtr(0.001)
-						elseif environmentVals.shadowLogWeightVal[0] > 0.999 then
-							environmentVals.shadowLogWeightVal = im.FloatPtr(0.999)
-						end
-						local data = jsonEncode( { "shadowLogWeight", tostring(environmentVals.shadowLogWeightVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##SLW") then
-						local data = jsonEncode( { "shadowLogWeight", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Visibile Distance: ")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputInt("##visibleDistance", environmentVals.visibleDistanceInt, 1) then
-						if environmentVals.visibleDistanceInt[0] < 1000 then
-							environmentVals.visibleDistanceInt = im.IntPtr(1000)
-						elseif environmentVals.visibleDistanceInt[0] > 32000 then
-							environmentVals.visibleDistanceInt = im.IntPtr(32000)
-						end
-						local data = jsonEncode( { "visibleDistance", tostring(environmentVals.visibleDistanceInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##VD") then
-						local data = jsonEncode( { "visibleDistance", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Moon Azimuth: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##moonAzimuth", environmentVals.moonAzimuthVal, 0.1, 1) then
-						if environmentVals.moonAzimuthVal[0] < 0 then
-							environmentVals.moonAzimuthVal = im.FloatPtr(360)
-						elseif environmentVals.moonAzimuthVal[0] > 360 then
-							environmentVals.moonAzimuthVal = im.FloatPtr(0)
-						end
-						local data = jsonEncode( { "moonAzimuth", tostring(environmentVals.moonAzimuthVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##MA") then
-						local data = jsonEncode( { "moonAzimuth", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Moon Elevation: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##moonElevation", environmentVals.moonElevationVal, 0.1, 1) then
-						if environmentVals.moonElevationVal[0] < 0 then
-							environmentVals.moonElevationVal = im.FloatPtr(360)
-						elseif environmentVals.moonElevationVal[0] > 360 then
-							environmentVals.moonElevationVal = im.FloatPtr(0)
-						end
-						local data = jsonEncode( { "moonElevation", tostring(environmentVals.moonElevationVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##ME") then
-						local data = jsonEncode( { "moonElevation", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Moon Scale: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##moonScale", environmentVals.moonScaleVal, 0.001, 0.01) then
-						if environmentVals.moonScaleVal[0] < 0.005 then
-							environmentVals.moonScaleVal = im.FloatPtr(0.005)
-						elseif environmentVals.moonScaleVal[0] > 1 then
-							environmentVals.moonScaleVal = im.FloatPtr(1)
-						end
-						local data = jsonEncode( { "moonScale", tostring(environmentVals.moonScaleVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##MS") then
-						local data = jsonEncode( { "moonScale", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##SUN") then
-						local data = jsonEncode( { "allSun", "default" } )
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+					if im.SmallButton("Reset All##ENV") then
+						local data = jsonEncode( { "all", "default" } )
 						TriggerServerEvent("CEISetEnv", data)
 						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
 				end
-				im.Separator()
-				if im.TreeNode1("Weather") then
-					im.SameLine()
-					if im.SmallButton("Reset##WET") then
-						local data = jsonEncode( { "allWeather", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Indent()
-					im.Text("Weather Control: ")
-					im.SameLine()
-					if environment.controlWeather then
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
-						if im.SmallButton("Enabled") then
-							local data = jsonEncode( { "controlWeather", false } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopStyleColor(3)
-					else
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-						if im.SmallButton("Disabled") then
-							local data = jsonEncode( { "controlWeather", true } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopStyleColor(3)
-					end
-					im.Text("Fog Density: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##fogDensity", environmentVals.fogDensityVal, 0.00001, 0.0001) then
-						if environmentVals.fogDensityVal[0] < 0.00001 then
-							environmentVals.fogDensityVal = im.FloatPtr(0.00001)
-						elseif environmentVals.fogDensityVal[0] > 0.2 then
-							environmentVals.fogDensityVal = im.FloatPtr(0.2)
-						end
-						local data = jsonEncode( { "fogDensity", tostring(environmentVals.fogDensityVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##FD") then
-						local data = jsonEncode( { "fogDensity", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Fog Distance: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##fogDensityOffset", environmentVals.fogDensityOffsetVal, 0.001, 0.1) then
-						if environmentVals.fogDensityOffsetVal[0] < 0 then
-							environmentVals.fogDensityOffsetVal = im.FloatPtr(0)
-						elseif environmentVals.fogDensityOffsetVal[0] > 100 then
-							environmentVals.fogDensityOffsetVal = im.FloatPtr(100)
-						end
-						local data = jsonEncode( { "fogDensityOffset", tostring(environmentVals.fogDensityOffsetVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##FDO") then
-						local data = jsonEncode( { "fogDensityOffset", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Fog Height: ")
-					im.SameLine()
-					im.PushItemWidth(110)
-					if im.InputInt("##fogAtmosphereHeight", environmentVals.fogAtmosphereHeightInt, 1) then
-						if environmentVals.fogAtmosphereHeightInt[0] < 0 then
-							environmentVals.fogAtmosphereHeightInt = im.IntPtr(0)
-						elseif environmentVals.fogAtmosphereHeightInt[0] > 10000 then
-							environmentVals.fogAtmosphereHeightInt = im.IntPtr(10000)
-						end
-						local data = jsonEncode( { "fogAtmosphereHeight", tostring(environmentVals.fogAtmosphereHeightInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##FAH") then
-						local data = jsonEncode( { "fogAtmosphereHeight", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 1 Height: ")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputFloat("##cloudHeight", environmentVals.cloudHeightVal, 0.01, 0.1) then
-						if environmentVals.cloudHeightVal[0] < 0 then
-							environmentVals.cloudHeightVal = im.FloatPtr(0)
-						elseif environmentVals.cloudHeightVal[0] > 20 then
-							environmentVals.cloudHeightVal = im.FloatPtr(20)
-						end
-						local data = jsonEncode( { "cloudHeight", tostring(environmentVals.cloudHeightVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CH") then
-						local data = jsonEncode( { "cloudHeight", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 2 Height: ")
-					im.SameLine()
-					im.PushItemWidth(120)
-					if im.InputFloat("##cloudHeightOne", environmentVals.cloudHeightOneVal, 0.01, 0.1) then
-						if environmentVals.cloudHeightOneVal[0] < 0 then
-							environmentVals.cloudHeightOneVal = im.FloatPtr(0)
-						elseif environmentVals.cloudHeightOneVal[0] > 20 then
-							environmentVals.cloudHeightOneVal = im.FloatPtr(20)
-						end
-						local data = jsonEncode( { "cloudHeightOne", tostring(environmentVals.cloudHeightOneVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CHO") then
-						local data = jsonEncode( { "cloudHeightOne", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 1 Cover: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##cloudCover", environmentVals.cloudCoverVal, 0.01, 0.1) then
-						if environmentVals.cloudCoverVal[0] < 0 then
-							environmentVals.cloudCoverVal = im.FloatPtr(0)
-						elseif environmentVals.cloudCoverVal[0] > 5 then
-							environmentVals.cloudCoverVal = im.FloatPtr(5)
-						end
-						local data = jsonEncode( { "cloudCover", tostring(environmentVals.cloudCoverVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CC") then
-						local data = jsonEncode( { "cloudCover", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 2 Cover: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##cloudCoverOne", environmentVals.cloudCoverOneVal, 0.01, 0.1) then
-						if environmentVals.cloudCoverOneVal[0] < 0 then
-							environmentVals.cloudCoverOneVal = im.FloatPtr(0)
-						elseif environmentVals.cloudCoverOneVal[0] > 5 then
-							environmentVals.cloudCoverOneVal = im.FloatPtr(5)
-						end
-						local data = jsonEncode( { "cloudCoverOne", tostring(environmentVals.cloudCoverOneVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CCO") then
-						local data = jsonEncode( { "cloudCoverOne", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 1 Speed: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##cloudSpeed", environmentVals.cloudSpeedVal, 0.01, 0.1) then
-						if environmentVals.cloudSpeedVal[0] < 0 then
-							environmentVals.cloudSpeedVal = im.FloatPtr(0)
-						elseif environmentVals.cloudSpeedVal[0] > 10 then
-							environmentVals.cloudSpeedVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "cloudSpeed", tostring(environmentVals.cloudSpeedVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CS") then
-						local data = jsonEncode( { "cloudSpeed", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 2 Speed: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##cloudSpeedOne", environmentVals.cloudSpeedOneVal, 0.01, 0.1) then
-						if environmentVals.cloudSpeedOneVal[0] < 0 then
-							environmentVals.cloudSpeedOneVal = im.FloatPtr(0)
-						elseif environmentVals.cloudSpeedOneVal[0] > 10 then
-							environmentVals.cloudSpeedOneVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "cloudSpeedOne", tostring(environmentVals.cloudSpeedOneVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CSO") then
-						local data = jsonEncode( { "cloudSpeedOne", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 1 Exposure: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##cloudExposure", environmentVals.cloudExposureVal, 0.01, 0.1) then
-						if environmentVals.cloudExposureVal[0] < 0 then
-							environmentVals.cloudExposureVal = im.FloatPtr(0)
-						elseif environmentVals.cloudExposureVal[0] > 10 then
-							environmentVals.cloudExposureVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "cloudExposure", tostring(environmentVals.cloudExposureVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CE") then
-						local data = jsonEncode( { "cloudExposure", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("Cloud 2 Exposure: ")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputFloat("##cloudExposureOne", environmentVals.cloudExposureOneVal, 0.01, 0.1) then
-						if environmentVals.cloudExposureOneVal[0] < 0 then
-							environmentVals.cloudExposureOneVal = im.FloatPtr(0)
-						elseif environmentVals.cloudExposureOneVal[0] > 10 then
-							environmentVals.cloudExposureOneVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "cloudExposureOne", tostring(environmentVals.cloudExposureOneVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.SameLine()
-					if im.SmallButton("Reset##CEO") then
-						local data = jsonEncode( { "cloudExposureOne", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					local rainObj = getObject("Precipitation")
-					if rainObj then 
-						im.Text("Rain Drops: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputInt("##rainDrops", environmentVals.rainDropsInt, 1, 10) then
-							if environmentVals.rainDropsInt[0] < 0 then
-								environmentVals.rainDropsInt = im.IntPtr(0)
-							elseif environmentVals.rainDropsInt[0] > 20000 then
-								environmentVals.rainDropsInt = im.IntPtr(20000)
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.sun then
+					if im.TreeNode1("Sun") then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.controlSun_description)
+							im.SameLine()
+							if environment.controlSun then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##S") then
+									local data = jsonEncode( { "controlSun", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##S") then
+									local data = jsonEncode( { "controlSun", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
 							end
-							local data = jsonEncode( { "rainDrops", tostring(environmentVals.rainDropsInt[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
 						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##RD") then
-							local data = jsonEncode( { "rainDrops", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.Text("Drop Size: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropSize", environmentVals.dropSizeVal, 0.001, 0.01) then
-							if environmentVals.dropSizeVal[0] < 0 then
-								environmentVals.dropSizeVal = im.FloatPtr(0)
-							elseif environmentVals.dropSizeVal[0] > 2 then
-								environmentVals.dropSizeVal = im.FloatPtr(2)
-							end
-							local data = jsonEncode( { "dropSize", tostring(environmentVals.dropSizeVal[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DSZ") then
-							local data = jsonEncode( { "dropSize", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.Text("Drop Min Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropMinSpeed", environmentVals.dropMinSpeedVal, 0.001, 0.01) then
-							if environmentVals.dropMinSpeedVal[0] < 0 then
-								environmentVals.dropMinSpeedVal = im.FloatPtr(0)
-							elseif environmentVals.dropMinSpeedVal[0] > 2 then
-								environmentVals.dropMinSpeedVal = im.FloatPtr(2)
-							end
-							local data = jsonEncode( { "dropMinSpeed", tostring(environmentVals.dropMinSpeedVal[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DMNS") then
-							local data = jsonEncode( { "dropMinSpeed", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.Text("Drop Max Speed: ")
-						im.SameLine()
-						im.PushItemWidth(100)
-						if im.InputFloat("##dropMaxSpeed", environmentVals.dropMaxSpeedVal, 0.001, 0.01) then
-							if environmentVals.dropMaxSpeedVal[0] < 0 then
-								environmentVals.dropMaxSpeedVal = im.FloatPtr(0)
-							elseif environmentVals.dropMaxSpeedVal[0] > 2 then
-								environmentVals.dropMaxSpeedVal = im.FloatPtr(2)
-							end
-							local data = jsonEncode( { "dropMaxSpeed", tostring(environmentVals.dropMaxSpeedVal[0]) } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopItemWidth()
-						im.SameLine()
-						if im.SmallButton("Reset##DMXS") then
-							local data = jsonEncode( { "dropMaxSpeed", "default" } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.Text("Precipitation Type: ")
-						im.SameLine()
-						local precipType = environment.precipType
-						if precipType == "rain_medium" then
-							if im.SmallButton("Medium Rain") then
-								local data = jsonEncode( { "precipType", "rain_drop" } )
+						if environment.controlSun then
+							im.Indent()
+							im.Indent()
+							if im.SmallButton("Reset##SUN") then
+								local data = jsonEncode( { "allSun", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-						elseif precipType == "rain_drop" then
-							if im.SmallButton("Light Rain") then
-								local data = jsonEncode( { "precipType", "Snow_menu" } )
+							im.Unindent()
+							im.ShowHelpMarker(environment.timePlay_description)
+							im.SameLine()
+							im.Text("Time Play: ")
+							im.SameLine()
+							local timePlay = environment.timePlay
+							if timePlay == false then
+								if im.SmallButton("Play") then
+									local data = jsonEncode( { "timePlay", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+							elseif timePlay == true then
+								if im.SmallButton("Stop") then
+									local timeOfDay = core_environment.getTimeOfDay()
+									local data = jsonEncode( { "timePlay", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+									data = jsonEncode( { "ToD", tostring(timeOfDay.time) } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+							end
+							im.ShowHelpMarker(environment.ToD_description)
+							im.SameLine()
+							im.Text("Time of Day: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##ToD", environmentVals.ToDVal, 0.001, 0.01) then
+								if environmentVals.ToDVal[0] < 0 then
+									environmentVals.ToDVal = im.FloatPtr(1)
+								elseif environmentVals.ToDVal[0] > 1 then
+									environmentVals.ToDVal = im.FloatPtr(0)
+								end
+								local data = jsonEncode( { "ToD", tostring(environmentVals.ToDVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								timeUpdateQueued = true
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##ToD") then
+								local data = jsonEncode( { "ToD", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								timeUpdateQueued = true
+							end
+							im.ShowHelpMarker(environment.dayLength_description)
+							im.SameLine()
+							im.Text("Day Length: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputInt("##dayLength", environmentVals.dayLengthInt, 1, 10) then
+								if environmentVals.dayLengthInt[0] < 1 then
+									environmentVals.dayLengthInt = im.IntPtr(1)
+								elseif environmentVals.dayLengthInt[0] > 14400 then
+									environmentVals.dayLengthInt = im.IntPtr(14400)
+								end
+								local data = jsonEncode( { "dayLength", tostring(environmentVals.dayLengthInt[0]) } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-						elseif precipType == "Snow_menu" then
-							if im.SmallButton("Snow") then
-								local data = jsonEncode( { "precipType", "rain_medium" } )
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##DL") then
+								local data = jsonEncode( { "dayLength", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
+							im.SameLine()
+							if im.SmallButton("Realtime##DS") then
+								local data = jsonEncode( { "dayLength", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "dayScale", 0.0208333333 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "nightScale", 0.0208333333 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.dayScale_description)
+							im.SameLine()
+							im.Text("Day Scale: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputFloat("##dayScale", environmentVals.dayScaleVal, 0.01, 0.1) then
+								if environmentVals.dayScaleVal[0] < 0.01 then
+									environmentVals.dayScaleVal = im.FloatPtr(0.01)
+								elseif environmentVals.dayScaleVal[0] > 100 then
+									environmentVals.dayScaleVal = im.FloatPtr(100)
+								end
+								local data = jsonEncode( { "dayScale", tostring(environmentVals.dayScaleVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##DS") then
+								local data = jsonEncode( { "dayScale", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.nightScale_description)
+							im.SameLine()
+							im.Text("Night Scale: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputFloat("##nightScale", environmentVals.nightScaleVal, 0.01, 0.1) then
+								if environmentVals.nightScaleVal[0] < 0.01 then
+									environmentVals.nightScaleVal = im.FloatPtr(0.01)
+								elseif environmentVals.nightScaleVal[0] > 100 then
+									environmentVals.nightScaleVal = im.FloatPtr(100)
+								end
+								local data = jsonEncode( { "nightScale", tostring(environmentVals.nightScaleVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##NS") then
+								local data = jsonEncode( { "nightScale", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.sunAzimuthOverride_description)
+							im.SameLine()
+							im.Text("Sun Azimuth: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##sunAzimuthOverride", environmentVals.sunAzimuthOverrideVal,  0.001, 0.01) then
+								if environmentVals.sunAzimuthOverrideVal[0] < 0 then
+									environmentVals.sunAzimuthOverrideVal = im.FloatPtr(6.25)
+								elseif environmentVals.sunAzimuthOverrideVal[0] > 6.25 then
+									environmentVals.sunAzimuthOverrideVal = im.FloatPtr(0)
+								end
+								local data = jsonEncode( { "sunAzimuthOverride", tostring(environmentVals.sunAzimuthOverrideVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SA") then
+								local data = jsonEncode( { "sunAzimuthOverride", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.sunSize_description)
+							im.SameLine()
+							im.Text("Sun Size: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##sunSize", environmentVals.sunSizeVal, 0.01, 0.1) then
+								if environmentVals.sunSizeVal[0] < 0 then
+									environmentVals.sunSizeVal = im.FloatPtr(0)
+								elseif environmentVals.sunSizeVal[0] > 100 then
+									environmentVals.sunSizeVal = im.FloatPtr(100)
+								end
+								local data = jsonEncode( { "sunSize", tostring(environmentVals.sunSizeVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SS") then
+								local data = jsonEncode( { "sunSize", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.skyBrightness_description)
+							im.SameLine()
+							im.Text("Sky Brightness: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputFloat("##skyBrightness", environmentVals.skyBrightnessVal, 0.1, 1.0) then
+								if environmentVals.skyBrightnessVal[0] < 0 then
+									environmentVals.skyBrightnessVal = im.FloatPtr(0)
+								elseif environmentVals.skyBrightnessVal[0] > 200 then
+									environmentVals.skyBrightnessVal = im.FloatPtr(200)
+								end
+								local data = jsonEncode( { "skyBrightness", tostring(environmentVals.skyBrightnessVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SB") then
+								local data = jsonEncode( { "skyBrightness", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.sunLightBrightness_description)
+							im.SameLine()
+							im.Text("Sunlight Brightness: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##sunLightBrightness", environmentVals.sunLightBrightnessVal, 0.01, 0.1) then
+								if environmentVals.sunLightBrightnessVal[0] < 0 then
+									environmentVals.sunLightBrightnessVal = im.FloatPtr(0)
+								elseif environmentVals.sunLightBrightnessVal[0] > 10 then
+									environmentVals.sunLightBrightnessVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "sunLightBrightness", tostring(environmentVals.sunLightBrightnessVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##GB") then
+								local data = jsonEncode( { "sunLightBrightness", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.rayleighScattering_description)
+							im.SameLine()
+							im.Text("Rayleigh Scattering: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##rayleighScattering", environmentVals.rayleighScatteringVal, 0.0001, 0.001) then
+								if environmentVals.rayleighScatteringVal[0] < 0.0001 then
+									environmentVals.rayleighScatteringVal = im.FloatPtr(0.0001)
+								elseif environmentVals.rayleighScatteringVal[0] > 0.15 then
+									environmentVals.rayleighScatteringVal = im.FloatPtr(0.15)
+								end
+								local data = jsonEncode( { "rayleighScattering", tostring(environmentVals.rayleighScatteringVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##RS") then
+								local data = jsonEncode( { "rayleighScattering", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.flareScale_description)
+							im.SameLine()
+							im.Text("Flare Scale: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##flareScale", environmentVals.flareScaleVal, 0.01, 0.1) then
+								if environmentVals.flareScaleVal[0] < 0 then
+									environmentVals.flareScaleVal = im.FloatPtr(0)
+								elseif environmentVals.flareScaleVal[0] > 25 then
+									environmentVals.flareScaleVal = im.FloatPtr(25)
+								end
+								local data = jsonEncode( { "flareScale", tostring(environmentVals.flareScaleVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##FS") then
+								local data = jsonEncode( { "flareScale", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.occlusionScale_description)
+							im.SameLine()
+							im.Text("Occlusion Scale: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##occlusionScale", environmentVals.occlusionScaleVal, 0.001, 0.01) then
+								if environmentVals.occlusionScaleVal[0] < 0 then
+									environmentVals.occlusionScaleVal = im.FloatPtr(0)
+								elseif environmentVals.occlusionScaleVal[0] > 1 then
+									environmentVals.occlusionScaleVal = im.FloatPtr(1)
+								end
+								local data = jsonEncode( { "occlusionScale", tostring(environmentVals.occlusionScaleVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##OS") then
+								local data = jsonEncode( { "occlusionScale", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.exposure_description)
+							im.SameLine()
+							im.Text("Exposure: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputFloat("##exposure", environmentVals.exposureVal, 0.01, 0.1) then
+								if environmentVals.exposureVal[0] < 0 then
+									environmentVals.exposureVal = im.FloatPtr(0)
+								elseif environmentVals.exposureVal[0] > 3 then
+									environmentVals.exposureVal = im.FloatPtr(3)
+								end
+								local data = jsonEncode( { "exposure", tostring(environmentVals.exposureVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##EX") then
+								local data = jsonEncode( { "exposure", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.shadowDistance_description)
+							im.SameLine()
+							im.Text("Shadow Distance: ")
+							im.SameLine()
+							im.PushItemWidth(120)
+							if im.InputInt("##shadowDistance", environmentVals.shadowDistanceInt, 1) then
+								if environmentVals.shadowDistanceInt[0] < 0 then
+									environmentVals.shadowDistanceInt = im.FloatPtr(0)
+								elseif environmentVals.shadowDistanceInt[0] > 12800 then
+									environmentVals.shadowDistanceInt = im.FloatPtr(12800)
+								end
+								local data = jsonEncode( { "shadowDistance", tostring(environmentVals.shadowDistanceInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SD") then
+								local data = jsonEncode( { "shadowDistance", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.shadowSoftness_description)
+							im.SameLine()
+							im.Text("Shadow Softness: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputFloat("##shadowSoftness", environmentVals.shadowSoftnessVal, 0.001, 0.01) then
+								if environmentVals.shadowSoftnessVal[0] < -10 then
+									environmentVals.shadowSoftnessVal = im.FloatPtr(-10)
+								elseif environmentVals.shadowSoftnessVal[0] > 10 then
+									environmentVals.shadowSoftnessVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "shadowSoftness", tostring(environmentVals.shadowSoftnessVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SSFT") then
+								local data = jsonEncode( { "shadowSoftness", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.shadowSplits_description)
+							im.SameLine()
+							im.Text("Shadow Splits: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputInt("##shadowSplits", environmentVals.shadowSplitsInt, 1) then
+								if environmentVals.shadowSplitsInt[0] < 0 then
+									environmentVals.shadowSplitsInt = im.IntPtr(0)
+								elseif environmentVals.shadowSplitsInt[0] > 4 then
+									environmentVals.shadowSplitsInt = im.IntPtr(4)
+								end
+								local data = jsonEncode( { "shadowSplits", tostring(environmentVals.shadowSplitsInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SSPL") then
+								local data = jsonEncode( { "shadowSplits", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.shadowTexSize_description)
+							im.SameLine()
+							im.Text("Shadow Tex Size: ")
+							im.SameLine()
+							im.PushItemWidth(120)
+							if im.InputInt("##shadowTexSize", environmentVals.shadowTexSizeInt, 1) then
+								if environmentVals.shadowTexSizeInt[0] < 32 then
+									environmentVals.shadowTexSizeInt = im.IntPtr(32)
+								elseif environmentVals.shadowTexSizeInt[0] > 2048 then
+									environmentVals.shadowTexSizeInt = im.IntPtr(2048)
+								elseif environmentVals.shadowTexSizeInt[0] < environment.shadowTexSize then
+									environmentVals.shadowTexSizeInt = im.IntPtr(environment.shadowTexSize / 2)
+								elseif environmentVals.shadowTexSizeInt[0] > environment.shadowTexSize then
+									environmentVals.shadowTexSizeInt = im.IntPtr(environment.shadowTexSize * 2)
+								end
+								local data = jsonEncode( { "shadowTexSize", tostring(environmentVals.shadowTexSizeInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##STS") then
+								local data = jsonEncode( { "shadowTexSize", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.shadowLogWeight_description)
+							im.SameLine()
+							im.Text("Shadow Log Weight: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputFloat("##shadowLogWeight", environmentVals.shadowLogWeightVal, 0.001, 0.01) then
+								if environmentVals.shadowLogWeightVal[0] < 0.001 then
+									environmentVals.shadowLogWeightVal = im.FloatPtr(0.001)
+								elseif environmentVals.shadowLogWeightVal[0] > 0.999 then
+									environmentVals.shadowLogWeightVal = im.FloatPtr(0.999)
+								end
+								local data = jsonEncode( { "shadowLogWeight", tostring(environmentVals.shadowLogWeightVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##SLW") then
+								local data = jsonEncode( { "shadowLogWeight", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.visibleDistance_description)
+							im.SameLine()
+							im.Text("Visibile Distance: ")
+							im.SameLine()
+							im.PushItemWidth(120)
+							if im.InputInt("##visibleDistance", environmentVals.visibleDistanceInt, 1) then
+								if environmentVals.visibleDistanceInt[0] < 1000 then
+									environmentVals.visibleDistanceInt = im.IntPtr(1000)
+								elseif environmentVals.visibleDistanceInt[0] > 32000 then
+									environmentVals.visibleDistanceInt = im.IntPtr(32000)
+								end
+								local data = jsonEncode( { "visibleDistance", tostring(environmentVals.visibleDistanceInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##VD") then
+								local data = jsonEncode( { "visibleDistance", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.moonAzimuth_description)
+							im.SameLine()
+							im.Text("Moon Azimuth: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##moonAzimuth", environmentVals.moonAzimuthVal, 0.1, 1) then
+								if environmentVals.moonAzimuthVal[0] < 0 then
+									environmentVals.moonAzimuthVal = im.FloatPtr(360)
+								elseif environmentVals.moonAzimuthVal[0] > 360 then
+									environmentVals.moonAzimuthVal = im.FloatPtr(0)
+								end
+								local data = jsonEncode( { "moonAzimuth", tostring(environmentVals.moonAzimuthVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##MA") then
+								local data = jsonEncode( { "moonAzimuth", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.moonElevation_description)
+							im.SameLine()
+							im.Text("Moon Elevation: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##moonElevation", environmentVals.moonElevationVal, 0.1, 1) then
+								if environmentVals.moonElevationVal[0] < 0 then
+									environmentVals.moonElevationVal = im.FloatPtr(360)
+								elseif environmentVals.moonElevationVal[0] > 360 then
+									environmentVals.moonElevationVal = im.FloatPtr(0)
+								end
+								local data = jsonEncode( { "moonElevation", tostring(environmentVals.moonElevationVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##ME") then
+								local data = jsonEncode( { "moonElevation", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.moonScale_description)
+							im.SameLine()
+							im.Text("Moon Scale: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##moonScale", environmentVals.moonScaleVal, 0.001, 0.01) then
+								if environmentVals.moonScaleVal[0] < 0.005 then
+									environmentVals.moonScaleVal = im.FloatPtr(0.005)
+								elseif environmentVals.moonScaleVal[0] > 1 then
+									environmentVals.moonScaleVal = im.FloatPtr(1)
+								end
+								local data = jsonEncode( { "moonScale", tostring(environmentVals.moonScaleVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##MS") then
+								local data = jsonEncode( { "moonScale", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.Unindent()
 						end
-					end
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##WET") then
-						local data = jsonEncode( { "allWeather", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-				end
-				im.Separator()
-				if im.TreeNode1("Gravity") then
-					im.SameLine()
-					if im.SmallButton("Reset##GRV") then
-						local data = jsonEncode( { "gravity", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "gravityControl", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Indent()
-					im.Text("Gravity Control: ")
-					if environment.controlGravity then
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
-						if im.SmallButton("Enabled") then
-							local data = jsonEncode( { "controlGravity", false } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
-						end
-						im.PopStyleColor(3)
+						im.TreePop()
 					else
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-						if im.SmallButton("Disabled") then
-							local data = jsonEncode( { "controlGravity", true } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.controlSun_description)
+							im.SameLine()
+							if environment.controlSun then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##S") then
+									local data = jsonEncode( { "controlSun", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##S") then
+									local data = jsonEncode( { "controlSun", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
 						end
-						im.PopStyleColor(3)
 					end
-					im.Text("		")
-					im.SameLine()
-					im.PushItemWidth(130)
-					if im.InputFloat("##gravity", environmentVals.gravityVal, 0.001, 0.1) then
-						if environmentVals.gravityVal[0] < -280 then
-							environmentVals.gravityVal = im.FloatPtr(-280)
-						elseif environmentVals.gravityVal[0] > 10 then
-							environmentVals.gravityVal = im.FloatPtr(10)
-						end
-						local data = jsonEncode( { "gravity", tostring(environmentVals.gravityVal[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
-					if im.SmallButton("Zero") then
-						local data = jsonEncode( { "gravity", 0 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.SameLine()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
-					if im.SmallButton("Earth") then
-						local data = jsonEncode( { "gravity", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.SameLine()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
-					if im.SmallButton("Moon") then
-						local data = jsonEncode( { "gravity", -1.62 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-					if im.SmallButton("Mars") then
-						local data = jsonEncode( { "gravity", -3.71 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.SameLine()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.68, 0.69, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.75, 0.78, 0.05, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.85, 0.84, 0.05, 0.999))
-					if im.SmallButton("Sun") then
-						local data = jsonEncode( { "gravity", -274 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.SameLine()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.50, 0.21, 0.15, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
-					if im.SmallButton("Jupiter") then
-						local data = jsonEncode( { "gravity", -24.92 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					if im.SmallButton("Neptune") then
-						local data = jsonEncode( { "gravity", -11.15 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.50, 0.21, 0.15, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
-					if im.SmallButton("Saturn") then
-						local data = jsonEncode( { "gravity", -10.44 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.SameLine()
-					if im.SmallButton("Uranus") then
-						local data = jsonEncode( { "gravity", -8.87 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.55, 0.50, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.66, 0.64, 0.05, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.74, 0.05, 0.999))
-					if im.SmallButton("Venus") then
-						local data = jsonEncode( { "gravity", -8.87 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.SameLine()
-					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
-					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
-					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
-					if im.SmallButton("Mercury") then
-						local data = jsonEncode( { "gravity", -3.7 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.SameLine()
-					if im.SmallButton("Pluto") then
-						local data = jsonEncode( { "gravity", -0.58 } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopStyleColor(3)
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##GRV") then
-						local data = jsonEncode( { "gravity", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "gravityControl", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
+					im.Separator()
 				end
-				im.Separator()
-				if im.TreeNode1("Temperature") then
-					im.SameLine()
-					if im.SmallButton("Reset##TMP") then
-						local data = jsonEncode( { "useTempCurve", false } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveNoon", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveDusk", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveMidnight", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveDawn", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Indent()
-					im.Text("Temperature Curve Control: ")
-					if environment.useTempCurve then
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
-						if im.SmallButton("Enabled") then
-							local data = jsonEncode( { "useTempCurve", false } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.weather then
+					if im.TreeNode1("Weather") then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.controlWeather_description)
+							if environment.controlWeather then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##W") then
+									local data = jsonEncode( { "controlWeather", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##W") then
+									local data = jsonEncode( { "controlWeather", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
 						end
-						im.PopStyleColor(3)
+						if environment.controlWeather then
+							im.Indent()
+							im.Indent()
+							if im.SmallButton("Reset##WET") then
+								local data = jsonEncode( { "allWeather", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.Unindent()
+							im.ShowHelpMarker(environment.fogDensity_description)
+							im.SameLine()
+							im.Text("Fog Density: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##fogDensity", environmentVals.fogDensityVal, 0.00001, 0.0001) then
+								if environmentVals.fogDensityVal[0] < 0.00001 then
+									environmentVals.fogDensityVal = im.FloatPtr(0.00001)
+								elseif environmentVals.fogDensityVal[0] > 0.2 then
+									environmentVals.fogDensityVal = im.FloatPtr(0.2)
+								end
+								local data = jsonEncode( { "fogDensity", tostring(environmentVals.fogDensityVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##FD") then
+								local data = jsonEncode( { "fogDensity", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.fogDensityOffset_description)
+							im.SameLine()
+							im.Text("Fog Distance: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##fogDensityOffset", environmentVals.fogDensityOffsetVal, 0.001, 0.1) then
+								if environmentVals.fogDensityOffsetVal[0] < 0 then
+									environmentVals.fogDensityOffsetVal = im.FloatPtr(0)
+								elseif environmentVals.fogDensityOffsetVal[0] > 100 then
+									environmentVals.fogDensityOffsetVal = im.FloatPtr(100)
+								end
+								local data = jsonEncode( { "fogDensityOffset", tostring(environmentVals.fogDensityOffsetVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##FDO") then
+								local data = jsonEncode( { "fogDensityOffset", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.fogAtmosphereHeight_description)
+							im.SameLine()
+							im.Text("Fog Height: ")
+							im.SameLine()
+							im.PushItemWidth(110)
+							if im.InputInt("##fogAtmosphereHeight", environmentVals.fogAtmosphereHeightInt, 1) then
+								if environmentVals.fogAtmosphereHeightInt[0] < 0 then
+									environmentVals.fogAtmosphereHeightInt = im.IntPtr(0)
+								elseif environmentVals.fogAtmosphereHeightInt[0] > 10000 then
+									environmentVals.fogAtmosphereHeightInt = im.IntPtr(10000)
+								end
+								local data = jsonEncode( { "fogAtmosphereHeight", tostring(environmentVals.fogAtmosphereHeightInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##FAH") then
+								local data = jsonEncode( { "fogAtmosphereHeight", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudHeight_description)
+							im.SameLine()
+							im.Text("Cloud 1 Height: ")
+							im.SameLine()
+							im.PushItemWidth(120)
+							if im.InputFloat("##cloudHeight", environmentVals.cloudHeightVal, 0.01, 0.1) then
+								if environmentVals.cloudHeightVal[0] < 0 then
+									environmentVals.cloudHeightVal = im.FloatPtr(0)
+								elseif environmentVals.cloudHeightVal[0] > 20 then
+									environmentVals.cloudHeightVal = im.FloatPtr(20)
+								end
+								local data = jsonEncode( { "cloudHeight", tostring(environmentVals.cloudHeightVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CH") then
+								local data = jsonEncode( { "cloudHeight", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudHeightOne_description)
+							im.SameLine()
+							im.Text("Cloud 2 Height: ")
+							im.SameLine()
+							im.PushItemWidth(120)
+							if im.InputFloat("##cloudHeightOne", environmentVals.cloudHeightOneVal, 0.01, 0.1) then
+								if environmentVals.cloudHeightOneVal[0] < 0 then
+									environmentVals.cloudHeightOneVal = im.FloatPtr(0)
+								elseif environmentVals.cloudHeightOneVal[0] > 20 then
+									environmentVals.cloudHeightOneVal = im.FloatPtr(20)
+								end
+								local data = jsonEncode( { "cloudHeightOne", tostring(environmentVals.cloudHeightOneVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CHO") then
+								local data = jsonEncode( { "cloudHeightOne", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudCover_description)
+							im.SameLine()
+							im.Text("Cloud 1 Cover: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##cloudCover", environmentVals.cloudCoverVal, 0.01, 0.1) then
+								if environmentVals.cloudCoverVal[0] < 0 then
+									environmentVals.cloudCoverVal = im.FloatPtr(0)
+								elseif environmentVals.cloudCoverVal[0] > 5 then
+									environmentVals.cloudCoverVal = im.FloatPtr(5)
+								end
+								local data = jsonEncode( { "cloudCover", tostring(environmentVals.cloudCoverVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CC") then
+								local data = jsonEncode( { "cloudCover", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudCoverOne_description)
+							im.SameLine()
+							im.Text("Cloud 2 Cover: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##cloudCoverOne", environmentVals.cloudCoverOneVal, 0.01, 0.1) then
+								if environmentVals.cloudCoverOneVal[0] < 0 then
+									environmentVals.cloudCoverOneVal = im.FloatPtr(0)
+								elseif environmentVals.cloudCoverOneVal[0] > 5 then
+									environmentVals.cloudCoverOneVal = im.FloatPtr(5)
+								end
+								local data = jsonEncode( { "cloudCoverOne", tostring(environmentVals.cloudCoverOneVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CCO") then
+								local data = jsonEncode( { "cloudCoverOne", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudSpeed_description)
+							im.SameLine()
+							im.Text("Cloud 1 Speed: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##cloudSpeed", environmentVals.cloudSpeedVal, 0.01, 0.1) then
+								if environmentVals.cloudSpeedVal[0] < 0 then
+									environmentVals.cloudSpeedVal = im.FloatPtr(0)
+								elseif environmentVals.cloudSpeedVal[0] > 10 then
+									environmentVals.cloudSpeedVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "cloudSpeed", tostring(environmentVals.cloudSpeedVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CS") then
+								local data = jsonEncode( { "cloudSpeed", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudSpeedOne_description)
+							im.SameLine()
+							im.Text("Cloud 2 Speed: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##cloudSpeedOne", environmentVals.cloudSpeedOneVal, 0.01, 0.1) then
+								if environmentVals.cloudSpeedOneVal[0] < 0 then
+									environmentVals.cloudSpeedOneVal = im.FloatPtr(0)
+								elseif environmentVals.cloudSpeedOneVal[0] > 10 then
+									environmentVals.cloudSpeedOneVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "cloudSpeedOne", tostring(environmentVals.cloudSpeedOneVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CSO") then
+								local data = jsonEncode( { "cloudSpeedOne", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudExposure_description)
+							im.SameLine()
+							im.Text("Cloud 1 Exposure: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##cloudExposure", environmentVals.cloudExposureVal, 0.01, 0.1) then
+								if environmentVals.cloudExposureVal[0] < 0 then
+									environmentVals.cloudExposureVal = im.FloatPtr(0)
+								elseif environmentVals.cloudExposureVal[0] > 10 then
+									environmentVals.cloudExposureVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "cloudExposure", tostring(environmentVals.cloudExposureVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CE") then
+								local data = jsonEncode( { "cloudExposure", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.ShowHelpMarker(environment.cloudExposureOne_description)
+							im.SameLine()
+							im.Text("Cloud 2 Exposure: ")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputFloat("##cloudExposureOne", environmentVals.cloudExposureOneVal, 0.01, 0.1) then
+								if environmentVals.cloudExposureOneVal[0] < 0 then
+									environmentVals.cloudExposureOneVal = im.FloatPtr(0)
+								elseif environmentVals.cloudExposureOneVal[0] > 10 then
+									environmentVals.cloudExposureOneVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "cloudExposureOne", tostring(environmentVals.cloudExposureOneVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.SameLine()
+							if im.SmallButton("Reset##CEO") then
+								local data = jsonEncode( { "cloudExposureOne", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							local rainObj = getObject("Precipitation")
+							if rainObj then 
+								im.ShowHelpMarker(environment.rainDrops_description)
+								im.SameLine()
+								im.Text("Rain Drops: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputInt("##rainDrops", environmentVals.rainDropsInt, 1, 10) then
+									if environmentVals.rainDropsInt[0] < 0 then
+										environmentVals.rainDropsInt = im.IntPtr(0)
+									elseif environmentVals.rainDropsInt[0] > 20000 then
+										environmentVals.rainDropsInt = im.IntPtr(20000)
+									end
+									local data = jsonEncode( { "rainDrops", tostring(environmentVals.rainDropsInt[0]) } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopItemWidth()
+								im.SameLine()
+								if im.SmallButton("Reset##RD") then
+									local data = jsonEncode( { "rainDrops", "default" } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.ShowHelpMarker(environment.dropSize_description)
+								im.SameLine()
+								im.Text("Drop Size: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputFloat("##dropSize", environmentVals.dropSizeVal, 0.001, 0.01) then
+									if environmentVals.dropSizeVal[0] < 0 then
+										environmentVals.dropSizeVal = im.FloatPtr(0)
+									elseif environmentVals.dropSizeVal[0] > 2 then
+										environmentVals.dropSizeVal = im.FloatPtr(2)
+									end
+									local data = jsonEncode( { "dropSize", tostring(environmentVals.dropSizeVal[0]) } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopItemWidth()
+								im.SameLine()
+								if im.SmallButton("Reset##DSZ") then
+									local data = jsonEncode( { "dropSize", "default" } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.ShowHelpMarker(environment.dropMinSpeed_description)
+								im.SameLine()
+								im.Text("Drop Min Speed: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputFloat("##dropMinSpeed", environmentVals.dropMinSpeedVal, 0.001, 0.01) then
+									if environmentVals.dropMinSpeedVal[0] < 0 then
+										environmentVals.dropMinSpeedVal = im.FloatPtr(0)
+									elseif environmentVals.dropMinSpeedVal[0] > 2 then
+										environmentVals.dropMinSpeedVal = im.FloatPtr(2)
+									end
+									local data = jsonEncode( { "dropMinSpeed", tostring(environmentVals.dropMinSpeedVal[0]) } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopItemWidth()
+								im.SameLine()
+								if im.SmallButton("Reset##DMNS") then
+									local data = jsonEncode( { "dropMinSpeed", "default" } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.ShowHelpMarker(environment.dropMaxSpeed_description)
+								im.SameLine()
+								im.Text("Drop Max Speed: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputFloat("##dropMaxSpeed", environmentVals.dropMaxSpeedVal, 0.001, 0.01) then
+									if environmentVals.dropMaxSpeedVal[0] < 0 then
+										environmentVals.dropMaxSpeedVal = im.FloatPtr(0)
+									elseif environmentVals.dropMaxSpeedVal[0] > 2 then
+										environmentVals.dropMaxSpeedVal = im.FloatPtr(2)
+									end
+									local data = jsonEncode( { "dropMaxSpeed", tostring(environmentVals.dropMaxSpeedVal[0]) } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopItemWidth()
+								im.SameLine()
+								if im.SmallButton("Reset##DMXS") then
+									local data = jsonEncode( { "dropMaxSpeed", "default" } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.ShowHelpMarker(environment.precipType_description)
+								im.SameLine()
+								im.Text("Precipitation Type: ")
+								im.SameLine()
+								local precipType = environment.precipType
+								if precipType == "rain_medium" then
+									if im.SmallButton("Medium Rain") then
+										local data = jsonEncode( { "precipType", "rain_drop" } )
+										TriggerServerEvent("CEISetEnv", data)
+										log('W', logTag, "CEISetEnv Called: " .. data)
+									end
+								elseif precipType == "rain_drop" then
+									if im.SmallButton("Light Rain") then
+										local data = jsonEncode( { "precipType", "Snow_menu" } )
+										TriggerServerEvent("CEISetEnv", data)
+										log('W', logTag, "CEISetEnv Called: " .. data)
+									end
+								elseif precipType == "Snow_menu" then
+									if im.SmallButton("Snow") then
+										local data = jsonEncode( { "precipType", "rain_medium" } )
+										TriggerServerEvent("CEISetEnv", data)
+										log('W', logTag, "CEISetEnv Called: " .. data)
+									end
+								end
+							end
+							im.Unindent()
+						end
+						im.TreePop()
 					else
-						im.SameLine()
-						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
-						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
-						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-						if im.SmallButton("Disabled") then
-							local data = jsonEncode( { "useTempCurve", true } )
-							TriggerServerEvent("CEISetEnv", data)
-							log('W', logTag, "CEISetEnv Called: " .. data)
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.controlSun_description)
+							if environment.controlWeather then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##W") then
+									local data = jsonEncode( { "controlWeather", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##W") then
+									local data = jsonEncode( { "controlWeather", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
 						end
-						im.PopStyleColor(3)
 					end
-					im.Text("Custom Temperature Curve:")
-					im.SameLine()
-					if im.SmallButton("Reset##TCV") then
-						local data = jsonEncode( { "tempCurveNoon", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveDusk", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveMidnight", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveDawn", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.Text("		")
-					im.SameLine()
-					im.Text("Noon")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##tempCurveNoon", environmentVals.tempCurveNoonInt, 1, 2) then
-						if environmentVals.tempCurveNoonInt[0] < -50 then
-							environmentVals.tempCurveNoonInt = im.IntPtr(-50)
-						elseif environmentVals.tempCurveNoonInt[0] > 50 then
-							environmentVals.tempCurveNoonInt = im.IntPtr(50)
+					im.Separator()
+				end
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.gravity then
+					if im.TreeNode1("Gravity") then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.gravity_description)
+							if environment.controlGravity then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##G") then
+									local data = jsonEncode( { "controlGravity", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##G") then
+									local data = jsonEncode( { "controlGravity", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
 						end
-						local data = jsonEncode( { "tempCurveNoon", tostring(environmentVals.tempCurveNoonInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.Text("		")
-					im.SameLine()
-					im.Text("Dusk")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##tempCurveDusk", environmentVals.tempCurveDuskInt, 1, 2) then
-						if environmentVals.tempCurveDuskInt[0] < -50 then
-							environmentVals.tempCurveDuskInt = im.IntPtr(-50)
-						elseif environmentVals.tempCurveDuskInt[0] > 50 then
-							environmentVals.tempCurveDuskInt = im.IntPtr(50)
+						if environment.controlGravity then
+							im.Indent()
+							im.Indent()
+							if im.SmallButton("Reset##GRV") then
+								local data = jsonEncode( { "gravity", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+									data = jsonEncode( { "gravityControl", "default" } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+							end
+							im.Unindent()
+							im.Text("		")
+							im.SameLine()
+							im.PushItemWidth(130)
+							if im.InputFloat("##gravity", environmentVals.gravityVal, 0.001, 0.1) then
+								if environmentVals.gravityVal[0] < -280 then
+									environmentVals.gravityVal = im.FloatPtr(-280)
+								elseif environmentVals.gravityVal[0] > 10 then
+									environmentVals.gravityVal = im.FloatPtr(10)
+								end
+								local data = jsonEncode( { "gravity", tostring(environmentVals.gravityVal[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
+							if im.SmallButton("Zero") then
+								local data = jsonEncode( { "gravity", 0 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.SameLine()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+							if im.SmallButton("Earth") then
+								local data = jsonEncode( { "gravity", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.SameLine()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
+							if im.SmallButton("Moon") then
+								local data = jsonEncode( { "gravity", -1.62 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+							if im.SmallButton("Mars") then
+								local data = jsonEncode( { "gravity", -3.71 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.SameLine()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.68, 0.69, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.75, 0.78, 0.05, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.85, 0.84, 0.05, 0.999))
+							if im.SmallButton("Sun") then
+								local data = jsonEncode( { "gravity", -274 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.SameLine()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.50, 0.21, 0.15, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
+							if im.SmallButton("Jupiter") then
+								local data = jsonEncode( { "gravity", -24.92 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							if im.SmallButton("Neptune") then
+								local data = jsonEncode( { "gravity", -11.15 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.50, 0.21, 0.15, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
+							if im.SmallButton("Saturn") then
+								local data = jsonEncode( { "gravity", -10.44 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.SameLine()
+							if im.SmallButton("Uranus") then
+								local data = jsonEncode( { "gravity", -8.87 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.55, 0.50, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.66, 0.64, 0.05, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.74, 0.05, 0.999))
+							if im.SmallButton("Venus") then
+								local data = jsonEncode( { "gravity", -8.87 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.SameLine()
+							im.PushStyleColor2(im.Col_Button, im.ImVec4(0.05, 0.05, 0.05, 0.333))
+							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
+							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
+							if im.SmallButton("Mercury") then
+								local data = jsonEncode( { "gravity", -3.7 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.SameLine()
+							if im.SmallButton("Pluto") then
+								local data = jsonEncode( { "gravity", -0.58 } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopStyleColor(3)
+							im.Unindent()
 						end
-						local data = jsonEncode( { "tempCurveDusk", tostring(environmentVals.tempCurveDuskInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.Text("		")
-					im.SameLine()
-					im.Text("Midnight")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##tempCurveMidnight", environmentVals.tempCurveMidnightInt, 1, 2) then
-						if environmentVals.tempCurveMidnightInt[0] < -50 then
-							environmentVals.tempCurveMidnightInt = im.IntPtr(-50)
-						elseif environmentVals.tempCurveMidnightInt[0] > 50 then
-							environmentVals.tempCurveMidnightInt = im.IntPtr(50)
+						im.TreePop()
+					else
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.gravity_description)
+							if environment.controlGravity then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##G") then
+									local data = jsonEncode( { "controlGravity", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##G") then
+									local data = jsonEncode( { "controlGravity", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
 						end
-						local data = jsonEncode( { "tempCurveMidnight", tostring(environmentVals.tempCurveMidnightInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
 					end
-					im.PopItemWidth()
-					im.Text("		")
-					im.SameLine()
-					im.Text("Dawn")
-					im.SameLine()
-					im.PushItemWidth(100)
-					if im.InputInt("##tempCurveDawn", environmentVals.tempCurveDawnInt, 1, 2) then
-						if environmentVals.tempCurveDawnInt[0] < -50 then
-							environmentVals.tempCurveDawnInt = im.IntPtr(-50)
-						elseif environmentVals.tempCurveDawnInt[0] > 50 then
-							environmentVals.tempCurveDawnInt = im.IntPtr(50)
+					im.Separator()
+				end
+				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.temperature then
+					if im.TreeNode1("Temperature") then
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.useTempCurve_description)
+							if environment.useTempCurve then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##T") then
+									local data = jsonEncode( { "useTempCurve", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##T") then
+									local data = jsonEncode( { "useTempCurve", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
 						end
-						local data = jsonEncode( { "tempCurveDawn", tostring(environmentVals.tempCurveDawnInt[0]) } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-					end
-					im.PopItemWidth()
-					im.TreePop()
-					im.Unindent()
-				else
-					im.SameLine()
-					if im.SmallButton("Reset##TMP") then
-						local data = jsonEncode( { "useTempCurve", false } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveNoon", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveDusk", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveMidnight", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
-						data = jsonEncode( { "tempCurveDawn", "default" } )
-						TriggerServerEvent("CEISetEnv", data)
-						log('W', logTag, "CEISetEnv Called: " .. data)
+						if environment.useTempCurve then
+							im.Indent()
+							im.Indent()
+							if im.SmallButton("Reset##TMP") then
+								local data = jsonEncode( { "tempCurveNoon", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "tempCurveDusk", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "tempCurveMidnight", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "tempCurveDawn", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+									data = jsonEncode( { "useTempCurve", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+							end
+							im.Unindent()
+							im.Text("Custom Temperature Curve:")
+							im.SameLine()
+							if im.SmallButton("Reset##TCV") then
+								local data = jsonEncode( { "tempCurveNoon", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "tempCurveDusk", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "tempCurveMidnight", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+								data = jsonEncode( { "tempCurveDawn", "default" } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.Text("		")
+							im.SameLine()
+							im.Text("Midday")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputInt("##tempCurveNoon", environmentVals.tempCurveNoonInt, 1, 2) then
+								if environmentVals.tempCurveNoonInt[0] < -50 then
+									environmentVals.tempCurveNoonInt = im.IntPtr(-50)
+								elseif environmentVals.tempCurveNoonInt[0] > 50 then
+									environmentVals.tempCurveNoonInt = im.IntPtr(50)
+								end
+								local data = jsonEncode( { "tempCurveNoon", tostring(environmentVals.tempCurveNoonInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.Text("		")
+							im.SameLine()
+							im.Text("Dusk")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputInt("##tempCurveDusk", environmentVals.tempCurveDuskInt, 1, 2) then
+								if environmentVals.tempCurveDuskInt[0] < -50 then
+									environmentVals.tempCurveDuskInt = im.IntPtr(-50)
+								elseif environmentVals.tempCurveDuskInt[0] > 50 then
+									environmentVals.tempCurveDuskInt = im.IntPtr(50)
+								end
+								local data = jsonEncode( { "tempCurveDusk", tostring(environmentVals.tempCurveDuskInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.Text("		")
+							im.SameLine()
+							im.Text("Midnight")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputInt("##tempCurveMidnight", environmentVals.tempCurveMidnightInt, 1, 2) then
+								if environmentVals.tempCurveMidnightInt[0] < -50 then
+									environmentVals.tempCurveMidnightInt = im.IntPtr(-50)
+								elseif environmentVals.tempCurveMidnightInt[0] > 50 then
+									environmentVals.tempCurveMidnightInt = im.IntPtr(50)
+								end
+								local data = jsonEncode( { "tempCurveMidnight", tostring(environmentVals.tempCurveMidnightInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.Text("		")
+							im.SameLine()
+							im.Text("Dawn")
+							im.SameLine()
+							im.PushItemWidth(100)
+							if im.InputInt("##tempCurveDawn", environmentVals.tempCurveDawnInt, 1, 2) then
+								if environmentVals.tempCurveDawnInt[0] < -50 then
+									environmentVals.tempCurveDawnInt = im.IntPtr(-50)
+								elseif environmentVals.tempCurveDawnInt[0] > 50 then
+									environmentVals.tempCurveDawnInt = im.IntPtr(50)
+								end
+								local data = jsonEncode( { "tempCurveDawn", tostring(environmentVals.tempCurveDawnInt[0]) } )
+								TriggerServerEvent("CEISetEnv", data)
+								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.Unindent()
+						end
+						im.TreePop()
+					else
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
+							im.SameLine()
+							im.ShowHelpMarker(environment.useTempCurve_description)
+							if environment.useTempCurve then
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
+								if im.SmallButton("Enabled##T") then
+									local data = jsonEncode( { "useTempCurve", false } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.SameLine()
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
+								if im.SmallButton("Disabled##T") then
+									local data = jsonEncode( { "useTempCurve", true } )
+									TriggerServerEvent("CEISetEnv", data)
+									log('W', logTag, "CEISetEnv Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							end
+						end
 					end
 				end
 				im.EndTabItem()
 			end
 		end
 ----------------------------------------------------------------------------------DATABASE TAB
-		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" then
+		if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.database then
 			if im.BeginTabItem("Database") then
 				im.Indent()
-		
 				im.Text("Reason:")
 				im.SameLine()
-				if im.InputTextWithHint("##", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128) then
+				if im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128) then
 				end
 				im.Text("tempBan:")
 				im.SameLine()
@@ -3311,7 +3813,7 @@ local function drawCEI(dt)
 				im.Text("days = " .. string.format("%.2f", (playersDatabaseVals.tempBanLength[0] * 1440)) .. " minutes")
 				im.PopItemWidth()
 				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				for k,v in pairs(playersDatabase) do
+				for k in pairs(playersDatabase) do
 					for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
 						if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
 							if type(k) == "number" then
@@ -3348,64 +3850,66 @@ local function drawCEI(dt)
 												im.SameLine()
 												im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "> BANNED")
 											end
-											if playersDatabase[k].banned then
-												im.Text("				  ")
-												im.SameLine()
-												im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
-												im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
-												im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
-												if im.SmallButton("Unban##" .. playerName) then
-													local data = jsonEncode( { playerName } )
-													TriggerServerEvent("CEIUnban", data)
-													log('W', logTag, "CEIUnban Called: " .. data)
-												end
-												im.PopStyleColor(3)
-											else
-												im.Text("				  ")
-												im.SameLine()
-												im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
-												im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
-												im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
-												if im.SmallButton("Ban##" .. playerName) then
-													local data = jsonEncode( { playerName, ffi.string(playersDatabaseVals.kickBanMuteReason) } )
-													TriggerServerEvent("CEIBan", data)
-													log('W', logTag, "CEIBan Called: " .. data)
-													data = jsonEncode( { playerName, "null", ffi.string(playersDatabaseVals.kickBanMuteReason) } )
-													TriggerServerEvent("CEITempBan", data)
-													log('W', logTag, "CEITempBan Called: " .. data)
-												end
-												im.PopStyleColor(3)
-												if playersDatabase[k].tempBanRemaining then
+											if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+												if playersDatabase[k].banned then
+													im.Text("				  ")
 													im.SameLine()
 													im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
 													im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 													im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
-													if im.SmallButton("UnTempBan##"..tostring(playerName)) then
-														local data = jsonEncode( { playerName, 0, "" } )
-														TriggerServerEvent("CEITempBan", data)
-														log('W', logTag, "CEITempBan Called: " .. data)
+													if im.SmallButton("Unban##" .. playerName) then
+														local data = jsonEncode( { playerName } )
+														TriggerServerEvent("CEIUnban", data)
+														log('W', logTag, "CEIUnban Called: " .. data)
 													end
 													im.PopStyleColor(3)
 												else
+													im.Text("				  ")
 													im.SameLine()
-													im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
-													im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
-													im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
-													if im.SmallButton("TempBan##"..tostring(playerName)) then
-														local data = jsonEncode( { playerName, playersDatabaseVals.tempBanLength[0], ffi.string(playersDatabaseVals.kickBanMuteReason) } )
+													im.PushStyleColor2(im.Col_Button, im.ImVec4(0.80, 0.25, 0.1, 0.333))
+													im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.88, 0.25, 0.11, 0.5))
+													im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.25, 0.2, 0.999))
+													if im.SmallButton("Ban##" .. playerName) then
+														local data = jsonEncode( { playerName, ffi.string(playersDatabaseVals.kickBanMuteReason) } )
+														TriggerServerEvent("CEIBan", data)
+														log('W', logTag, "CEIBan Called: " .. data)
+														data = jsonEncode( { playerName, "null", ffi.string(playersDatabaseVals.kickBanMuteReason) } )
 														TriggerServerEvent("CEITempBan", data)
 														log('W', logTag, "CEITempBan Called: " .. data)
 													end
 													im.PopStyleColor(3)
-												end
-												if playersDatabase[k].tempBanRemaining then
-													im.Text("	")
-													im.SameLine()
-													im.Text("tempBan: " .. tostring(string.format("%.0f",playersDatabase[k].tempBanRemaining)) .. " seconds left")
-													if not playersDatabase[k].banReason then
+													if playersDatabase[k].tempBanRemaining then
+														im.SameLine()
+														im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.15, 0.75, 0.333))
+														im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
+														im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
+														if im.SmallButton("UnTempBan##"..tostring(playerName)) then
+															local data = jsonEncode( { playerName, 0, "" } )
+															TriggerServerEvent("CEITempBan", data)
+															log('W', logTag, "CEITempBan Called: " .. data)
+														end
+														im.PopStyleColor(3)
+													else
+														im.SameLine()
+														im.PushStyleColor2(im.Col_Button, im.ImVec4(0.75, 0.5, 0.1, 0.333))
+														im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.55, 0.11, 0.5))
+														im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.80, 0.6, 0.2, 0.999))
+														if im.SmallButton("TempBan##"..tostring(playerName)) then
+															local data = jsonEncode( { playerName, playersDatabaseVals.tempBanLength[0], ffi.string(playersDatabaseVals.kickBanMuteReason) } )
+															TriggerServerEvent("CEITempBan", data)
+															log('W', logTag, "CEITempBan Called: " .. data)
+														end
+														im.PopStyleColor(3)
+													end
+													if playersDatabase[k].tempBanRemaining then
 														im.Text("	")
 														im.SameLine()
-														im.Text("banReason: No reason specified")
+														im.Text("tempBan: " .. tostring(string.format("%.0f",playersDatabase[k].tempBanRemaining)) .. " seconds left")
+														if not playersDatabase[k].banReason then
+															im.Text("	")
+															im.SameLine()
+															im.Text("banReason: No reason specified")
+														end
 													end
 												end
 											end
@@ -3414,38 +3918,39 @@ local function drawCEI(dt)
 												im.SameLine()
 												im.Text("banReason: " .. playersDatabase[k].banReason)
 											end
-											if playersDatabase[k].permissions then
-												im.Text("				  ")
-												im.SameLine()
-												if playersDatabase[k].permissions.muted == false or playersDatabase[k].permissions.muted == nil then
-													if im.SmallButton("Mute##"..playerName) then
-														local data = jsonEncode( { playerName, ffi.string(playersDatabaseVals.kickBanMuteReason) } )
-														TriggerServerEvent("CEIMute", data)
-														log('W', logTag, "CEIMute Called: " .. data)
-													end
-												else
-													if im.SmallButton("Unmute##"..playerName) then
-														local data = jsonEncode( { playerName } )
-														TriggerServerEvent("CEIUnmute", data)
-														log('W', logTag, "CEIUnmute Called: " .. data)
-													end
-												end
-												if playersDatabase[k].permissions.whitelisted == false or playersDatabase[k].permissions.whitelisted == nil then
+											if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissions then
+												if playersDatabase[k].permissions then
+													im.Text("				  ")
 													im.SameLine()
-													if im.SmallButton("Whitelist##" .. playerName) then
-														local data = jsonEncode( { "add", playerName } )
-														TriggerServerEvent("CEIWhitelist", data)
-														log('W', logTag, "CEIWhitelist Called: " .. data)
+													if playersDatabase[k].permissions.muted == false or playersDatabase[k].permissions.muted == nil then
+														if im.SmallButton("Mute##"..playerName) then
+															local data = jsonEncode( { playerName, ffi.string(playersDatabaseVals.kickBanMuteReason) } )
+															TriggerServerEvent("CEIMute", data)
+															log('W', logTag, "CEIMute Called: " .. data)
+														end
+													else
+														if im.SmallButton("Unmute##"..playerName) then
+															local data = jsonEncode( { playerName } )
+															TriggerServerEvent("CEIUnmute", data)
+															log('W', logTag, "CEIUnmute Called: " .. data)
+														end
 													end
-												else
-													im.SameLine()
-													if im.SmallButton("Unwhitelist##" .. playerName) then
-														local data = jsonEncode( { "remove", playerName } )
-														TriggerServerEvent("CEIWhitelist", data)
-														log('W', logTag, "CEIWhitelist Called: " .. data)
+													if playersDatabase[k].permissions.whitelisted == false or playersDatabase[k].permissions.whitelisted == nil then
+														im.SameLine()
+														if im.SmallButton("Whitelist##" .. playerName) then
+															local data = jsonEncode( { "add", playerName } )
+															TriggerServerEvent("CEIWhitelist", data)
+															log('W', logTag, "CEIWhitelist Called: " .. data)
+														end
+													else
+														im.SameLine()
+														if im.SmallButton("Unwhitelist##" .. playerName) then
+															local data = jsonEncode( { "remove", playerName } )
+															TriggerServerEvent("CEIWhitelist", data)
+															log('W', logTag, "CEIWhitelist Called: " .. data)
+														end
 													end
-												end
-												if im.TreeNode1("permissions##"..playerName) then
+													if im.TreeNode1("permissions##"..playerName) then
 														if playersDatabase[k].permissions.teleport == false or playersDatabase[k].permissions.teleport == nil or playersDatabase[k].permissions.teleport == "nil" then
 															if im.SmallButton("Allow Teleport##"..playerName) then
 																local data = jsonEncode( { playerName, true } )
@@ -3459,77 +3964,141 @@ local function drawCEI(dt)
 																log('W', logTag, "CEISetTeleportPerm Called: " .. data)
 															end
 														end
-													if im.TreeNode1("level:") then
-														im.SameLine()
-														im.Text(tostring(playersDatabase[k].permissions.level))
-														im.Text("		")
-														im.SameLine()
-														im.PushItemWidth(100)
-														if im.InputInt("", playersDatabaseVals[k].permissions.levelInt, 1) then
-															local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
-															TriggerServerEvent("CEISetTempPerm", data)
-															log('W', logTag, "CEISetTempPerm Called: " .. data)
+														if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+															if playersDatabase[k].permissions.resetExempt == false or playersDatabase[k].permissions.resetExempt == nil or playersDatabase[k].permissions.resetExempt == "nil" then
+																if im.SmallButton("Exempt Reset Bypass##"..tostring(k)) then
+																	local data = jsonEncode( { playersDatabase[k].playerName, true } )
+																	TriggerServerEvent("CEISetResetPerm", data)
+																	log('W', logTag, "CEISetResetPerm Called: " .. data)
+																end
+															elseif playersDatabase[k].permissions.resetExempt == true then
+																if im.SmallButton("Revoke Reset Bypass##"..tostring(k)) then
+																	local data = jsonEncode( { playersDatabase[k].playerName, false } )
+																	TriggerServerEvent("CEISetResetPerm", data)
+																	log('W', logTag, "CEISetResetPerm Called: " .. data)
+																end
+															end
 														end
-														im.PopItemWidth()
-														im.SameLine()
-														if im.Button("Apply##level" .. playerName) then
-															local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
-															TriggerServerEvent("CEISetPerm", data)
-															log('W', logTag, "CEISetPerm Called: " .. data)
-														end
-														im.TreePop()
-													else
-														im.SameLine()
-														im.Text(tostring(playersDatabase[k].permissions.level))
-													end
-													im.Text("		whitelisted: " .. tostring(playersDatabase[k].permissions.whitelisted))
-													im.Text("		muted: " .. tostring(playersDatabase[k].permissions.muted))
-													im.Text("		muteReason: " .. tostring(playersDatabase[k].permissions.muteReason))
-													if im.TreeNode1("group:##" .. playerName) then
-														if playersDatabase[k].permissions.group then
+														if im.TreeNode1("UI Level:") then
 															im.SameLine()
-															im.Text(playersDatabase[k].permissions.group)
+															if playersDatabase[k].permissions.UI then
+																im.Text(tostring(playersDatabase[k].permissions.UI))
+																if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
+																	im.Text("		")
+																	im.SameLine()
+																	im.PushItemWidth(100)
+																	if im.InputInt("##UILevel", playersDatabaseVals[k].permissions.UILevelInt, 1) then
+																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																		TriggerServerEvent("CEISetTempUIPerm", data)
+																		log('W', logTag, "CEISetTempUIPerm Called: " .. data)
+																	end
+																	im.PopItemWidth()
+																	im.SameLine()
+																	if im.Button("Apply##UILevelDatabase") then
+																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																		TriggerServerEvent("CEISetUIPerm", data)
+																		log('W', logTag, "CEISetUIPerm Called: " .. data)
+																	end
+																end
+																im.TreePop()
+															else
+																im.Text(tostring(1))
+																if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
+																	im.Text("		")
+																	im.SameLine()
+																	im.PushItemWidth(100)
+																	if im.InputInt("##UILevel", playersDatabaseVals[k].permissions.UILevelInt, 1) then
+																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																		TriggerServerEvent("CEISetTempUIPerm", data)
+																		log('W', logTag, "CEISetTempUIPerm Called: " .. data)
+																	end
+																	im.PopItemWidth()
+																	im.SameLine()
+																	if im.Button("Apply##UILevelDatabase") then
+																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
+																		TriggerServerEvent("CEISetUIPerm", data)
+																		log('W', logTag, "CEISetUIPerm Called: " .. data)
+																	end
+																end
+																im.TreePop()
+															end
 														else
 															im.SameLine()
-															im.Text("none")
+															im.Text(tostring(playersDatabase[k].permissions.UI))
 														end
-														im.Text("		")
-														im.SameLine()
-														if im.InputTextWithHint("##newGroup", "Group Name", playersDatabaseVals[k].permissions.groupInput, 128) then
-														end
-														im.Text("		")
-														im.SameLine()
-														if im.SmallButton("Apply##"..tostring(k)) then
-															local data = jsonEncode( { playersDatabase[k].playerName, "group:" .. ffi.string(playersDatabaseVals[k].permissions.groupInput) } )
-															TriggerServerEvent("CEISetGroup", data)
-															log('W', logTag, "CEISetGroup Called: " .. data)
-														end
-														im.SameLine()
-														im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
-														im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
-														im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-														if im.SmallButton("Remove##"..tostring(k)) then
-															local data = jsonEncode( { playersDatabase[k].playerName, "none" } )
-															TriggerServerEvent("CEISetGroup", data)
-															log('W', logTag, "CEISetGroup Called: " .. data)
-														end
-														im.PopStyleColor(3)
-														im.SameLine()
-														im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
-														im.TreePop()
-													else
-														if playersDatabase[k].permissions.group then
+														
+														if im.TreeNode1("level:") then
 															im.SameLine()
-															im.Text(playersDatabase[k].permissions.group)
+															im.Text(tostring(playersDatabase[k].permissions.level))
+															im.Text("		")
+															im.SameLine()
+															im.PushItemWidth(100)
+															if im.InputInt("##level", playersDatabaseVals[k].permissions.levelInt, 1) then
+																local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
+																TriggerServerEvent("CEISetTempPerm", data)
+																log('W', logTag, "CEISetTempPerm Called: " .. data)
+															end
+															im.PopItemWidth()
+															im.SameLine()
+															if im.Button("Apply##level" .. playerName) then
+																local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
+																TriggerServerEvent("CEISetPerm", data)
+																log('W', logTag, "CEISetPerm Called: " .. data)
+															end
+															im.TreePop()
 														else
 															im.SameLine()
-															im.Text("none")
+															im.Text(tostring(playersDatabase[k].permissions.level))
+														end
+														im.Text("		whitelisted: " .. tostring(playersDatabase[k].permissions.whitelisted))
+														im.Text("		muted: " .. tostring(playersDatabase[k].permissions.muted))
+														im.Text("		muteReason: " .. tostring(playersDatabase[k].permissions.muteReason))
+														if im.TreeNode1("group:##" .. playerName) then
+															if playersDatabase[k].permissions.group then
+																im.SameLine()
+																im.Text(playersDatabase[k].permissions.group)
+															else
+																im.SameLine()
+																im.Text("none")
+															end
+															im.Text("		")
+															im.SameLine()
+															if im.InputTextWithHint("##newGroup", "Group Name", playersDatabaseVals[k].permissions.groupInput, 128) then
+															end
+															im.Text("		")
+															im.SameLine()
+															if im.SmallButton("Apply##"..tostring(k)) then
+																local data = jsonEncode( { playersDatabase[k].playerName, "group:" .. ffi.string(playersDatabaseVals[k].permissions.groupInput) } )
+																TriggerServerEvent("CEISetGroup", data)
+																log('W', logTag, "CEISetGroup Called: " .. data)
+															end
+															im.SameLine()
+															im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
+															im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
+															im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
+															if im.SmallButton("Remove##"..tostring(k)) then
+																local data = jsonEncode( { playersDatabase[k].playerName, "none" } )
+																TriggerServerEvent("CEISetGroup", data)
+																log('W', logTag, "CEISetGroup Called: " .. data)
+															end
+															im.PopStyleColor(3)
+															im.SameLine()
+															im.ShowHelpMarker("Remove group or enter new Group Name and press Apply")
+															im.TreePop()
+														else
+															if playersDatabase[k].permissions.group then
+																im.SameLine()
+																im.Text(playersDatabase[k].permissions.group)
+															else
+																im.SameLine()
+																im.Text("none")
+															end
 														end
 													end
+												
 												end
-											
+												im.Separator()
 											end
-											im.Separator()
 											im.TreePop()
 										else
 											im.SameLine()
@@ -3578,14 +4147,6 @@ local function drawCEI(dt)
 	im.End()
 end
 
-local function showUI()
-	gui.showWindow("CEI")
-end
-
-local function hideUI()
-	gui.hideWindow("CEI")
-end
-
 local function CEIToggleIgnition(data)
 	data = jsonDecode(data)
 	local gameVehicleID = MPVehicleGE.getGameVehicleID(data[1] .. "-" .. data[2])
@@ -3631,7 +4192,7 @@ local function CEIToggleLock(data)
 	end
 end
 
-local function checkVehicleState(gameVehicleID, argument)
+local function checkVehicleState()
 	for k,v in pairs(ignitionEnabled) do
 		if v == false then
 			local veh = be:getObjectByID(k)
@@ -3640,7 +4201,6 @@ local function checkVehicleState(gameVehicleID, argument)
 	end
 	for k,v in pairs(isFrozen) do
 		if v == true then
-			local veh = be:getObjectByID(k)
 			local veh = be:getObjectByID(k)
 			veh:queueLuaCommand('controller.setFreeze(1)')
 		end
@@ -3652,16 +4212,18 @@ local function setPhysicsSpeed(physmult)
 end
 
 local function resetsNotify(vehicleID)
-	if MPVehicleGE.isOwn(vehicleID) then
-		if not config.resets.enabled then
-			guihooks.trigger('toastrMsg', {type="error", title = config.resets.title, msg = config.resets.disabledMessage, config = {timeOut = config.resets.messageDuration * 1000}})
-			return
-		else
-			if #resetsBlockedInputActions > 0 then
-				resetsPlayerNotified = false
-				resetsTimerElapsedReset = 0
-				local message = config.resets.message:gsub("{secondsLeft}", math.floor(config.resets.timeout - resetsTimerElapsedReset))
-				guihooks.trigger('toastrMsg', {type="warning", title = config.resets.title, msg = message, config = {timeOut = config.resets.messageDuration * 1000}})
+	if not resetExempt then
+		if MPVehicleGE.isOwn(vehicleID) then
+			if not config.resets.enabled then
+				guihooks.trigger('toastrMsg', {type="error", title = config.resets.title, msg = config.resets.disabledMessage, config = {timeOut = config.resets.messageDuration * 1000}})
+				return
+			else
+				if #resetsBlockedInputActions > 0 then
+					resetsPlayerNotified = false
+					resetsTimerElapsedReset = 0
+					local message = config.resets.message:gsub("{secondsLeft}", math.floor(config.resets.timeout - resetsTimerElapsedReset))
+					guihooks.trigger('toastrMsg', {type="warning", title = config.resets.title, msg = message, config = {timeOut = config.resets.messageDuration * 1000}})
+				end
 			end
 		end
 	end
@@ -3870,50 +4432,71 @@ local function onFogAtmosphereHeight(value)
 end
 
 local function onCloudHeight(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudHeightByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudHeightByID(cloudObjID, value)
+	end
 end
 
 local function onCloudHeightOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	local cloud = be:getObjectByID(cloudObjIDOne)
-	core_environment.setCloudHeightByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudHeightByID(cloudObjIDOne, value)
+	end
 end
 
 local function onCloudCover(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudCoverByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudCoverByID(cloudObjID, value)
+	end
 end
 
 local function onCloudCoverOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	local cloud = be:getObjectByID(cloudObjIDOne)
-	core_environment.setCloudCoverByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudCoverByID(cloudObjIDOne, value)
+	end
 end
 
 local function onCloudSpeed(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudWindByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudWindByID(cloudObjID, value)
+	end
 end
 
 local function onCloudSpeedOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	local cloud = be:getObjectByID(cloudObjIDOne)
-	core_environment.setCloudWindByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudWindByID(cloudObjIDOne, value)
+	end
 end
 
 local function onCloudExposure(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudExposureByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudExposureByID(cloudObjID, value)
+	end
 end
 
 local function onCloudExposureOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	core_environment.setCloudExposureByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudExposureByID(cloudObjIDOne, value)
+	end
 end
 
 local function onRainDrops(value)
@@ -4145,23 +4728,25 @@ end
 
 local function checkResetState(dt)
 	resetsTimerElapsedReset = resetsTimerElapsedReset + dt
-	if config then
-		if config.resets then
-			if config.resets.control then
-				if not config.resets.enabled then
-					extensions.core_input_actionFilter.setGroup('cei', allResetsBlockedInputActions)
-					extensions.core_input_actionFilter.addAction(0, 'cei', true)
-				else
-					if resetsTimerElapsedReset <= tonumber(config.resets.timeout) then
-						extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
+	if not resetExempt then
+		if config then
+			if config.resets then
+				if config.resets.control then
+					if not config.resets.enabled then
+						extensions.core_input_actionFilter.setGroup('cei', allResetsBlockedInputActions)
 						extensions.core_input_actionFilter.addAction(0, 'cei', true)
 					else
-						if resetsPlayerNotified == true then
+						if resetsTimerElapsedReset <= tonumber(config.resets.timeout) then
 							extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
-							extensions.core_input_actionFilter.addAction(0, 'cei', false)
-						elseif resetsPlayerNotified == false then
-							guihooks.trigger('toastrMsg', {type="info", title = config.resets.title, msg = config.resets.elapsedMessage, config = {timeOut = config.resets.messageDuration * 1000 }})
-							resetsPlayerNotified = true
+							extensions.core_input_actionFilter.addAction(0, 'cei', true)
+						else
+							if resetsPlayerNotified == true then
+								extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
+								extensions.core_input_actionFilter.addAction(0, 'cei', false)
+							elseif resetsPlayerNotified == false then
+								guihooks.trigger('toastrMsg', {type="info", title = config.resets.title, msg = config.resets.elapsedMessage, config = {timeOut = config.resets.messageDuration * 1000 }})
+								resetsPlayerNotified = true
+							end
 						end
 					end
 				end
@@ -4173,7 +4758,9 @@ end
 local function onUpdate(dt)
 	if worldReadyState == 2 then
 		if windowOpen[0] == true then
-			drawCEI(dt)
+			if config.cobalt then
+				drawCEI()
+			end
 		end
 		checkVehicleState()
 		checkResetState(dt)
@@ -4253,8 +4840,6 @@ local function onVehicleSwitched(oldGameVehicleID, newGameVehicleID)
 		end
 	end
 	if newGameVehicleID and newGameVehicleID > -1 then
-		local oldVehicle = be:getObjectByID(oldGameVehicleID or -1)
-		local newVehicle = be:getObjectByID(newGameVehicleID or -1)
 		local newVehObj = MPVehicleGE.getVehicleByGameID(newGameVehicleID) or {}
 		local newServerVehicleID = newVehObj.serverVehicleString
 		if newServerVehicleID then
@@ -4298,7 +4883,7 @@ local function onExtensionLoaded()
 	local currentMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 	local found
 	if currentMpLayout then 
-		for k,v in pairs(currentMpLayout.apps) do
+		for _, v in pairs(currentMpLayout.apps) do
 			if v.appName == "raceCountdown" then
 				found = true
 			end
@@ -4323,9 +4908,11 @@ local function onExtensionLoaded()
 	AddEventHandler("rxPlayersData", rxPlayersData)
 	AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
 	AddEventHandler("rxPlayerGroup", rxPlayerGroup)
+	AddEventHandler("rxPlayersResetExempt", rxPlayersResetExempt)
 	AddEventHandler("rxConfigData", rxConfigData)
 	AddEventHandler("rxInputUpdate", rxInputUpdate)
 	AddEventHandler("rxEnvironment", rxEnvironment)
+	AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
 	AddEventHandler("rxCEIstate", rxCEIstate)
 	AddEventHandler("rxCEItp", rxCEItp)
 	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
