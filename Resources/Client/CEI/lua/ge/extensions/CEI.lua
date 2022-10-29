@@ -501,22 +501,24 @@ local function drawCEI()
 			im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.5, 0.0, 0.333))
 			im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.6, 0.0, 0.5))
 			im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.4, 0.0, 0.999))
-			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.race then
-				if im.SmallButton("Race Countdown!") then
-					for k in pairs(players) do
-						if players[k].includeInRace == true then
-							if players[k].vehicles then
-								for x in pairs(players[k].vehicles) do
-									local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
-									TriggerServerEvent("CEIToggleRaceLock", data)
-									log('W', logTag, "CEIToggleRaceLock Called: " .. data)
+			if config.cobalt then
+				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.race then
+					if im.SmallButton("Race Countdown!") then
+						for k in pairs(players) do
+							if players[k].includeInRace == true then
+								if players[k].vehicles then
+									for x in pairs(players[k].vehicles) do
+										local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
+										TriggerServerEvent("CEIToggleRaceLock", data)
+										log('W', logTag, "CEIToggleRaceLock Called: " .. data)
+									end
 								end
 							end
 						end
+						local data = jsonEncode( { true } )
+						TriggerServerEvent("CEIPreRace", data)
+						log('W', logTag, "CEIPreRace Called: " .. data)
 					end
-					local data = jsonEncode( { true } )
-					TriggerServerEvent("CEIPreRace", data)
-					log('W', logTag, "CEIPreRace Called: " .. data)
 				end
 			end
 			im.PopStyleColor(3)
@@ -545,62 +547,64 @@ local function drawCEI()
 				im.PopStyleColor(3)
 			end
 			im.Separator()
-			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
-				im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
-				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
-				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
-				if im.SmallButton("Remote Stop All") then
-					for k in pairs(players) do
-						for x in pairs(players[k].vehicles) do
-							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
-							TriggerServerEvent("CEIToggleIgnition", data)
-							log('W', logTag, "CEIToggleIgnition Called: " .. data)
+			if config.cobalt then
+				if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
+					if im.SmallButton("Remote Stop All") then
+						for k in pairs(players) do
+							for x in pairs(players[k].vehicles) do
+								local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
+								TriggerServerEvent("CEIToggleIgnition", data)
+								log('W', logTag, "CEIToggleIgnition Called: " .. data)
+							end
 						end
 					end
-				end
-				im.PopStyleColor(3)
-				im.SameLine()
-				im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
-				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
-				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
-				if im.SmallButton("Freeze All") then
-					for k in pairs(players) do
-						for x in pairs(players[k].vehicles) do
-							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
-							TriggerServerEvent("CEIToggleLock", data)
-							log('W', logTag, "CEIToggleLock Called: " .. data)
+					im.PopStyleColor(3)
+					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
+					if im.SmallButton("Freeze All") then
+						for k in pairs(players) do
+							for x in pairs(players[k].vehicles) do
+								local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
+								TriggerServerEvent("CEIToggleLock", data)
+								log('W', logTag, "CEIToggleLock Called: " .. data)
+							end
 						end
 					end
-				end
-				im.PopStyleColor(3)
-				im.PushStyleColor2(im.Col_Button, im.ImVec4(0.1, 1.0, 0.1, 0.333))
-				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
-				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
-				if im.SmallButton("Remote Start All") then
-					for k in pairs(players) do
-						for x in pairs(players[k].vehicles) do
-							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
-							TriggerServerEvent("CEIToggleIgnition", data)
-							log('W', logTag, "CEIToggleIgnition Called: " .. data)
+					im.PopStyleColor(3)
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.1, 1.0, 0.1, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
+					if im.SmallButton("Remote Start All") then
+						for k in pairs(players) do
+							for x in pairs(players[k].vehicles) do
+								local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
+								TriggerServerEvent("CEIToggleIgnition", data)
+								log('W', logTag, "CEIToggleIgnition Called: " .. data)
+							end
 						end
 					end
-				end
-				im.PopStyleColor(3)
-				im.SameLine()
-				im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
-				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
-				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
-				if im.SmallButton("Unfreeze All") then
-					for k in pairs(players) do
-						for x in pairs(players[k].vehicles) do
-							local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
-							TriggerServerEvent("CEIToggleLock", data)
-							log('W', logTag, "CEIToggleLock Called: " .. data)
+					im.PopStyleColor(3)
+					im.SameLine()
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.6, 0.6, 1.0, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.7, 0.7, 1.0, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.5, 0.5, 0.9, 0.999))
+					if im.SmallButton("Unfreeze All") then
+						for k in pairs(players) do
+							for x in pairs(players[k].vehicles) do
+								local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
+								TriggerServerEvent("CEIToggleLock", data)
+								log('W', logTag, "CEIToggleLock Called: " .. data)
+							end
 						end
 					end
+					im.PopStyleColor(3)
+					im.Separator()
 				end
-				im.PopStyleColor(3)
-				im.Separator()
 			end
 ----------------------------------------------------------------------------------PLAYER HEADER
 			for k in pairs(players) do
