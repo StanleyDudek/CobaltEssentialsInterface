@@ -772,7 +772,7 @@ local function drawCEI()
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 								im.Text("		")
 								im.SameLine()
 								im.Text("Reason:")
@@ -791,7 +791,7 @@ local function drawCEI()
 								im.Text(tostring(players[k].vehicles[x].vehicleID) .. ":")
 								im.SameLine()
 								im.Text(players[k].vehicles[x].jbm)
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 									for i,j in pairs(ignitionEnabled) do
 										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
 											if j == true then
@@ -812,7 +812,7 @@ local function drawCEI()
 										end
 									end
 								end
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 									for i,j in pairs(isFrozen) do
 										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
 											if j == false then
@@ -848,7 +848,7 @@ local function drawCEI()
 							im.Separator()
 						end
 					end
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 						if im.TreeNode1("info##"..tostring(k)) then
 							im.Text("		playerID: " .. players[k].playerID)
 							im.Text("		connectStage: " .. players[k].connectStage)
@@ -1071,7 +1071,7 @@ local function drawCEI()
 							end
 							im.SameLine()
 							im.ShowHelpMarker("Teleport to this player's current vehicle.")
-							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+							if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
 								im.SameLine()
 								if im.SmallButton("Teleport From##" .. tostring(k)) then
 									if lastTeleport >= tonumber(environment.teleportTimeout) then
@@ -4432,47 +4432,71 @@ local function onFogAtmosphereHeight(value)
 end
 
 local function onCloudHeight(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudHeightByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudHeightByID(cloudObjID, value)
+	end
 end
 
 local function onCloudHeightOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	core_environment.setCloudHeightByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudHeightByID(cloudObjIDOne, value)
+	end
 end
 
 local function onCloudCover(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudCoverByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudCoverByID(cloudObjID, value)
+	end
 end
 
 local function onCloudCoverOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	core_environment.setCloudCoverByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudCoverByID(cloudObjIDOne, value)
+	end
 end
 
 local function onCloudSpeed(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudWindByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudWindByID(cloudObjID, value)
+	end
 end
 
 local function onCloudSpeedOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	core_environment.setCloudWindByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudWindByID(cloudObjIDOne, value)
+	end
 end
 
 local function onCloudExposure(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	core_environment.setCloudExposureByID(cloudObjID, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		core_environment.setCloudExposureByID(cloudObjID, value)
+	end
 end
 
 local function onCloudExposureOne(value)
-	local cloudObjID = getObject("CloudLayer"):getId()
-	local cloudObjIDOne = cloudObjID + 1
-	core_environment.setCloudExposureByID(cloudObjIDOne, value)
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		core_environment.setCloudExposureByID(cloudObjIDOne, value)
+	end
 end
 
 local function onRainDrops(value)
