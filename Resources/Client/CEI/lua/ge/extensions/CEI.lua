@@ -895,14 +895,14 @@ local function drawCEI()
 										im.Text("		")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("##UILevel", playersVals[k].permissions.UILevelInt, 1) then
+										if im.InputInt("##UILevel"..tostring(k), playersVals[k].permissions.UILevelInt, 1) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
 											TriggerServerEvent("CEISetTempUIPerm", data)
 											log('W', logTag, "CEISetTempUIPerm Called: " .. data)
 										end
 										im.PopItemWidth()
 										im.SameLine()
-										if im.Button("Apply##UILevelPlayer") then
+										if im.Button("Apply##UILevelPlayer"..tostring(k)) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
 											TriggerServerEvent("CEISetUIPerm", data)
 											log('W', logTag, "CEISetUIPerm Called: " .. data)
@@ -920,14 +920,14 @@ local function drawCEI()
 										im.Text("		")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("##levelPlayer", playersVals[k].permissions.levelInt, 1) then
+										if im.InputInt("##levelPlayer"..tostring(k), playersVals[k].permissions.levelInt, 1) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetTempPerm", data)
 											log('W', logTag, "CEISetTempPerm Called: " .. data)
 										end
 										im.PopItemWidth()
 										im.SameLine()
-										if im.Button("Apply##levelPlayer") then
+										if im.Button("Apply##levelPlayer"..tostring(k)) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetPerm", data)
 											log('W', logTag, "CEISetPerm Called: " .. data)
@@ -948,7 +948,7 @@ local function drawCEI()
 									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 										im.Text("		")
 										im.SameLine()
-										if im.InputTextWithHint("##newGroup", "Group Name", playersVals[k].permissions.groupInput, 128) then
+										if im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersVals[k].permissions.groupInput, 128) then
 										end
 										im.Text("		")
 										im.SameLine()
@@ -1130,14 +1130,14 @@ local function drawCEI()
 													im.Text("	")
 													im.SameLine()
 													im.PushItemWidth(100)
-													if im.InputInt("##levelVehicle", configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
+													if im.InputInt("##levelVehicle"..tostring(k), configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
 														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, tostring(configVals.cobalt.permissions.vehiclePerm[k].levelInt[0]) } )
 														TriggerServerEvent("CEISetVehiclePermLevel", data)
 														log('W', logTag, "CEISetVehiclePermLevel Called: " .. data)
 													end
 													im.PopItemWidth()
 													im.SameLine()
-													if im.SmallButton("Remove##vehPerm") then
+													if im.SmallButton("Remove##vehPerm"..tostring(k)) then
 														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name } )
 														TriggerServerEvent("CEIRemoveVehiclePerm", data)
 														log('W', logTag, "CEIRemoveVehiclePerm Called: " .. data)
@@ -1146,11 +1146,11 @@ local function drawCEI()
 													im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
 													im.Text("	Add part: ")
 													im.SameLine()
-													if im.InputTextWithHint("##newPart", "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128) then
+													if im.InputTextWithHint("##newPart"..tostring(k), "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128) then
 													end
 													im.Text("	")
 													im.SameLine()
-													if im.SmallButton("Apply##newVehPart") then
+													if im.SmallButton("Apply##newVehPart"..tostring(k)) then
 														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, ffi.string(configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput) } )
 														TriggerServerEvent("CEISetNewVehiclePart", data)
 														log('W', logTag, "CEISetNewVehiclePart Called: " .. data)
@@ -1166,14 +1166,14 @@ local function drawCEI()
 																im.Text("	")
 																im.SameLine()
 																im.PushItemWidth(100)
-																if im.InputInt("##levelVehiclePart", configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
+																if im.InputInt("##levelVehiclePart"..tostring(k), configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
 																	local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName, tostring(configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt[0]) } )
 																	TriggerServerEvent("CEISetVehiclePartLevel", data)
 																	log('W', logTag, "CEISetVehiclePartLevel Called: " .. data)
 																end
 																im.PopItemWidth()
 																im.SameLine()
-																if im.SmallButton("Remove##vehPart") then
+																if im.SmallButton("Remove##vehPart"..tostring(k)) then
 																	local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName } )
 																	TriggerServerEvent("CEIRemoveVehiclePart", data)
 																	log('W', logTag, "CEIRemoveVehiclePart Called: " .. data)
@@ -1217,7 +1217,7 @@ local function drawCEI()
 										im.Text("		")
 										im.SameLine()
 										im.PushItemWidth(100)
-										if im.InputInt("##levelVehicleCap", configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
+										if im.InputInt("##levelVehicleCap"..tostring(k), configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
 											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
 											TriggerServerEvent("CEISetVehiclePerms", data)
 											log('W', logTag, "CEISetVehiclePerms Called: " .. data)
@@ -1336,7 +1336,7 @@ local function drawCEI()
 											im.Text("		level: ")
 											im.SameLine()
 											im.PushItemWidth(100)
-											if im.InputInt("##levelGroup", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
+											if im.InputInt("##levelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
@@ -1345,7 +1345,7 @@ local function drawCEI()
 											im.Text("		UI: ")
 											im.SameLine()
 											im.PushItemWidth(100)
-											if im.InputInt("##UILevelGroup", configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
+											if im.InputInt("##UILevelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
@@ -1355,7 +1355,7 @@ local function drawCEI()
 											im.Text("		level: ")
 											im.SameLine()
 											im.PushItemWidth(100)
-											if im.InputInt("##levelGroup", configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
+											if im.InputInt("##levelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
@@ -1364,7 +1364,7 @@ local function drawCEI()
 											im.Text("		UI: ")
 											im.SameLine()
 											im.PushItemWidth(100)
-											if im.InputInt("##UILevelGroup", configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
+											if im.InputInt("##UILevelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
 												log('W', logTag, "CEISetGroupPerms Called: " .. data)
@@ -2294,7 +2294,7 @@ local function drawCEI()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
 								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
 								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
-								if im.SmallButton("Enabled") then
+								if im.SmallButton("Enabled##SSC") then
 									local data = jsonEncode( { "controlSimSpeed", false } )
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
@@ -2305,7 +2305,7 @@ local function drawCEI()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.69, 0.15, 0.05, 0.333))
 								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
 								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
-								if im.SmallButton("Disabled") then
+								if im.SmallButton("Disabled##SSC") then
 									local data = jsonEncode( { "controlSimSpeed", true } )
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
@@ -3987,14 +3987,14 @@ local function drawCEI()
 																	im.Text("		")
 																	im.SameLine()
 																	im.PushItemWidth(100)
-																	if im.InputInt("##UILevel", playersDatabaseVals[k].permissions.UILevelInt, 1) then
+																	if im.InputInt("##UILevelDatabase"..tostring(k), playersDatabaseVals[k].permissions.UILevelInt, 1) then
 																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
 																		TriggerServerEvent("CEISetTempUIPerm", data)
 																		log('W', logTag, "CEISetTempUIPerm Called: " .. data)
 																	end
 																	im.PopItemWidth()
 																	im.SameLine()
-																	if im.Button("Apply##UILevelDatabase") then
+																	if im.Button("Apply##UILevelDatabase"..tostring(k)) then
 																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
 																		TriggerServerEvent("CEISetUIPerm", data)
 																		log('W', logTag, "CEISetUIPerm Called: " .. data)
@@ -4007,14 +4007,14 @@ local function drawCEI()
 																	im.Text("		")
 																	im.SameLine()
 																	im.PushItemWidth(100)
-																	if im.InputInt("##UILevel", playersDatabaseVals[k].permissions.UILevelInt, 1) then
+																	if im.InputInt("##UILevelDatabase"..tostring(k), playersDatabaseVals[k].permissions.UILevelInt, 1) then
 																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
 																		TriggerServerEvent("CEISetTempUIPerm", data)
 																		log('W', logTag, "CEISetTempUIPerm Called: " .. data)
 																	end
 																	im.PopItemWidth()
 																	im.SameLine()
-																	if im.Button("Apply##UILevelDatabase") then
+																	if im.Button("Apply##UILevelDatabase"..tostring(k)) then
 																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
 																		TriggerServerEvent("CEISetUIPerm", data)
 																		log('W', logTag, "CEISetUIPerm Called: " .. data)
@@ -4032,14 +4032,14 @@ local function drawCEI()
 															im.Text("		")
 															im.SameLine()
 															im.PushItemWidth(100)
-															if im.InputInt("##levelDBPlayer", playersDatabaseVals[k].permissions.levelInt, 1) then
+															if im.InputInt("##levelDBPlayer"..tostring(k), playersDatabaseVals[k].permissions.levelInt, 1) then
 																local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
 																TriggerServerEvent("CEISetTempPerm", data)
 																log('W', logTag, "CEISetTempPerm Called: " .. data)
 															end
 															im.PopItemWidth()
 															im.SameLine()
-															if im.Button("Apply##levelDBPlayer" .. playerName) then
+															if im.Button("Apply##levelDBPlayer"..tostring(k)) then
 																local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
 																TriggerServerEvent("CEISetPerm", data)
 																log('W', logTag, "CEISetPerm Called: " .. data)
@@ -4062,7 +4062,7 @@ local function drawCEI()
 															end
 															im.Text("		")
 															im.SameLine()
-															if im.InputTextWithHint("##newGroup", "Group Name", playersDatabaseVals[k].permissions.groupInput, 128) then
+															if im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersDatabaseVals[k].permissions.groupInput, 128) then
 															end
 															im.Text("		")
 															im.SameLine()
