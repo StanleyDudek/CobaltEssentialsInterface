@@ -1039,6 +1039,7 @@ function CEIRemoveVehiclePerm(senderID, data)
 		end
 		updateCobaltDatabase("vehicles")
 		vehicles = CobaltDB.new("vehicles")
+		config.cobalt.permissions.vehiclePerm = {}
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
