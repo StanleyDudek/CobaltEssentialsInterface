@@ -745,7 +745,7 @@ local function txPlayersResetExempt()
 	for playerID, player in pairs(players) do
 		if type(playerID) == "number" then
 			if player.connectStage == "connected" then
-				MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { player.permissions.resetExempt } )
+				MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { resetExempt[player.name] } )
 			end
 		end
 	end
@@ -973,6 +973,7 @@ local function txData()
 				txConfigData(player)
 				txPlayersUIPerm(player)
 				txPlayersDatabase(player)
+				txPlayersResetExempt(player)
 			end
 		end
 	end
