@@ -38,8 +38,10 @@ local environment = {}
 local playersValsSet = {}
 local playersVals = {}
 local players = {}
-local playersDatabaseValsSet = false
+local playersDatabaseValsSet = {}
 local playersDatabaseVals = {}
+	  playersDatabaseVals.kickBanMuteReason = im.ArrayChar(128)
+	  playersDatabaseVals.tempBanLength = im.FloatPtr(1)
 local playersDatabase = {}
 local playersDatabaseFiltering = {}
 	  playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
@@ -111,7 +113,9 @@ local function rxInputUpdate(data)
 	elseif data == "players" then
 		playersValsSet = {}
 	elseif data == "playersDatabase" then
-		playersDatabaseValsSet = false
+		for k,v in pairs(playersDatabaseValsSet) do
+			playersDatabaseValsSet[k] = false
+		end
 	end
 end
 
@@ -183,7 +187,6 @@ local function rxConfigData(data)
 		configVals.resets = {}
 		configVals.nametags = {}
 		configVals.nametags.settings = {}
-		
 		configVals.cobalt.interface.playerPermissions = im.IntPtr(tonumber(config.cobalt.interface.playerPermissions))
 		configVals.cobalt.interface.playerPermissionsPlus = im.IntPtr(tonumber(config.cobalt.interface.playerPermissionsPlus))
 		configVals.cobalt.interface.config = im.IntPtr(tonumber(config.cobalt.interface.config))
@@ -201,7 +204,6 @@ local function rxConfigData(data)
 		configVals.cobalt.interface.temperature = im.IntPtr(tonumber(config.cobalt.interface.temperature))
 		configVals.cobalt.interface.database = im.IntPtr(tonumber(config.cobalt.interface.database))
 		configVals.cobalt.interface.race = im.IntPtr(tonumber(config.cobalt.interface.race))
-		
 		configVals.resets.messageDuration = im.IntPtr(tonumber(config.resets.messageDuration))
 		configVals.resets.timeout = im.IntPtr(tonumber(config.resets.timeout))
 		configVals.resets.title = im.ArrayChar(128)
@@ -276,9 +278,10 @@ local function rxPlayersUIPerm(data)
 end
 
 local function rxPlayersDatabase(data)
-	playersDatabase = jsonDecode(data)
-	if playersDatabaseValsSet == false then
-		for k in pairs(playersDatabase) do
+	local tempPlayersDatabase = jsonDecode(data)
+	playersDatabase[tempPlayersDatabase.index] = tempPlayersDatabase
+	for k in pairs(playersDatabase) do
+		if not playersDatabaseValsSet[k] then
 			playersDatabaseVals[k] = {}
 			playersDatabaseVals[k].permissions = {}
 			if playersDatabase[k].permissions then
@@ -292,12 +295,10 @@ local function rxPlayersDatabase(data)
 				else
 					playersDatabaseVals[k].permissions.UILevelInt = im.IntPtr(1)
 				end
+				playersDatabaseVals[k].permissions.groupInput = im.ArrayChar(128)
 			end
-			playersDatabaseVals[k].permissions.groupInput = im.ArrayChar(128)
+			playersDatabaseValsSet[k] = true
 		end
-		playersDatabaseVals.kickBanMuteReason = im.ArrayChar(128)
-		playersDatabaseVals.tempBanLength = im.FloatPtr(1)
-		playersDatabaseValsSet = true
 	end
 	local tempFilterTable = {}
 	for k in pairs(playersDatabase) do
