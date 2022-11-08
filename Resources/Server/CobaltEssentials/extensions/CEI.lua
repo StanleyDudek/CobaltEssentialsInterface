@@ -2,13 +2,15 @@
 
 local M = {}
 
-M.COBALT_VERSION = "1.6.0"
+M.COBALT_VERSION = "1.7.2"
 
 utils.setLogType("CEI",93)
 
 local tomlParser = require("toml")
 
 local loadedDatabases = {}
+
+local playersDatabase
 
 local raceCountdown
 local raceCountdownStarted
@@ -713,7 +715,6 @@ local function onInit()
 	environment.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
 	environment.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
 	
-	local playersDatabase
 	if FS.Exists("Resources/Server/CobaltEssentials/CobaltDB/playersDB") then
 		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
 	else
@@ -776,6 +777,7 @@ local function txPlayersDatabase(player)
 	for k,v in pairs(playersDatabase) do
 		local playerName = string.gsub(v, ".json", "")
 		playersDatabase[k] = {}
+		playersDatabase[k].index = k
 		local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
 		playersDatabase[k].permissions = {}
 		for a in pairs(playerPermissions) do
@@ -804,8 +806,9 @@ local function txPlayersDatabase(player)
 				playersDatabase[k].tempBanRemaining = nil
 			end
 		end
+		MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
 	end
-	MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase)
+	--MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase)
 end
 
 local function txEnvironment(player)
@@ -2143,13 +2146,6 @@ local function onPlayerJoining(player)
 end
 
 local function onPlayerJoin(player)
-	if player.permissions.group == "default" then
-		players.database[player.name].group = "default"
-		CobaltDB.set("playersDB/" .. player.name, "group", "value", "default")
-	else
-		players.database[player.name].group = player.permissions.group
-		CobaltDB.set("playersDB/" .. player.name, "group", "value", player.permissions.group)
-	end
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
 		showCEI[player.name] = config.cobalt.interface.defaultState
@@ -2175,6 +2171,7 @@ local function onPlayerJoin(player)
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
+	playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
