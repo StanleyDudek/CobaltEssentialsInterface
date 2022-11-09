@@ -11,6 +11,7 @@ local tomlParser = require("toml")
 local loadedDatabases = {}
 
 local playersDatabase
+local playersDatabaseCount = 0
 
 local raceCountdown
 local raceCountdownStarted
@@ -225,6 +226,56 @@ environment.tempCurveDusk_description = "What is the custom temperature in C at 
 environment.tempCurveMidnight_description = "What is the custom temperature in C at midnight?"
 environment.tempCurveDawn_description = "What is the custom temperature in C at dawn?"
 environment.useTempCurve_description = "Do we use a custom temperature curve?"
+environment.controlSun = ""
+environment.ToD = ""
+environment.timePlay = ""
+environment.dayLength = ""
+environment.dayScale = ""
+environment.nightScale = ""
+environment.sunAzimuthOverride = ""
+environment.skyBrightness = ""
+environment.sunSize = ""
+environment.rayleighScattering = ""
+environment.sunLightBrightness = ""
+environment.flareScale = ""
+environment.occlusionScale = ""
+environment.exposure = ""
+environment.shadowDistance = ""
+environment.shadowSoftness = ""
+environment.shadowSplits = ""
+environment.shadowTexSize = ""
+environment.shadowLogWeight = ""
+environment.visibleDistance = ""
+environment.moonAzimuth = ""
+environment.moonElevation = ""
+environment.moonScale = ""
+environment.controlWeather = ""
+environment.fogDensity = ""
+environment.fogDensityOffset = ""
+environment.fogAtmosphereHeight = ""
+environment.cloudHeight = ""
+environment.cloudHeightOne = ""
+environment.cloudCover = ""
+environment.cloudCoverOne = ""
+environment.cloudSpeed = ""
+environment.cloudSpeedOne = ""
+environment.cloudExposure = ""
+environment.cloudExposureOne = ""
+environment.rainDrops = ""
+environment.dropSize = ""
+environment.dropMinSpeed = ""
+environment.dropMaxSpeed = ""
+environment.precipType = ""
+environment.teleportTimeout = ""
+environment.simSpeed = ""
+environment.controlSimSpeed = ""
+environment.gravity = ""
+environment.controlGravity = ""
+environment.tempCurveNoon = ""
+environment.tempCurveDusk = ""
+environment.tempCurveMidnight = ""
+environment.tempCurveDawn = ""
+environment.useTempCurve = ""
 
 local environmentJson = CobaltDB.new("environment")
 local defaultEnvironment = {
@@ -531,6 +582,9 @@ local function onInit()
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
+	MP.RegisterEvent("txPlayersDatabase","txPlayersDatabase")
+	MP.CreateEventTimer("txPlayersDatabase", 2000)
+	
 	config.server.name = utils.readCfg("ServerConfig.toml").General.Name
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
 		config.server.debug = false
@@ -722,43 +776,52 @@ local function txPlayersUIPerm()
 	end
 end
 
-local function txPlayersDatabase(player)
-	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
-	for k,v in pairs(playersDatabase) do
-		local playerName = string.gsub(v, ".json", "")
-		playersDatabase[k] = {}
-		playersDatabase[k].index = k
-		local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
-		playersDatabase[k].permissions = {}
-		for a in pairs(playerPermissions) do
-			playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
-		end
-		if players.database[k].group then
-			playersDatabase[k].permissions.group = players.database[k].group
-		elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
-			playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
-		end
-		playersDatabase[k].playerName = playerName
-		playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
-		playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
-		if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
-			playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
-		end
-		playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
-		if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
-			playersDatabase[k].banReason = players.database[playerName].banReason
-		else
-			CobaltDB.query("playersDB/" .. playerName, "banReason", "value", "No reason specified")
-		end
-		if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
-			playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
-			if playersDatabase[k].tempBanRemaining < 0 then
-				playersDatabase[k].tempBanRemaining = nil
+function txPlayersDatabase()
+	for playerID, player in pairs(players) do
+		if player.connectStage == "connected" then
+			if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
+				local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+				if #playersDatabase ~= playersDatabaseCount then
+					playersDatabaseCount = #playersDatabase
+				else
+					for k,v in pairs(playersDatabase) do
+						local playerName = string.gsub(v, ".json", "")
+						playersDatabase[k] = {}
+						playersDatabase[k].index = k
+						local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+						playersDatabase[k].permissions = {}
+						for a in pairs(playerPermissions) do
+							playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
+						end
+						if players.database[k].group then
+							playersDatabase[k].permissions.group = players.database[k].group
+						elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+							playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+						end
+						playersDatabase[k].playerName = playerName
+						playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+						playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
+						if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+							playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
+						end
+						playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+						if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+							playersDatabase[k].banReason = players.database[playerName].banReason
+						else
+							CobaltDB.query("playersDB/" .. playerName, "banReason", "value", "No reason specified")
+						end
+						if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+							playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+							if playersDatabase[k].tempBanRemaining < 0 then
+								playersDatabase[k].tempBanRemaining = nil
+							end
+						end
+						MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
+					end
+				end
 			end
 		end
-		MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
 	end
-	--MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase)
 end
 
 local function txEnvironment(player)
@@ -925,7 +988,6 @@ local function txData()
 				txNametagBlockerActive(player)
 				txConfigData(player)
 				txPlayersUIPerm(player)
-				txPlayersDatabase(player)
 				txPlayersResetExempt(player)
 			end
 		end
@@ -2028,17 +2090,9 @@ function raceStart()
 	end
 end
 
-local function sendDelayedMessage(player_id, message)
-	local connected
-	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
-			if player.connectStage == "connected" then
-				connected = true
-			end
-		end
-	end
-	if connected then
-		MP.SendChatMessage(player_id, message)
+local function sendDelayedMessage(player, message)
+	if player.connectStage == "connected" then
+		MP.SendChatMessage(player.playerID, message)
 	end
 end
 
@@ -2116,8 +2170,8 @@ local function onPlayerJoin(player)
 	end
 	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
-	CE.delayExec( 3000 , sendDelayedMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
-	CE.delayExec( 6000 , sendDelayedMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
+	CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
+	CE.delayExec( 6000 , sendDelayedMessage , { player , "Use /CEI or /cei in chat to toggle." } )
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
