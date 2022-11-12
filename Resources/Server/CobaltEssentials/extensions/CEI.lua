@@ -785,8 +785,6 @@ function txPlayersDatabase()
 				for k,v in pairs(playersDatabase) do
 					playersDatabaseCompare = playersDatabaseCompare + 1
 				end
-				print(playersDatabaseCompare)
-				print(playersDatabaseCount[player.name])
 				if playersDatabaseCompare == playersDatabaseCount[player.name] then
 					for k,v in pairs(playersDatabase) do
 						local playerName = string.gsub(v, ".json", "")
