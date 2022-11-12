@@ -11,7 +11,7 @@ local tomlParser = require("toml")
 local loadedDatabases = {}
 
 local playersDatabase
-local playersDatabaseCount = 0
+local playersDatabaseCount = {}
 
 local raceCountdown
 local raceCountdownStarted
@@ -781,9 +781,13 @@ function txPlayersDatabase()
 		if player.connectStage == "connected" then
 			if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
 				local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
-				if #playersDatabase ~= playersDatabaseCount then
-					playersDatabaseCount = #playersDatabase
-				else
+				local playersDatabaseCompare = 0
+				for k,v in pairs(playersDatabase) do
+					playersDatabaseCompare = playersDatabaseCompare + 1
+				end
+				print(playersDatabaseCompare)
+				print(playersDatabaseCount[player.name])
+				if playersDatabaseCompare == playersDatabaseCount[player.name] then
 					for k,v in pairs(playersDatabase) do
 						local playerName = string.gsub(v, ".json", "")
 						playersDatabase[k] = {}
@@ -818,6 +822,8 @@ function txPlayersDatabase()
 						end
 						MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
 					end
+				else
+					playersDatabaseCount[player.name] = playersDatabaseCompare
 				end
 			end
 		end
@@ -2176,6 +2182,9 @@ local function onPlayerJoin(player)
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 	end
 	playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
+		playersDatabaseCount[player.name] = 0
+	end
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
