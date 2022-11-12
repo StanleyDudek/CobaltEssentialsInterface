@@ -785,7 +785,7 @@ function txPlayersDatabase()
 				for k,v in pairs(playersDatabase) do
 					playersDatabaseCompare = playersDatabaseCompare + 1
 				end
-				if playersDatabaseCompare == playersDatabaseCount[player.name] then
+				if playersDatabaseCompare ~= playersDatabaseCount[player.name] then
 					for k,v in pairs(playersDatabase) do
 						local playerName = string.gsub(v, ".json", "")
 						playersDatabase[k] = {}
@@ -820,7 +820,6 @@ function txPlayersDatabase()
 						end
 						MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
 					end
-				else
 					playersDatabaseCount[player.name] = playersDatabaseCompare
 				end
 			end
