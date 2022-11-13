@@ -2,13 +2,16 @@
 
 local M = {}
 
-M.COBALT_VERSION = "1.6.0"
+M.COBALT_VERSION = "1.7.2"
 
 utils.setLogType("CEI",93)
 
 local tomlParser = require("toml")
 
 local loadedDatabases = {}
+
+local playersDatabase
+local playersDatabaseCount = {}
 
 local raceCountdown
 local raceCountdownStarted
@@ -579,6 +582,9 @@ local function onInit()
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
+	MP.RegisterEvent("txPlayersDatabase","txPlayersDatabase")
+	MP.CreateEventTimer("txPlayersDatabase", 2000)
+	
 	config.server.name = utils.readCfg("ServerConfig.toml").General.Name
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
 		config.server.debug = false
@@ -713,7 +719,6 @@ local function onInit()
 	environment.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
 	environment.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
 	
-	local playersDatabase
 	if FS.Exists("Resources/Server/CobaltEssentials/CobaltDB/playersDB") then
 		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
 	else
@@ -771,41 +776,55 @@ local function txPlayersUIPerm()
 	end
 end
 
-local function txPlayersDatabase(player)
-	local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
-	for k,v in pairs(playersDatabase) do
-		local playerName = string.gsub(v, ".json", "")
-		playersDatabase[k] = {}
-		local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
-		playersDatabase[k].permissions = {}
-		for a in pairs(playerPermissions) do
-			playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
-		end
-		if players.database[k].group then
-			playersDatabase[k].permissions.group = players.database[k].group
-		elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
-			playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
-		end
-		playersDatabase[k].playerName = playerName
-		playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
-		playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
-		if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
-			playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
-		end
-		playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
-		if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
-			playersDatabase[k].banReason = players.database[playerName].banReason
-		else
-			CobaltDB.query("playersDB/" .. playerName, "banReason", "value", "No reason specified")
-		end
-		if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
-			playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
-			if playersDatabase[k].tempBanRemaining < 0 then
-				playersDatabase[k].tempBanRemaining = nil
+function txPlayersDatabase()
+	for playerID, player in pairs(players) do
+		if player.connectStage == "connected" then
+			if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
+				local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+				local playersDatabaseCompare = 0
+				for k,v in pairs(playersDatabase) do
+					playersDatabaseCompare = playersDatabaseCompare + 1
+				end
+				if playersDatabaseCompare ~= playersDatabaseCount[player.name] then
+					for k,v in pairs(playersDatabase) do
+						local playerName = string.gsub(v, ".json", "")
+						playersDatabase[k] = {}
+						playersDatabase[k].index = k
+						local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+						playersDatabase[k].permissions = {}
+						for a in pairs(playerPermissions) do
+							playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
+						end
+						if players.database[k].group then
+							playersDatabase[k].permissions.group = players.database[k].group
+						elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+							playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+						end
+						playersDatabase[k].playerName = playerName
+						playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+						playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
+						if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+							playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
+						end
+						playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+						if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+							playersDatabase[k].banReason = players.database[playerName].banReason
+						else
+							CobaltDB.query("playersDB/" .. playerName, "banReason", "value", "No reason specified")
+						end
+						if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+							playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+							if playersDatabase[k].tempBanRemaining < 0 then
+								playersDatabase[k].tempBanRemaining = nil
+							end
+						end
+						MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
+					end
+					playersDatabaseCount[player.name] = playersDatabaseCompare
+				end
 			end
 		end
 	end
-	MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase)
 end
 
 local function txEnvironment(player)
@@ -972,7 +991,6 @@ local function txData()
 				txNametagBlockerActive(player)
 				txConfigData(player)
 				txPlayersUIPerm(player)
-				txPlayersDatabase(player)
 				txPlayersResetExempt(player)
 			end
 		end
@@ -2075,17 +2093,9 @@ function raceStart()
 	end
 end
 
-local function sendDelayedMessage(player_id, message)
-	local connected
-	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
-			if player.connectStage == "connected" then
-				connected = true
-			end
-		end
-	end
-	if connected then
-		MP.SendChatMessage(player_id, message)
+local function sendDelayedMessage(player, message)
+	if player.connectStage == "connected" then
+		MP.SendChatMessage(player.playerID, message)
 	end
 end
 
@@ -2143,13 +2153,6 @@ local function onPlayerJoining(player)
 end
 
 local function onPlayerJoin(player)
-	if player.permissions.group == "default" then
-		players.database[player.name].group = "default"
-		CobaltDB.set("playersDB/" .. player.name, "group", "value", "default")
-	else
-		players.database[player.name].group = player.permissions.group
-		CobaltDB.set("playersDB/" .. player.name, "group", "value", player.permissions.group)
-	end
 	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
 		showCEI[player.name] = config.cobalt.interface.defaultState
@@ -2170,10 +2173,14 @@ local function onPlayerJoin(player)
 	end
 	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
-	CE.delayExec( 3000 , sendDelayedMessage , { player.playerID , "This server uses Cobalt Essentials Interface." } )
-	CE.delayExec( 6000 , sendDelayedMessage , { player.playerID , "Use /CEI or /cei in chat to toggle." } )
+	CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
+	CE.delayExec( 6000 , sendDelayedMessage , { player , "Use /CEI or /cei in chat to toggle." } )
 	for k,v in pairs(player.permissions) do
 		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
+	end
+	playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
+		playersDatabaseCount[player.name] = 0
 	end
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
