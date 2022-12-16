@@ -345,6 +345,7 @@ local defaultRestrictions = {
 
 local vehiclesJson = CobaltDB.new("vehicles")
 local defaultVehicles = {
+	atv = { level = 1 },
 	autobello = { level = 1 },
 	ball = { level = 1 },
 	barrels = { level = 1 },
@@ -371,6 +372,7 @@ local defaultVehicles = {
 	covet = { level = 1 },
 	delineator = { level = 1 },
 	default = { level = 1 },
+	drag_tree = { level = 1 },
 	dryvan = { level = 1 },
 	etk800 = { level = 1 },
 	etkc = { level = 1 },
@@ -399,14 +401,17 @@ local defaultVehicles = {
 	metal_box = { level = 1 },
 	metal_ramp = { level = 1 },
 	midsize = { level = 1 },
+	midtruck = { level = 1 },
 	miramar = { level = 1 },
 	moonhawk = { level = 1 },
 	pessima = { level = 1 },
 	piano = { level = 1 },
 	pickup = { level = 1 },
 	pigeon = { level = 1 },
+	racetruck = { level = 1 },
 	roadsigns = { level = 1 },
 	roamer = { level = 1 },
+	rockbouncer = { level = 1 },
 	rocks = { level = 1 },
 	rollover = { level = 1 },
 	sawhorse = { level = 1 },
@@ -735,7 +740,6 @@ local function onInit()
 end
 
 local function CEI(player)
-	--CElog("CEI Called by: " .. player.name, "CEI")
 	if showCEI[player.name] == false then
 		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", true)
 		showCEI[player.name] = true
@@ -748,35 +752,29 @@ end
 
 local function txPlayersResetExempt()
 	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
-			if player.connectStage == "connected" then
-				MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { resetExempt[player.name] } )
-			end
+		if player.connectStage == "connected" then
+			MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { resetExempt[player.name] } )
 		end
 	end
 end
 
 local function txPlayersGroup()
 	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
-			if player.connectStage == "connected" then
-				MP.TriggerClientEvent(player.playerID, "rxPlayerGroup", player.permissions.group)
-			end
+		if player.connectStage == "connected" then
+			MP.TriggerClientEvent(player.playerID, "rxPlayerGroup", player.permissions.group)
 		end
 	end
 end
 
 local function txPlayersUIPerm()
 	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
-			if player.connectStage == "connected" then
-				MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
-			end
+		if player.connectStage == "connected" then
+			MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
 		end
 	end
 end
 
-function txPlayersDatabase()
+function txPlayersDatabase(now)
 	for playerID, player in pairs(players) do
 		if player.connectStage == "connected" then
 			if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
@@ -785,7 +783,7 @@ function txPlayersDatabase()
 				for k,v in pairs(playersDatabase) do
 					playersDatabaseCompare = playersDatabaseCompare + 1
 				end
-				if playersDatabaseCompare ~= playersDatabaseCount[player.name] then
+				if playersDatabaseCompare ~= playersDatabaseCount[player.name] or now then
 					for k,v in pairs(playersDatabase) do
 						local playerName = string.gsub(v, ".json", "")
 						playersDatabase[k] = {}
@@ -833,7 +831,7 @@ end
 
 local function txPlayersData(player)
 	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
+		if player.connectStage and player.connectStage ~= 0 then
 			local connectedTime
 			connectedTime = ageTimer:GetCurrent()*1000 - player.joinTime
 			connectedTime = connectedTime / 1000
@@ -863,13 +861,20 @@ local function txPlayersData(player)
 						},
 					teleport = teleport[player.name],
 					resetExempt = resetExempt[player.name],
-					tempBanLength = tempPlayers[player.name].tempBanLength,
-					tempPermLevel = tempPlayers[player.name].tempPermLevel,
-					tempUIPermLevel = tempPlayers[player.name].tempUIPermLevel,
-					includeInRace = tempPlayers[player.name].includeInRace,
 					currentVehicle = tempPCV[player.name],
 					vehicles = (player.vehicles or {})
 					}
+			if tempPlayers[player.name] then
+				playersTable[player.playerID].tempBanLength = tempPlayers[player.name].tempBanLength
+				playersTable[player.playerID].tempPermLevel = tempPlayers[player.name].tempPermLevel
+				playersTable[player.playerID].tempUIPermLevel = tempPlayers[player.name].tempUIPermLevel
+				playersTable[player.playerID].includeInRace = tempPlayers[player.name].includeInRace
+			else
+				playersTable[player.playerID].tempBanLength = 0
+				playersTable[player.playerID].tempPermLevel = 1
+				playersTable[player.playerID].tempUIPermLevel = 1
+				playersTable[player.playerID].includeInRace = false
+			end
 			for k in pairs(playersTable[player.playerID].vehicles) do
 				playersTable[player.playerID].vehicles[k].vehicleID = k
 				playersTable[player.playerID].vehicles[k].rot = nil
@@ -886,68 +891,72 @@ local function txPlayersData(player)
 end
 
 local function txConfigData(player)
-	config.cobalt.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
-	config.cobalt.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
-	local playerGroupsLength = 0
-	local whitelistLength = 0
-	local groupPlayerLength = 0
-	for k in pairs(players.database) do
-		if string.find(k, "group") then
-			playerGroupsLength = playerGroupsLength + 1
-			config.cobalt.groups[playerGroupsLength] = {}
-			config.cobalt.groups[playerGroupsLength].groupName = k
-			config.cobalt.groups[playerGroupsLength].groupPerms = CobaltDB.getTable("playerPermissions",k)
-			config.cobalt.groups[playerGroupsLength].groupPlayers = {}
-			for w,z in pairs(players.database) do
-				for a,b in pairs(z) do
-					if a == "group" then
-						if "group:"..b == k then
-							groupPlayerLength = groupPlayerLength + 1
-							config.cobalt.groups[playerGroupsLength].groupPlayers[groupPlayerLength] = w
+	if player.connectStage == "connected" then
+		if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.group == "mod" or player.permissions.UI >= config.cobalt.interface.config then
+			config.cobalt.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
+			config.cobalt.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
+			local playerGroupsLength = 0
+			local whitelistLength = 0
+			local groupPlayerLength = 0
+			for k,v in pairs(players.database) do
+				if string.find(k, "group") then
+					playerGroupsLength = playerGroupsLength + 1
+					config.cobalt.groups[playerGroupsLength] = {}
+					config.cobalt.groups[playerGroupsLength].groupName = k
+					config.cobalt.groups[playerGroupsLength].groupPerms = CobaltDB.getTable("playerPermissions",k)
+					config.cobalt.groups[playerGroupsLength].groupPlayers = {}
+					for w,z in pairs(players.database) do
+						for a,b in pairs(z) do
+							if a == "group" then
+								if "group:"..b == k then
+									groupPlayerLength = groupPlayerLength + 1
+									config.cobalt.groups[playerGroupsLength].groupPlayers[groupPlayerLength] = w
+								end
+							end
 						end
+					end
+				else
+					if players.database[k].whitelisted then
+						whitelistLength = whitelistLength + 1
+						config.cobalt.whitelistedPlayers[whitelistLength] = k
 					end
 				end
 			end
-		else
-			if players.database[k].whitelisted then
-				whitelistLength = whitelistLength + 1
-				config.cobalt.whitelistedPlayers[whitelistLength] = k
+			local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
+			local vehicleCapsLength = 0
+			config.cobalt.permissions.vehicleCap = {}
+			for k in pairs(vehicleCaps) do
+				if string.find(k, "%d+") then
+					vehicleCapsLength = vehicleCapsLength + 1
+					config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
+					config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
+					config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
+				end
 			end
+			local vehiclePerms = CobaltDB.getTables("vehicles")
+			local vehiclePermsLength = 0
+			local vehiclePermsPartLevelsLength = 0
+			for _, v in pairsByKeys(vehiclePerms) do
+				vehiclePermsLength = vehiclePermsLength + 1
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength] = {}
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].name = v
+				local vehiclePerm = CobaltDB.getTable("vehicles",v)
+				for i,j in pairsByKeys(vehiclePerm) do
+					if i == "level" then
+						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].level = j
+					end
+					if string.find(i,"partlevel") then
+						vehiclePermsPartLevelsLength = vehiclePermsPartLevelsLength + 1
+						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
+						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
+						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
+					end
+				end
+			end
+			MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
 		end
 	end
-	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
-	local vehicleCapsLength = 0
-	config.cobalt.permissions.vehicleCap = {}
-	for k in pairs(vehicleCaps) do
-		if string.find(k, "%d+") then
-			vehicleCapsLength = vehicleCapsLength + 1
-			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
-			config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
-			config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
-		end
-	end
-	local vehiclePerms = CobaltDB.getTables("vehicles")
-	local vehiclePermsLength = 0
-	local vehiclePermsPartLevelsLength = 0
-	for _, v in pairsByKeys(vehiclePerms) do
-		vehiclePermsLength = vehiclePermsLength + 1
-		config.cobalt.permissions.vehiclePerm[vehiclePermsLength] = {}
-		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
-		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].name = v
-		local vehiclePerm = CobaltDB.getTable("vehicles",v)
-		for i,j in pairsByKeys(vehiclePerm) do
-			if i == "level" then
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].level = j
-			end
-			if string.find(i,"partlevel") then
-				vehiclePermsPartLevelsLength = vehiclePermsPartLevelsLength + 1
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
-			end
-		end
-	end
-	MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
 end
 
 function txNametagWhitelisted(player)
@@ -982,23 +991,20 @@ end
 
 local function txData()
 	for playerID, player in pairs(players) do
-		if type(playerID) == "number" then
-			if player.connectStage == "connected" then
-				txPlayersData(player)
-				txPlayersGroup(player)
-				txEnvironment(player)
-				txNametagWhitelisted(player)
-				txNametagBlockerActive(player)
-				txConfigData(player)
-				txPlayersUIPerm(player)
-				txPlayersResetExempt(player)
-			end
+		if player.connectStage == "connected" then
+			txPlayersData(player)
+			txPlayersGroup(player)
+			txEnvironment(player)
+			txNametagWhitelisted(player)
+			txNametagBlockerActive(player)
+			txConfigData(player)
+			txPlayersUIPerm(player)
+			txPlayersResetExempt(player)
 		end
 	end
 end
 
 function CEIPreRace(senderID, data)
-	--CElog("CEIStartRace Called by: " .. senderID .. ": " .. data, "CEI")
 	if not raceCountdownStarted then
 		raceCountdownStarted = true
 		raceCountdown = 15
@@ -1006,7 +1012,6 @@ function CEIPreRace(senderID, data)
 end
 
 function CEISetDefaultState(senderID, data)
-	--CElog("CEISetDefaultState Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		CobaltDB.set("interface", "defaultState", "value", data[1])
@@ -1015,7 +1020,6 @@ function CEISetDefaultState(senderID, data)
 end
 
 function CEISetNewVehiclePerm(senderID, data)
-	--CElog("CEISetNewVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1030,7 +1034,6 @@ function CEISetNewVehiclePerm(senderID, data)
 end
 
 function CEISetVehiclePermLevel(senderID, data)
-	--CElog("CEISetVehiclePermLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1041,7 +1044,6 @@ function CEISetVehiclePermLevel(senderID, data)
 end
 
 function CEIRemoveVehiclePerm(senderID, data)
-	--CElog("CEIRemoveVehiclePerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1063,7 +1065,6 @@ function CEIRemoveVehiclePerm(senderID, data)
 end
 
 function CEISetNewVehiclePart(senderID, data)
-	--CElog("CEISetNewVehiclePartname Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1080,7 +1081,6 @@ function CEISetNewVehiclePart(senderID, data)
 end
 
 function CEISetVehiclePartLevel(senderID, data)
-	--CElog("CEISetVehiclePartnameLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1091,7 +1091,6 @@ function CEISetVehiclePartLevel(senderID, data)
 end
 
 function CEIRemoveVehiclePart(senderID, data)
-	--CElog("CEIRemoveVehiclePart Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1106,7 +1105,6 @@ function CEIRemoveVehiclePart(senderID, data)
 end
 
 function CEISetVehiclePartLevel(senderID, data)
-	--CElog("CEISetVehiclePartLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local vehicleName = data[1]
@@ -1118,7 +1116,6 @@ function CEISetVehiclePartLevel(senderID, data)
 end
 
 function CEISetTempBan(senderID, data)
-	--CElog("CEISetTempBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetID = tonumber(data[1])
@@ -1143,7 +1140,6 @@ function logEnvironment()
 end
 
 function CEISetInterface(senderID, data)
-	--CElog("CEISetInterface Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local key = data[1]
@@ -1174,7 +1170,6 @@ function CEISetInterface(senderID, data)
 end
 
 function CEISetRestrictions(senderID, data)
-	--CElog("CEISetRestrictions Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.restrictions then
 		data = Util.JsonDecode(data)
 		local key = data[1]
@@ -1203,7 +1198,6 @@ function CEISetRestrictions(senderID, data)
 end
 
 function CEISetEnv(senderID, data)
-	--CElog("CEISetEnv Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.environment then
 		data = Util.JsonDecode(data)
 		local key = data[1]
@@ -1256,7 +1250,7 @@ function CEISetEnv(senderID, data)
 			environment.moonScale = environment.moonScale_default
 		elseif key == "all" then
 			for k in pairs(environment) do
-				if not string.find(k, "default") then
+				if not string.find(k, "default") and not string.find(k, "description") then
 					environment[k] = environment[k .. "_default"]
 				end
 			end
@@ -1279,7 +1273,6 @@ function CEISetEnv(senderID, data)
 end
 
 function CEIToggleIgnition(senderID, data)
-	--CElog("CEIToggleIgnition Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
@@ -1291,7 +1284,6 @@ function CEIToggleIgnition(senderID, data)
 end
 
 function CEIToggleLock(senderID, data)
-	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
 		if players[tonumber(senderID)].permissions.level < players[tonumber(tempData[1])].permissions.level then
@@ -1303,20 +1295,17 @@ function CEIToggleLock(senderID, data)
 end
 
 function CEIToggleRaceLock(senderID, data)
-	--CElog("CEIToggleLock Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		MP.TriggerClientEvent(-1, "CEIToggleLock", data)
 	end
 end
 
 function CEISetCurVeh(senderID, data)
-	--CElog("CEISetCurVeh Called by: " .. senderID .. ": " .. data, "CEI")
 	data = Util.JsonDecode(data)
 	tempPCV[players[senderID].name] = data[1]
 end
 
 function CEIStop(senderID, data)
-	--CElog("CEIStop Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.server then
 		MP.SendChatMessage(-1, "Good-bye!")
 		exit()
@@ -1324,7 +1313,6 @@ function CEIStop(senderID, data)
 end
 
 function CEISetNewGroup(senderID, data)
-	--CElog("CEISetNewGroup Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local group = data[1]
@@ -1340,7 +1328,6 @@ function CEISetNewGroup(senderID, data)
 end
 
 function CEIRemoveGroup(senderID, data)
-	--CElog("CEIRemoveGroup Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local group = data[1]
@@ -1359,7 +1346,6 @@ function CEIRemoveGroup(senderID, data)
 end
 
 function CEISetNewVehiclePermsLevel(senderID, data)
-	--CElog("CEISetNewVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
@@ -1377,7 +1363,6 @@ function CEISetNewVehiclePermsLevel(senderID, data)
 end
 
 function CEIRemoveVehiclePermsLevel(senderID, data)
-	--CElog("CEIRemoveVehiclePermsLevel Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = tostring(data[1])
@@ -1391,7 +1376,6 @@ function CEIRemoveVehiclePermsLevel(senderID, data)
 end
 
 function CEISetVehiclePerms(senderID, data)
-	--CElog("CEISetVehiclePerms Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		local targetLevel = data[1]
@@ -1402,7 +1386,6 @@ function CEISetVehiclePerms(senderID, data)
 end
 
 function CEISetGroup(senderID, data)
-	--CElog("CEISetGroup Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local name
@@ -1430,6 +1413,8 @@ function CEISetGroup(senderID, data)
 			if group == "none" then
 				players.database[name].group = nil
 				CobaltDB.set("playersDB/" .. name, "group", "value", nil)
+				CobaltDB.set("playersDB/" .. name, "UI", "value", 1)
+				CobaltDB.set("playersDB/" .. name, "level", "value", 1)
 			elseif players.database[group]:exists() then
 				if players[senderID].permissions.level >= (players.database[group].level or 0) then
 					CobaltDB.new("playersDB/" .. name)
@@ -1443,11 +1428,11 @@ function CEISetGroup(senderID, data)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEISetGroupPerms(senderID, data)
-	--CElog("CEISetGroupPerms Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local group = data[1]
@@ -1493,11 +1478,11 @@ function CEISetGroupPerms(senderID, data)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEISetUIPerm(senderID, data)
-	--CElog("CEISetUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1521,11 +1506,11 @@ function CEISetUIPerm(senderID, data)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEISetPerm(senderID, data)
-	--CElog("CEISetPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1549,22 +1534,21 @@ function CEISetPerm(senderID, data)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEISetTempUIPerm(senderID, data)
-	--CElog("CEISetTempUIPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "admin" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
 		local UIPermLvl = tonumber(data[2])
 		tempPlayers[targetName].tempUIPermLevel = UIPermLvl
+		txPlayersDatabase(true)
 	end
 end
 
-
 function CEISetTempPerm(senderID, data)
-	--CElog("CEISetTempPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1574,7 +1558,6 @@ function CEISetTempPerm(senderID, data)
 end
 
 function CEISetCfg(senderID, data)
-	--CElog("CEISetCfg Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.server then
 		data = Util.JsonDecode(data)
 		local key = data[1]
@@ -1645,7 +1628,6 @@ function CEISetCfg(senderID, data)
 end
 
 function CEISetMaxActivePlayers(senderID, data)
-	--CElog("CEISetMaxActivePlayers Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
 		data = Util.JsonDecode(data)
 		data = tonumber(data[1])
@@ -1655,7 +1637,6 @@ function CEISetMaxActivePlayers(senderID, data)
 end
 
 function CEIRemoveVehicle(senderID, data)
-	--CElog("CEIRemoveVehicle Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local tempPlayerID = tonumber(data[1])
@@ -1675,7 +1656,6 @@ function CEIRemoveVehicle(senderID, data)
 end
 
 function CEIVoteKick(senderID, data)
-	--CElog("CEIVoteKick Called by: " .. senderID .. ": " .. data, "CEI")
 	data = Util.JsonDecode(data)
 	local targetName = data[1]
 	local player = players.getPlayerByName(targetName)
@@ -1699,7 +1679,6 @@ function CEIVoteKick(senderID, data)
 end
 
 function CEIKick(senderID, data)
-	--CElog("CEIKick Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local target = players.getPlayerByName(data[1])
@@ -1718,7 +1697,6 @@ function CEIKick(senderID, data)
 end
 
 function CEIUnban(senderID, data)
-	--CElog("CEIUnban Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1732,11 +1710,11 @@ function CEIUnban(senderID, data)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEIBan(senderID, data)
-	--CElog("CEIBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1744,8 +1722,6 @@ function CEIBan(senderID, data)
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
-		
-		
 		local player = players.getPlayerByName(targetName)
 		if player then
 			if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
@@ -1768,11 +1744,11 @@ function CEIBan(senderID, data)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEITempBan(senderID, data)
-	--CElog("CEITempBan Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1808,11 +1784,11 @@ function CEITempBan(senderID, data)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEIMute(senderID, data)
-	--CElog("CEIMute Called by: " .. senderID, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1836,12 +1812,13 @@ function CEIMute(senderID, data)
 			players.database[targetName].muted = true
 			players.database[targetName].muteReason = reason
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEIUnmute(senderID, data)
-	--CElog("CEIMute Called by: " .. senderID, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1857,12 +1834,13 @@ function CEIUnmute(senderID, data)
 			players.database[targetName].muted = false
 			players.database[targetName].muteReason = nil
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEIWhitelist(senderID, data)
-	--CElog("CEIWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local arguments
@@ -1892,19 +1870,19 @@ function CEIWhitelist(senderID, data)
 			config.cobalt.whitelistedPlayers = {}
 			CobaltDB.set("playersDB/" .. targetName, "whitelisted", "value", false)
 		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		txPlayersDatabase(true)
 	end
 end
 
 function CEIRaceInclude(senderID, data)
-	--CElog("CEIRaceInclude Called by: " .. senderID .. ": " .. data, "CEI")
 	local playerName = players[senderID].name
 	data = Util.JsonDecode(data)
 	tempPlayers[playerName].includeInRace = data[1]
 end
 
 function CEISetNametagWhitelist(senderID, data)
-	--CElog("CEISetNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1927,7 +1905,6 @@ function CEISetNametagWhitelist(senderID, data)
 end
 
 function CEIRemoveNametagWhitelist(senderID, data)
-	--CElog("CEIRemoveNametagWhitelist Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		local targetName = data[1]
@@ -1946,7 +1923,6 @@ function CEIRemoveNametagWhitelist(senderID, data)
 end
 
 function CEINametagSetting(senderID, data)
-	--CElog("CEINametagSetting Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
 		if tonumber(data[1]) then
@@ -1961,7 +1937,6 @@ function CEINametagSetting(senderID, data)
 end
 
 function CEITeleportFrom(senderID, data)
-	--CElog("CEITeleportFrom Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod"  or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		if players[tonumber(senderID)].permissions.level < players[tonumber(data)].permissions.level then
 			MP.SendChatMessage(senderID, "You cannot affect " ..  players[tonumber(data)].name .. "!")
@@ -1973,12 +1948,12 @@ function CEITeleportFrom(senderID, data)
 end
 
 function CEISetResetPerm(senderID, data)
-	--CElog("CEISetResetPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		playerName = data[1]
 		resetExempt[playerName] = data[2]
 		CobaltDB.set("playersDB/" .. playerName, "resetExempt", "value", data[2])
+		txPlayersDatabase(true)
 		local player = players.getPlayerByName(playerName)
 		if player then
 			MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { data[2] } )
@@ -1987,12 +1962,12 @@ function CEISetResetPerm(senderID, data)
 end
 
 function CEISetTeleportPerm(senderID, data)
-	--CElog("CEISetTeleportPerm Called by: " .. senderID .. ": " .. data, "CEI")
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		data = Util.JsonDecode(data)
 		playerName = data[1]
 		teleport[playerName] = data[2]
 		CobaltDB.set("playersDB/" .. playerName, "teleport", "value", data[2])
+		txPlayersDatabase(true)
 		local player = players.getPlayerByName(playerName)
 		if player then
 			MP.TriggerClientEventJson(player.playerID, "rxCEItp", { data[2] } )
@@ -2091,6 +2066,10 @@ function raceStart()
 			MP.TriggerClientEventJson(-1, "CEIToggleLock", data)
 		end
 	end
+	for k, v in pairs(tempPlayers) do
+		tempPlayers[k].includeInRace = false
+	end
+	MP.TriggerClientEventJson(-1, "rxCEIrace", { false } )
 end
 
 local function sendDelayedMessage(player, message)
@@ -2113,12 +2092,10 @@ function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	tempPCV[player_name] = "none"
 	if identifiers.beammp then
 		CobaltDB.new("playersDB/" .. identifiers.beammp)
-		players.database[player_name].beammp = identifiers.beammp
 		CobaltDB.set("playersDB/" .. player_name, "beammp", "value", identifiers.beammp)
+		CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
 		CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
 		CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
-		players.database[player_name].ip = identifiers.ip
-		CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
 		if CobaltDB.query("playersDB/" .. player_name, "banned", "value") == true then
 			local reason = CobaltDB.query("playersDB/" .. player_name, "banReason", "value") or "You are banned from this server!"
 			return reason
