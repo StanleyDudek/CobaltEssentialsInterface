@@ -103,6 +103,11 @@ local function rxCEItp(data)
 	canTeleport = data[1]
 end
 
+local function rxCEIrace(data)
+	data = jsonDecode(data)
+	includeInRace = data[1]
+end
+
 local function rxInputUpdate(data)
 	if data == "config" then
 		configValsSet = false
@@ -4915,6 +4920,7 @@ local function onExtensionLoaded()
 	AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
 	AddEventHandler("rxCEIstate", rxCEIstate)
 	AddEventHandler("rxCEItp", rxCEItp)
+	AddEventHandler("rxCEIrace", rxCEIrace)
 	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
 	AddEventHandler("rxNametagWhitelisted", rxNametagWhitelisted)
 	AddEventHandler("rxNametagBlockerActive", rxNametagBlockerActive)
