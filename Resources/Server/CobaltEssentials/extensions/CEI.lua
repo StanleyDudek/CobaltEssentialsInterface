@@ -890,72 +890,73 @@ local function txPlayersData(player)
 	MP.TriggerClientEventJson(player.playerID, "rxPlayersData", playersTable)
 end
 
-local function txConfigData(player)
-	if player.connectStage == "connected" then
-		if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.group == "mod" or player.permissions.UI >= config.cobalt.interface.config then
-			config.cobalt.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
-			config.cobalt.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
-			local playerGroupsLength = 0
-			local whitelistLength = 0
-			local groupPlayerLength = 0
-			for k,v in pairs(players.database) do
-				if string.find(k, "group") then
-					playerGroupsLength = playerGroupsLength + 1
-					config.cobalt.groups[playerGroupsLength] = {}
-					config.cobalt.groups[playerGroupsLength].groupName = k
-					config.cobalt.groups[playerGroupsLength].groupPerms = CobaltDB.getTable("playerPermissions",k)
-					config.cobalt.groups[playerGroupsLength].groupPlayers = {}
-					for w,z in pairs(players.database) do
-						for a,b in pairs(z) do
-							if a == "group" then
-								if "group:"..b == k then
-									groupPlayerLength = groupPlayerLength + 1
-									config.cobalt.groups[playerGroupsLength].groupPlayers[groupPlayerLength] = w
-								end
-							end
+local function theConfigData()
+	config.cobalt.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
+	config.cobalt.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
+	local playerGroupsLength = 0
+	local whitelistLength = 0
+	local groupPlayerLength = 0
+	for k,v in pairs(players.database) do
+		if string.find(k, "group") then
+			playerGroupsLength = playerGroupsLength + 1
+			config.cobalt.groups[playerGroupsLength] = {}
+			config.cobalt.groups[playerGroupsLength].groupName = k
+			config.cobalt.groups[playerGroupsLength].groupPerms = CobaltDB.getTable("playerPermissions",k)
+			config.cobalt.groups[playerGroupsLength].groupPlayers = {}
+			for w,z in pairs(players.database) do
+				for a,b in pairs(z) do
+					if a == "group" then
+						if "group:"..b == k then
+							groupPlayerLength = groupPlayerLength + 1
+							config.cobalt.groups[playerGroupsLength].groupPlayers[groupPlayerLength] = w
 						end
 					end
-				else
-					if players.database[k].whitelisted then
-						whitelistLength = whitelistLength + 1
-						config.cobalt.whitelistedPlayers[whitelistLength] = k
-					end
 				end
 			end
-			local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
-			local vehicleCapsLength = 0
-			config.cobalt.permissions.vehicleCap = {}
-			for k in pairs(vehicleCaps) do
-				if string.find(k, "%d+") then
-					vehicleCapsLength = vehicleCapsLength + 1
-					config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
-					config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
-					config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
-				end
+		else
+			if players.database[k].whitelisted then
+				whitelistLength = whitelistLength + 1
+				config.cobalt.whitelistedPlayers[whitelistLength] = k
 			end
-			local vehiclePerms = CobaltDB.getTables("vehicles")
-			local vehiclePermsLength = 0
-			local vehiclePermsPartLevelsLength = 0
-			for _, v in pairsByKeys(vehiclePerms) do
-				vehiclePermsLength = vehiclePermsLength + 1
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength] = {}
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
-				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].name = v
-				local vehiclePerm = CobaltDB.getTable("vehicles",v)
-				for i,j in pairsByKeys(vehiclePerm) do
-					if i == "level" then
-						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].level = j
-					end
-					if string.find(i,"partlevel") then
-						vehiclePermsPartLevelsLength = vehiclePermsPartLevelsLength + 1
-						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
-						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
-						config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
-					end
-				end
-			end
-			MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
 		end
+	end
+	local vehicleCaps = CobaltDB.getTable("permissions","vehicleCap")
+	local vehicleCapsLength = 0
+	config.cobalt.permissions.vehicleCap = {}
+	for k in pairs(vehicleCaps) do
+		if string.find(k, "%d+") then
+			vehicleCapsLength = vehicleCapsLength + 1
+			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
+			config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
+			config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
+		end
+	end
+	local vehiclePerms = CobaltDB.getTables("vehicles")
+	local vehiclePermsLength = 0
+	local vehiclePermsPartLevelsLength = 0
+	for _, v in pairsByKeys(vehiclePerms) do
+		vehiclePermsLength = vehiclePermsLength + 1
+		config.cobalt.permissions.vehiclePerm[vehiclePermsLength] = {}
+		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel = {}
+		config.cobalt.permissions.vehiclePerm[vehiclePermsLength].name = v
+		local vehiclePerm = CobaltDB.getTable("vehicles",v)
+		for i,j in pairsByKeys(vehiclePerm) do
+			if i == "level" then
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].level = j
+			end
+			if string.find(i,"partlevel") then
+				vehiclePermsPartLevelsLength = vehiclePermsPartLevelsLength + 1
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength] = {}
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].name = i
+				config.cobalt.permissions.vehiclePerm[vehiclePermsLength].partLevel[vehiclePermsPartLevelsLength].level = j
+			end
+		end
+	end
+end
+
+local function txConfigData(player)
+	if player.connectStage == "connected" then
+		MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
 	end
 end
 
@@ -1988,6 +1989,7 @@ local function onTick(age)
 			end
 		end
 	end
+	theConfigData()
 	txData()
 	logTimer = logTimer + 1
 	if logTimer >= logInterval then
