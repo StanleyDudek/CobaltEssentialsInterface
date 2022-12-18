@@ -3819,9 +3819,9 @@ local function drawCEI()
 				im.Text("days = " .. string.format("%.2f", (playersDatabaseVals.tempBanLength[0] * 1440)) .. " minutes")
 				im.PopItemWidth()
 				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				for k in pairs(playersDatabase) do
-					for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
-						if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
+				for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
+					if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
+						for k in pairs(playersDatabase) do
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								local playerBeammp = playersDatabase[k].beammp
