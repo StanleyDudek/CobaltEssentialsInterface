@@ -14,7 +14,7 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 ## Pre-requisites:
 
 1. BeamMP Server 3.1.0 (as of CEI v0.7)
-2. [CobaltEssentials](https://github.com/prestonelam2003/CobaltEssentials) 1.6.0 [BETA5] installed.
+2. [CobaltEssentials](https://github.com/prestonelam2003/CobaltEssentials) 1.7.2 or newer installed.
 3. As owner, have yourself set as owner group in CobaltEssentials (i.e. `ce setgroup yourName owner` in server console)
 
 ## Installation:
