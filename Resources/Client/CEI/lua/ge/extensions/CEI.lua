@@ -1,4 +1,4 @@
---CEI (CLIENT) by Dudekahedron, 2022
+--CEI (CLIENT) by Dudekahedron, 2023
 
 local M = {}
 
@@ -24,14 +24,25 @@ local firstReset = false
 local firstTeleport = false
 local resetsBlockedInputActions = {}
 local allResetsBlockedInputActions = {
-	"loadHome",
+	"reset_physics",
+	"reset_all_physics",
 	"recover_vehicle",
 	"recover_vehicle_alt",
-	"reload_all_vehicles",
+	"recover_to_last_road",
 	"reload_vehicle",
-	"reset_all_physics",
-	"reset_physics"
+	"reload_all_vehicles",
+	"loadHome",
+	"dropPlayerAtCamera",
+	"dropPlayerAtCameraNoReset",
+	"goto_checkpoint"
 }
+local editorBlocked = {
+	"editorToggle",
+	"objectEditorToggle",
+	--"toggleConsoleNG",
+	"editorSafeModeToggle"
+}
+local descriptions = {}
 local environmentValsSet = false
 local environmentVals = {}
 local environment = {}
@@ -69,24 +80,26 @@ local firstReport = false
 local lastTeleport = 0
 local worldReadyState = 0
 local envObjectIdCache = {}
+local syncRequested = false
+local defaults = {}
 
-local function getObject(className, preferredObjName) 
-	if envObjectIdCache[className] then 
-		return scenetree.findObjectById(envObjectIdCache[className]) 
+local function getObject(className, preferredObjName)
+	if envObjectIdCache[className] then
+		return scenetree.findObjectById(envObjectIdCache[className])
 	end 
-	envObjectIdCache[className] = 0 
-	local objNames = scenetree.findClassObjects(className) 
-	if objNames and tableSize(objNames) > 0 then 
-		for _,name in pairs(objNames) do 
-			local obj = scenetree.findObject(name) 
-			if obj and (name == preferredObjName or not preferredObjName) then 
-				envObjectIdCache[className] = obj:getID() 
-				return obj 
-			end 
-		end 
-	end 
-	return nil 
-end 
+	envObjectIdCache[className] = 0
+	local objNames = scenetree.findClassObjects(className)
+	if objNames and tableSize(objNames) > 0 then
+		for _,name in pairs(objNames) do
+			local obj = scenetree.findObject(name)
+			if obj and (name == preferredObjName or not preferredObjName) then
+				envObjectIdCache[className] = obj:getID()
+				return obj
+			end
+		end
+	end
+	return nil
+end
 
 local function rxCEIstate(data)
 	data = jsonDecode(data)
@@ -122,6 +135,10 @@ local function rxInputUpdate(data)
 			playersDatabaseValsSet[k] = false
 		end
 	end
+end
+
+local function rxDescriptions(data)
+	descriptions = jsonDecode(data)
 end
 
 local function rxEnvironment(data)
@@ -172,11 +189,13 @@ local function rxEnvironment(data)
 		environmentVals.tempCurveDawnInt = im.IntPtr(tonumber(environment.tempCurveDawn))
 		environmentValsSet = true
 	end
+	defaultSunSet = false
+	defaultWeatherSet = false
 end
 
 local function rxConfigData(data)
 	config = jsonDecode(data)
-	if tonumber(config.resets.timeout) > 0 then
+	if tonumber(config.restrictions.timeout) > 0 then
 		resetsBlockedInputActions = allResetsBlockedInputActions
 	else
 		resetsBlockedInputActions = {}
@@ -209,8 +228,8 @@ local function rxConfigData(data)
 		configVals.cobalt.interface.temperature = im.IntPtr(tonumber(config.cobalt.interface.temperature))
 		configVals.cobalt.interface.database = im.IntPtr(tonumber(config.cobalt.interface.database))
 		configVals.cobalt.interface.race = im.IntPtr(tonumber(config.cobalt.interface.race))
-		configVals.resets.messageDuration = im.IntPtr(tonumber(config.resets.messageDuration))
-		configVals.resets.timeout = im.IntPtr(tonumber(config.resets.timeout))
+		configVals.resets.messageDuration = im.IntPtr(tonumber(config.restrictions.messageDuration))
+		configVals.resets.timeout = im.IntPtr(tonumber(config.restrictions.timeout))
 		configVals.resets.title = im.ArrayChar(128)
 		configVals.resets.elapsedMessage = im.ArrayChar(256)
 		configVals.resets.message = im.ArrayChar(256)
@@ -409,10 +428,10 @@ local function drawCEI()
 		im.SameLine()
 		im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 	end
-	if config.resets then
+	if config.restrictions then
 		if firstReset then
-			if not config.resets.enabled then
-				if config.resets.control then
+			if not config.restrictions.enabled then
+				if config.restrictions.control then
 					im.SameLine()
 					im.Text("| Vehicle resetting")
 					im.SameLine()
@@ -424,13 +443,13 @@ local function drawCEI()
 					im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 				end
 				
-			elseif config.resets.timeout - resetsTimerElapsedReset > 0 then
+			elseif config.restrictions.timeout - resetsTimerElapsedReset > 0 then
 				im.SameLine()
 				im.Text("| Vehicle reset")
 				im.SameLine()
 				im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
 				im.SameLine()
-				im.Text(string.format("%.2f",config.resets.timeout - resetsTimerElapsedReset) .. "s")
+				im.Text(string.format("%.2f",config.restrictions.timeout - resetsTimerElapsedReset) .. "s")
 			else
 				im.SameLine()
 				im.Text("| Vehicle reset")
@@ -742,6 +761,32 @@ local function drawCEI()
 								end
 								im.SameLine()
 								im.ShowHelpMarker("Teleport this player's current vehicle to you.")
+							end
+						end
+						if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.race then
+							if canTeleport then
+								im.SameLine()
+							end
+							if players[k].includeInRace == false then
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.55, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.55, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.55, 0.05, 0.999))
+								if im.SmallButton("Add to Race") then
+									local data = jsonEncode( { true, players[k].playerName } )
+									TriggerServerEvent("CEIRaceInclude", data)
+									log('W', logTag, "CEIRaceInclude Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.77, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.05, 0.05, 0.999))
+								if im.SmallButton("Remove from Race") then
+									local data = jsonEncode( { false, players[k].playerName } )
+									TriggerServerEvent("CEIRaceInclude", data)
+									log('W', logTag, "CEIRaceInclude Called: " .. data)
+								end
+								im.PopStyleColor(3)
 							end
 						end
 					end
@@ -1087,6 +1132,32 @@ local function drawCEI()
 								end
 								im.SameLine()
 								im.ShowHelpMarker("Teleport this player's current vehicle to you.")
+							end
+						end
+						if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.race then
+							if canTeleport then
+								im.SameLine()
+							end
+							if players[k].includeInRace == false then
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.55, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.55, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.55, 0.05, 0.999))
+								if im.SmallButton("Add to Race") then
+									local data = jsonEncode( { true, players[k].playerName } )
+									TriggerServerEvent("CEIRaceInclude", data)
+									log('W', logTag, "CEIRaceInclude Called: " .. data)
+								end
+								im.PopStyleColor(3)
+							else
+								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.77, 0.15, 0.05, 0.333))
+								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.1, 0.09, 0.5))
+								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.05, 0.05, 0.999))
+								if im.SmallButton("Remove from Race") then
+									local data = jsonEncode( { false, players[k].playerName } )
+									TriggerServerEvent("CEIRaceInclude", data)
+									log('W', logTag, "CEIRaceInclude Called: " .. data)
+								end
+								im.PopStyleColor(3)
 							end
 						end
 					end
@@ -1849,7 +1920,7 @@ local function drawCEI()
 				if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
 					if im.CollapsingHeader1("Interface") then
 						im.Indent()
-						im.ShowHelpMarker(config.cobalt.interface.playerPermissions_description)
+						im.ShowHelpMarker(descriptions.interface.playerPermissions)
 						im.SameLine()
 						im.Text("playerPermissions: ")
 						im.SameLine()
@@ -1861,7 +1932,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.playerPermissionsPlus_description)
+						im.ShowHelpMarker(descriptions.interface.playerPermissionsPlus)
 						im.SameLine()
 						im.Text("playerPermissionsPlus: ")
 						im.SameLine()
@@ -1873,7 +1944,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.config_description)
+						im.ShowHelpMarker(descriptions.interface.config)
 						im.SameLine()
 						im.Text("config: ")
 						im.SameLine()
@@ -1885,7 +1956,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.cobaltEssentials_description)
+						im.ShowHelpMarker(descriptions.interface.cobaltEssentials)
 						im.SameLine()
 						im.Text("cobaltEssentials: ")
 						im.SameLine()
@@ -1897,7 +1968,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.server_description)
+						im.ShowHelpMarker(descriptions.interface.server)
 						im.SameLine()
 						im.Text("server: ")
 						im.SameLine()
@@ -1909,7 +1980,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.interface_description)
+						im.ShowHelpMarker(descriptions.interface.interface)
 						im.SameLine()
 						im.Text("interface: ")
 						im.SameLine()
@@ -1921,7 +1992,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.nametags_description)
+						im.ShowHelpMarker(descriptions.interface.nametags)
 						im.SameLine()
 						im.Text("nametags: ")
 						im.SameLine()
@@ -1933,7 +2004,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.restrictions_description)
+						im.ShowHelpMarker(descriptions.interface.restrictions)
 						im.SameLine()
 						im.Text("restrictions: ")
 						im.SameLine()
@@ -1945,7 +2016,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.extras_description)
+						im.ShowHelpMarker(descriptions.interface.extras)
 						im.SameLine()
 						im.Text("extras: ")
 						im.SameLine()
@@ -1957,7 +2028,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.environmentAdmin_description)
+						im.ShowHelpMarker(descriptions.interface.environmentAdmin)
 						im.SameLine()
 						im.Text("environmentAdmin: ")
 						im.SameLine()
@@ -1969,7 +2040,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.environment_description)
+						im.ShowHelpMarker(descriptions.interface.environment)
 						im.SameLine()
 						im.Text("environment: ")
 						im.SameLine()
@@ -1981,7 +2052,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.sun_description)
+						im.ShowHelpMarker(descriptions.interface.sun)
 						im.SameLine()
 						im.Text("sun: ")
 						im.SameLine()
@@ -1993,7 +2064,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.weather_description)
+						im.ShowHelpMarker(descriptions.interface.weather)
 						im.SameLine()
 						im.Text("weather: ")
 						im.SameLine()
@@ -2005,7 +2076,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.gravity_description)
+						im.ShowHelpMarker(descriptions.interface.gravity)
 						im.SameLine()
 						im.Text("gravity: ")
 						im.SameLine()
@@ -2017,7 +2088,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.temperature_description)
+						im.ShowHelpMarker(descriptions.interface.temperature)
 						im.SameLine()
 						im.Text("temperature: ")
 						im.SameLine()
@@ -2029,7 +2100,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.database_description)
+						im.ShowHelpMarker(descriptions.interface.database)
 						im.SameLine()
 						im.Text("database: ")
 						im.SameLine()
@@ -2041,7 +2112,7 @@ local function drawCEI()
 						end
 						im.PopItemWidth()
 						im.Separator()
-						im.ShowHelpMarker(config.cobalt.interface.race_description)
+						im.ShowHelpMarker(descriptions.interface.race)
 						im.SameLine()
 						im.Text("race: ")
 						im.SameLine()
@@ -2175,7 +2246,7 @@ local function drawCEI()
 							end
 							im.Indent()
 							im.Text("Reset Control: ")
-							if config.resets.control then
+							if config.restrictions.control then
 								im.SameLine()
 								if im.SmallButton("Enabled##control") then
 									local data = jsonEncode( { "control", false } )
@@ -2219,7 +2290,7 @@ local function drawCEI()
 							end
 							im.PopItemWidth()
 							im.Text("Vehicle Resets: ")
-							if config.resets.enabled then
+							if config.restrictions.enabled then
 								im.SameLine()
 								if im.SmallButton("Enabled##RST") then
 									local data = jsonEncode( { "enabled", false } )
@@ -2234,7 +2305,7 @@ local function drawCEI()
 									log('W', logTag, "CEISetRestrictions Called: " .. data)
 								end
 							end
-							im.Text("Notification Title: " .. config.resets.title)
+							im.Text("Notification Title: " .. config.restrictions.title)
 							if im.InputTextWithHint("##title", "Toast notification title", configVals.resets.title, 128) then
 							end
 							if im.SmallButton("Apply##title") then
@@ -2242,7 +2313,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-							im.Text("Timeout Elapsed Message: " .. config.resets.elapsedMessage)
+							im.Text("Timeout Elapsed Message: " .. config.restrictions.elapsedMessage)
 							if im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.resets.elapsedMessage, 256) then
 							end
 							if im.SmallButton("Apply##elapsedMessage") then
@@ -2250,7 +2321,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-							im.Text("Timeout Started Message: " .. config.resets.message)
+							im.Text("Timeout Started Message: " .. config.restrictions.message)
 							if im.InputTextWithHint("##message", "Message", configVals.resets.message, 256) then
 							end
 							if im.SmallButton("Apply##message") then
@@ -2258,7 +2329,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-							im.Text("Resets Disabled Message: " .. config.resets.disabledMessage)
+							im.Text("Resets Disabled Message: " .. config.restrictions.disabledMessage)
 							if im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.resets.disabledMessage, 256) then
 							end
 							if im.SmallButton("Apply##disabledMessage") then
@@ -2433,7 +2504,7 @@ local function drawCEI()
 					if im.TreeNode1("Sun") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.controlSun_description)
+							im.ShowHelpMarker(descriptions.environment.controlSun)
 							im.SameLine()
 							if environment.controlSun then
 								im.SameLine()
@@ -2468,7 +2539,7 @@ local function drawCEI()
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.Unindent()
-							im.ShowHelpMarker(environment.timePlay_description)
+							im.ShowHelpMarker(descriptions.environment.timePlay)
 							im.SameLine()
 							im.Text("Time Play: ")
 							im.SameLine()
@@ -2490,7 +2561,7 @@ local function drawCEI()
 									log('W', logTag, "CEISetEnv Called: " .. data)
 								end
 							end
-							im.ShowHelpMarker(environment.ToD_description)
+							im.ShowHelpMarker(descriptions.environment.ToD)
 							im.SameLine()
 							im.Text("Time of Day: ")
 							im.SameLine()
@@ -2514,7 +2585,7 @@ local function drawCEI()
 								log('W', logTag, "CEISetEnv Called: " .. data)
 								timeUpdateQueued = true
 							end
-							im.ShowHelpMarker(environment.dayLength_description)
+							im.ShowHelpMarker(descriptions.environment.dayLength)
 							im.SameLine()
 							im.Text("Day Length: ")
 							im.SameLine()
@@ -2548,7 +2619,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.dayScale_description)
+							im.ShowHelpMarker(descriptions.environment.dayScale)
 							im.SameLine()
 							im.Text("Day Scale: ")
 							im.SameLine()
@@ -2570,7 +2641,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.nightScale_description)
+							im.ShowHelpMarker(descriptions.environment.nightScale)
 							im.SameLine()
 							im.Text("Night Scale: ")
 							im.SameLine()
@@ -2592,7 +2663,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.sunAzimuthOverride_description)
+							im.ShowHelpMarker(descriptions.environment.sunAzimuthOverride)
 							im.SameLine()
 							im.Text("Sun Azimuth: ")
 							im.SameLine()
@@ -2614,7 +2685,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.sunSize_description)
+							im.ShowHelpMarker(descriptions.environment.sunSize)
 							im.SameLine()
 							im.Text("Sun Size: ")
 							im.SameLine()
@@ -2636,7 +2707,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.skyBrightness_description)
+							im.ShowHelpMarker(descriptions.environment.skyBrightness)
 							im.SameLine()
 							im.Text("Sky Brightness: ")
 							im.SameLine()
@@ -2658,7 +2729,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.sunLightBrightness_description)
+							im.ShowHelpMarker(descriptions.environment.sunLightBrightness)
 							im.SameLine()
 							im.Text("Sunlight Brightness: ")
 							im.SameLine()
@@ -2680,7 +2751,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.rayleighScattering_description)
+							im.ShowHelpMarker(descriptions.environment.rayleighScattering)
 							im.SameLine()
 							im.Text("Rayleigh Scattering: ")
 							im.SameLine()
@@ -2702,7 +2773,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.flareScale_description)
+							im.ShowHelpMarker(descriptions.environment.flareScale)
 							im.SameLine()
 							im.Text("Flare Scale: ")
 							im.SameLine()
@@ -2724,7 +2795,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.occlusionScale_description)
+							im.ShowHelpMarker(descriptions.environment.occlusionScale)
 							im.SameLine()
 							im.Text("Occlusion Scale: ")
 							im.SameLine()
@@ -2746,7 +2817,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.exposure_description)
+							im.ShowHelpMarker(descriptions.environment.exposure)
 							im.SameLine()
 							im.Text("Exposure: ")
 							im.SameLine()
@@ -2768,7 +2839,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.shadowDistance_description)
+							im.ShowHelpMarker(descriptions.environment.shadowDistance)
 							im.SameLine()
 							im.Text("Shadow Distance: ")
 							im.SameLine()
@@ -2790,7 +2861,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.shadowSoftness_description)
+							im.ShowHelpMarker(descriptions.environment.shadowSoftness)
 							im.SameLine()
 							im.Text("Shadow Softness: ")
 							im.SameLine()
@@ -2812,7 +2883,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.shadowSplits_description)
+							im.ShowHelpMarker(descriptions.environment.shadowSplits)
 							im.SameLine()
 							im.Text("Shadow Splits: ")
 							im.SameLine()
@@ -2834,7 +2905,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.shadowTexSize_description)
+							im.ShowHelpMarker(descriptions.environment.shadowTexSize)
 							im.SameLine()
 							im.Text("Shadow Tex Size: ")
 							im.SameLine()
@@ -2860,7 +2931,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.shadowLogWeight_description)
+							im.ShowHelpMarker(descriptions.environment.shadowLogWeight)
 							im.SameLine()
 							im.Text("Shadow Log Weight: ")
 							im.SameLine()
@@ -2882,7 +2953,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.visibleDistance_description)
+							im.ShowHelpMarker(descriptions.environment.visibleDistance)
 							im.SameLine()
 							im.Text("Visibile Distance: ")
 							im.SameLine()
@@ -2904,7 +2975,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.moonAzimuth_description)
+							im.ShowHelpMarker(descriptions.environment.moonAzimuth)
 							im.SameLine()
 							im.Text("Moon Azimuth: ")
 							im.SameLine()
@@ -2926,7 +2997,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.moonElevation_description)
+							im.ShowHelpMarker(descriptions.environment.moonElevation)
 							im.SameLine()
 							im.Text("Moon Elevation: ")
 							im.SameLine()
@@ -2948,7 +3019,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.moonScale_description)
+							im.ShowHelpMarker(descriptions.environment.moonScale)
 							im.SameLine()
 							im.Text("Moon Scale: ")
 							im.SameLine()
@@ -2976,7 +3047,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.controlSun_description)
+							im.ShowHelpMarker(descriptions.environment.controlSun)
 							im.SameLine()
 							if environment.controlSun then
 								im.SameLine()
@@ -3009,7 +3080,7 @@ local function drawCEI()
 					if im.TreeNode1("Weather") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.controlWeather_description)
+							im.ShowHelpMarker(descriptions.environment.controlWeather)
 							if environment.controlWeather then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -3043,7 +3114,7 @@ local function drawCEI()
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.Unindent()
-							im.ShowHelpMarker(environment.fogDensity_description)
+							im.ShowHelpMarker(descriptions.environment.fogDensity)
 							im.SameLine()
 							im.Text("Fog Density: ")
 							im.SameLine()
@@ -3065,7 +3136,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.fogDensityOffset_description)
+							im.ShowHelpMarker(descriptions.environment.fogDensityOffset)
 							im.SameLine()
 							im.Text("Fog Distance: ")
 							im.SameLine()
@@ -3087,7 +3158,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.fogAtmosphereHeight_description)
+							im.ShowHelpMarker(descriptions.environment.fogAtmosphereHeight)
 							im.SameLine()
 							im.Text("Fog Height: ")
 							im.SameLine()
@@ -3109,7 +3180,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudHeight_description)
+							im.ShowHelpMarker(descriptions.environment.cloudHeight)
 							im.SameLine()
 							im.Text("Cloud 1 Height: ")
 							im.SameLine()
@@ -3131,7 +3202,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudHeightOne_description)
+							im.ShowHelpMarker(descriptions.environment.cloudHeightOne)
 							im.SameLine()
 							im.Text("Cloud 2 Height: ")
 							im.SameLine()
@@ -3153,7 +3224,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudCover_description)
+							im.ShowHelpMarker(descriptions.environment.cloudCover)
 							im.SameLine()
 							im.Text("Cloud 1 Cover: ")
 							im.SameLine()
@@ -3175,7 +3246,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudCoverOne_description)
+							im.ShowHelpMarker(descriptions.environment.cloudCoverOne)
 							im.SameLine()
 							im.Text("Cloud 2 Cover: ")
 							im.SameLine()
@@ -3197,7 +3268,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudSpeed_description)
+							im.ShowHelpMarker(descriptions.environment.cloudSpeed)
 							im.SameLine()
 							im.Text("Cloud 1 Speed: ")
 							im.SameLine()
@@ -3219,7 +3290,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudSpeedOne_description)
+							im.ShowHelpMarker(descriptions.environment.cloudSpeedOne)
 							im.SameLine()
 							im.Text("Cloud 2 Speed: ")
 							im.SameLine()
@@ -3241,7 +3312,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudExposure_description)
+							im.ShowHelpMarker(descriptions.environment.cloudExposure)
 							im.SameLine()
 							im.Text("Cloud 1 Exposure: ")
 							im.SameLine()
@@ -3263,7 +3334,7 @@ local function drawCEI()
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
-							im.ShowHelpMarker(environment.cloudExposureOne_description)
+							im.ShowHelpMarker(descriptions.environment.cloudExposureOne)
 							im.SameLine()
 							im.Text("Cloud 2 Exposure: ")
 							im.SameLine()
@@ -3287,7 +3358,7 @@ local function drawCEI()
 							end
 							local rainObj = getObject("Precipitation")
 							if rainObj then 
-								im.ShowHelpMarker(environment.rainDrops_description)
+								im.ShowHelpMarker(descriptions.environment.rainDrops)
 								im.SameLine()
 								im.Text("Rain Drops: ")
 								im.SameLine()
@@ -3309,7 +3380,7 @@ local function drawCEI()
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
 								end
-								im.ShowHelpMarker(environment.dropSize_description)
+								im.ShowHelpMarker(descriptions.environment.dropSize)
 								im.SameLine()
 								im.Text("Drop Size: ")
 								im.SameLine()
@@ -3331,7 +3402,7 @@ local function drawCEI()
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
 								end
-								im.ShowHelpMarker(environment.dropMinSpeed_description)
+								im.ShowHelpMarker(descriptions.environment.dropMinSpeed)
 								im.SameLine()
 								im.Text("Drop Min Speed: ")
 								im.SameLine()
@@ -3353,7 +3424,7 @@ local function drawCEI()
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
 								end
-								im.ShowHelpMarker(environment.dropMaxSpeed_description)
+								im.ShowHelpMarker(descriptions.environment.dropMaxSpeed)
 								im.SameLine()
 								im.Text("Drop Max Speed: ")
 								im.SameLine()
@@ -3375,7 +3446,7 @@ local function drawCEI()
 									TriggerServerEvent("CEISetEnv", data)
 									log('W', logTag, "CEISetEnv Called: " .. data)
 								end
-								im.ShowHelpMarker(environment.precipType_description)
+								im.ShowHelpMarker(descriptions.environment.precipType)
 								im.SameLine()
 								im.Text("Precipitation Type: ")
 								im.SameLine()
@@ -3406,7 +3477,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.controlSun_description)
+							im.ShowHelpMarker(descriptions.environment.controlSun)
 							if environment.controlWeather then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -3438,7 +3509,7 @@ local function drawCEI()
 					if im.TreeNode1("Gravity") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.gravity_description)
+							im.ShowHelpMarker(descriptions.environment.gravity)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -3601,7 +3672,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.gravity_description)
+							im.ShowHelpMarker(descriptions.environment.gravity)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -3633,7 +3704,7 @@ local function drawCEI()
 					if im.TreeNode1("Temperature") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.useTempCurve_description)
+							im.ShowHelpMarker(descriptions.environment.useTempCurve)
 							if environment.useTempCurve then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -3767,7 +3838,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(environment.useTempCurve_description)
+							im.ShowHelpMarker(descriptions.environment.useTempCurve)
 							if environment.useTempCurve then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -3818,19 +3889,21 @@ local function drawCEI()
 				im.SameLine()
 				im.Text("days = " .. string.format("%.2f", (playersDatabaseVals.tempBanLength[0] * 1440)) .. " minutes")
 				im.PopItemWidth()
-				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
-					if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
+				--im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+				--for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
+					--if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
 						for k in pairs(playersDatabase) do
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								local playerBeammp = playersDatabase[k].beammp
 								if playerName ~= playerBeammp then
-									if playerName == ffi.string(playersDatabaseVals.lines[i]) then
+									--if playerName == ffi.string(playersDatabaseVals.lines[i]) then
 										if im.TreeNode1("##"..playerName) then
 											im.SameLine()
 											if playerBeammp then
-												if tonumber(playerBeammp) < 10 then
+												if tonumber(playerBeammp) < 0 then
+													im.Text(playerBeammp .. "| " .. playerName)
+												elseif tonumber(playerBeammp) < 10 then
 													im.Text(playerBeammp .. "			  | " .. playerName)
 												elseif tonumber(playerBeammp) < 100 then
 													im.Text(playerBeammp .. "			| " .. playerName)
@@ -4108,7 +4181,9 @@ local function drawCEI()
 										else
 											im.SameLine()
 											if playerBeammp then
-												if tonumber(playerBeammp) < 10 then
+												if tonumber(playerBeammp) < 0 then
+													im.Text(playerBeammp .. "| " .. playerName)
+												elseif tonumber(playerBeammp) < 10 then
 													im.Text(playerBeammp .. "			  | " .. playerName)
 												elseif tonumber(playerBeammp) < 100 then
 													im.Text(playerBeammp .. "			| " .. playerName)
@@ -4136,12 +4211,12 @@ local function drawCEI()
 											end
 											im.Separator()
 										end
-									end
+									--end
 								end
 							end
 						end
-					end
-				end
+					--end
+				--end
 				im.Unindent()
 				im.EndTabItem()
 			end
@@ -4219,20 +4294,22 @@ end
 local function resetsNotify(vehicleID)
 	if not resetExempt then
 		if MPVehicleGE.isOwn(vehicleID) then
-			if not config.resets.enabled then
-				guihooks.trigger('toastrMsg', {type="error", title = config.resets.title, msg = config.resets.disabledMessage, config = {timeOut = config.resets.messageDuration * 1000}})
+			if not config.restrictions.enabled then
+				guihooks.trigger('toastrMsg', {type="error", title = config.restrictions.title, msg = config.restrictions.disabledMessage, config = {timeOut = config.restrictions.messageDuration * 1000}})
 				return
 			else
 				if #resetsBlockedInputActions > 0 then
 					resetsPlayerNotified = false
 					resetsTimerElapsedReset = 0
-					local message = config.resets.message:gsub("{secondsLeft}", math.floor(config.resets.timeout - resetsTimerElapsedReset))
-					guihooks.trigger('toastrMsg', {type="warning", title = config.resets.title, msg = message, config = {timeOut = config.resets.messageDuration * 1000}})
+					local message = config.restrictions.message:gsub("{secondsLeft}", math.floor(config.restrictions.timeout - resetsTimerElapsedReset))
+					guihooks.trigger('toastrMsg', {type="warning", title = config.restrictions.title, msg = message, config = {timeOut = config.restrictions.messageDuration * 1000}})
 				end
 			end
 		end
 	end
 end
+
+------------------------------------------SUN
 
 local function onTime(timeValue, dayLengthValue)
 	local timeOfDay = core_environment.getTimeOfDay()
@@ -4240,6 +4317,13 @@ local function onTime(timeValue, dayLengthValue)
 		timeOfDay.time = timeValue
 		timeOfDay.dayLength = dayLengthValue
 		core_environment.setTimeOfDay(timeOfDay)
+	end
+end
+
+local function onTimeDefault()
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		return timeOfDay.time, timeOfDay.dayLength
 	end
 end
 
@@ -4260,6 +4344,31 @@ local function onTimePlay(value, dt)
 	end
 end
 
+local function onTimePlayDefault()
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		return timeOfDay.play
+	end
+end
+
+local function onDayLength(value)
+	if value == nil then
+	else
+		local timeOfDay = core_environment.getTimeOfDay()
+		if timeOfDay then
+			timeOfDay.dayLength = value
+			core_environment.setTimeOfDay(timeOfDay)
+		end
+	end
+end
+
+local function onDayLengthDefault()
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		return timeOfDay.dayLength
+	end
+end
+
 local function onDayScale(value)
 	if value == nil then
 	else
@@ -4272,14 +4381,10 @@ local function onDayScale(value)
 	end
 end
 
-local function onDayLength(value)
-	if value == nil then
-	else
-		local timeOfDay = core_environment.getTimeOfDay()
-		if timeOfDay then
-			timeOfDay.dayLength = value
-			core_environment.setTimeOfDay(timeOfDay)
-		end
+local function onDayScaleDefault()
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		return timeOfDay.dayScale
 	end
 end
 
@@ -4295,11 +4400,25 @@ local function onNightScale(value)
 	end
 end
 
+local function onNightScaleDefault()
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		return timeOfDay.nightScale
+	end
+end
+
 local function onSunAzimuthOverride(value)
 	local timeOfDay = core_environment.getTimeOfDay()
 	if timeOfDay then
 		timeOfDay.azimuthOverride = value
 		core_environment.setTimeOfDay(timeOfDay)
+	end
+end
+
+local function onSunAzimuthOverrideDefault()
+	local timeOfDay = core_environment.getTimeOfDay()
+	if timeOfDay then
+		return timeOfDay.azimuthOverride
 	end
 end
 
@@ -4310,10 +4429,24 @@ local function onSunSize(value)
 	end
 end
 
+local function onSunSizeDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.sunSize
+	end
+end
+
 local function onSkyBrightness(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.skyBrightness = value
+	end
+end
+
+local function onSkyBrightnessDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.skyBrightness
 	end
 end
 
@@ -4324,10 +4457,24 @@ local function onRayleighScattering(value)
 	end
 end
 
+local function onRayleighScatteringDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.rayleighScattering
+	end
+end
+
 local function onFlareScale(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.flareScale = value
+	end
+end
+
+local function onFlareScaleDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.flareScale
 	end
 end
 
@@ -4338,10 +4485,24 @@ local function onOcclusionScale(value)
 	end
 end
 
+local function onOcclusionScaleDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.occlusionScale
+	end
+end
+
 local function onSunLightBrightness(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.brightness = value
+	end
+end
+
+local function onSunLightBrightnessDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.brightness
 	end
 end
 
@@ -4352,10 +4513,24 @@ local function onExposure(value)
 	end
 end
 
+local function onExposureDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.exposure
+	end
+end
+
 local function onShadowDistance(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.shadowDistance = value
+	end
+end
+
+local function onShadowDistanceDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.shadowDistance
 	end
 end
 
@@ -4366,10 +4541,24 @@ local function onShadowSoftness(value)
 	end
 end
 
+local function onShadowSoftnessDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.shadowSoftness
+	end
+end
+
 local function onShadowSplits(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.numSplits = value
+	end
+end
+
+local function onShadowSplitsDefault(value)
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.numSplits
 	end
 end
 
@@ -4381,10 +4570,24 @@ local function onShadowTexSize(value)
 	end
 end
 
+local function onShadowTexSizeDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.texSize
+	end
+end
+
 local function onShadowLogWeight(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.logWeight = value
+	end
+end
+
+local function onShadowLogWeightDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.logWeight
 	end
 end
 
@@ -4400,11 +4603,27 @@ local function onVisibleDistance(value)
 	end
 end
 
+local function onVisibleDistanceDefault()
+	local levelInfo = getObject("LevelInfo")
+	if not levelInfo then
+		return
+	else
+		return levelInfo.visibleDistance
+	end
+end
+
 local function onMoonAzimuth(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
 		scatterSkyObj.moonAzimuth = value
 		scatterSkyObj:postApply()
+	end
+end
+
+local function onMoonAzimuthDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.moonAzimuth
 	end
 end
 
@@ -4416,6 +4635,13 @@ local function onMoonElevation(value)
 	end
 end
 
+local function onMoonElevationDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.moonElevation
+	end
+end
+
 local function onMoonScale(value)
 	local scatterSkyObj = getObject("ScatterSky")
 	if scatterSkyObj and value then
@@ -4424,16 +4650,46 @@ local function onMoonScale(value)
 	end
 end
 
+local function onMoonScaleDefault()
+	local scatterSkyObj = getObject("ScatterSky")
+	if scatterSkyObj then
+		return scatterSkyObj.moonScale
+	end
+end
+
+------------------------------------------WEATHER
+
 local function onFogDensity(value)
 	core_environment.setFogDensity(value)
+end
+
+local function onFogDensityDefault()
+	local fogDensity = core_environment.getFogDensity()
+	if fogDensity then
+		return fogDensity
+	end
 end
 
 local function onFogDensityOffset(value)
 	core_environment.setFogDensityOffset(value)
 end
 
+local function onFogDensityOffsetDefault()
+	local fogDensityOffset = core_environment.getFogDensityOffset()
+	if fogDensityOffset then
+		return fogDensityOffset
+	end
+end
+
 local function onFogAtmosphereHeight(value)
 	core_environment.setFogAtmosphereHeight(value)
+end
+
+local function onFogAtmosphereHeightDefault()
+	local fogAtmosphereHeight = core_environment.getFogAtmosphereHeight()
+	if fogAtmosphereHeight then
+		return fogAtmosphereHeight
+	end
 end
 
 local function onCloudHeight(value)
@@ -4441,6 +4697,14 @@ local function onCloudHeight(value)
 	if cloudObj then
 		local cloudObjID = cloudObj:getId()
 		core_environment.setCloudHeightByID(cloudObjID, value)
+	end
+end
+
+local function onCloudHeightDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		return core_environment.getCloudHeightByID(cloudObjID)
 	end
 end
 
@@ -4453,11 +4717,28 @@ local function onCloudHeightOne(value)
 	end
 end
 
+local function onCloudHeightOneDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		return core_environment.getCloudHeightByID(cloudObjIDOne)
+	end
+end
+
 local function onCloudCover(value)
 	local cloudObj = getObject("CloudLayer")
 	if cloudObj then
 		local cloudObjID = cloudObj:getId()
 		core_environment.setCloudCoverByID(cloudObjID, value)
+	end
+end
+
+local function onCloudCoverDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		return core_environment.getCloudCoverByID(cloudObjID)
 	end
 end
 
@@ -4470,11 +4751,28 @@ local function onCloudCoverOne(value)
 	end
 end
 
+local function onCloudCoverOneDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		return core_environment.getCloudCoverByID(cloudObjIDOne)
+	end
+end
+
 local function onCloudSpeed(value)
 	local cloudObj = getObject("CloudLayer")
 	if cloudObj then
 		local cloudObjID = cloudObj:getId()
 		core_environment.setCloudWindByID(cloudObjID, value)
+	end
+end
+
+local function onCloudSpeedDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		return core_environment.getCloudWindByID(cloudObjID)
 	end
 end
 
@@ -4487,11 +4785,28 @@ local function onCloudSpeedOne(value)
 	end
 end
 
+local function onCloudSpeedOneDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		return core_environment.getCloudWindByID(cloudObjIDOne)
+	end
+end
+
 local function onCloudExposure(value)
 	local cloudObj = getObject("CloudLayer")
 	if cloudObj then
 		local cloudObjID = cloudObj:getId()
 		core_environment.setCloudExposureByID(cloudObjID, value)
+	end
+end
+
+local function onCloudExposureDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		return core_environment.getCloudExposureByID(cloudObjID)
 	end
 end
 
@@ -4501,6 +4816,15 @@ local function onCloudExposureOne(value)
 		local cloudObjID = cloudObj:getId()
 		local cloudObjIDOne = cloudObjID + 1
 		core_environment.setCloudExposureByID(cloudObjIDOne, value)
+	end
+end
+
+local function onCloudExposureOneDefault()
+	local cloudObj = getObject("CloudLayer")
+	if cloudObj then
+		local cloudObjID = cloudObj:getId()
+		local cloudObjIDOne = cloudObjID + 1
+		return core_environment.getCloudExposureByID(cloudObjIDOne)
 	end
 end
 
@@ -4518,10 +4842,24 @@ local function onRainDrops(value)
 	end
 end
 
+local function onRainDropsDefault()
+	local rainObj = getObject("Precipitation")
+	if rainObj then
+		return rainObj.numDrops
+	end
+end
+
 local function onDropSize(value)
 	local rainObj = getObject("Precipitation")
 	if rainObj and value then
 		rainObj.dropSize = value
+	end
+end
+
+local function onDropSizeDefault()
+	local rainObj = getObject("Precipitation")
+	if rainObj then
+		return rainObj.dropSize
 	end
 end
 
@@ -4532,10 +4870,24 @@ local function onDropMinSpeed(value)
 	end
 end
 
+local function onDropMinSpeedDefault()
+	local rainObj = getObject("Precipitation")
+	if rainObj then
+		return rainObj.minSpeed
+	end
+end
+
 local function onDropMaxSpeed(value)
 	local rainObj = getObject("Precipitation")
 	if rainObj and value then
 		rainObj.maxSpeed = value
+	end
+end
+
+local function onDropMaxSpeedDefault()
+	local rainObj = getObject("Precipitation")
+	if rainObj then
+		return rainObj.maxSpeed
 	end
 end
 
@@ -4603,6 +4955,57 @@ end
 
 local function onWorldReadyState(state)
 	worldReadyState = state
+	
+	if worldReadyState == 2 then
+		defaults.timePlay = onTimePlayDefault()
+		defaults.time = onTimeDefault()
+		defaults.dayLength = onDayLengthDefault()
+		defaults.dayScale = onDayScaleDefault()
+		defaults.nightScale = onNightScaleDefault()
+		defaults.sunAzimuthOverride = onSunAzimuthOverrideDefault()
+		defaults.sunSize = onSunSizeDefault()
+		defaults.skyBrightness = onSkyBrightnessDefault()
+		defaults.rayleighScattering = onRayleighScatteringDefault()
+		defaults.sunLightBrightness = onSunLightBrightnessDefault()
+		defaults.flareScale = onFlareScaleDefault()
+		defaults.occlusionScale = onOcclusionScaleDefault()
+		defaults.exposure = onExposureDefault()
+		defaults.shadowDistance = onShadowDistanceDefault()
+		defaults.shadowSoftness = onShadowSoftnessDefault()
+		defaults.shadowSplits = onShadowSplitsDefault()
+		defaults.shadowTexSize = onShadowTexSizeDefault()
+		defaults.shadowLogWeight = onShadowLogWeightDefault()
+		defaults.visibleDistance = onVisibleDistanceDefault()
+		defaults.moonAzimuth = onMoonAzimuthDefault()
+		defaults.moonElevation = onMoonElevationDefault()
+		defaults.moonScale = onMoonScaleDefault()
+		
+		defaults.fogDensity = onFogDensityDefault()
+		defaults.fogDensityOffset = onFogDensityOffsetDefault()
+		defaults.fogAtmosphereHeight = onFogAtmosphereHeightDefault()
+		defaults.cloudHeight = onCloudHeightDefault()
+		defaults.cloudHeightOne = onCloudHeightOneDefault()
+		defaults.cloudCover = onCloudCoverDefault()
+		defaults.cloudCoverOne = onCloudCoverOneDefault()
+		defaults.cloudSpeed = onCloudSpeedDefault()
+		defaults.cloudSpeedOne = onCloudSpeedOneDefault()
+		defaults.cloudExposure = onCloudExposureDefault()
+		defaults.cloudExposureOne = onCloudExposureOneDefault()
+		defaults.rainDrops = onRainDropsDefault()
+		defaults.dropSize = onDropSizeDefault()
+		defaults.dropMinSpeed = onDropMinSpeedDefault()
+		defaults.dropMaxSpeed = onDropMaxSpeedDefault()
+		
+		extensions.core_input_actionFilter.setGroup('cei2', editorBlocked)
+		extensions.core_input_actionFilter.addAction(0, 'cei2', true)
+		
+		if not syncRequested then
+			TriggerServerEvent("requestCEISync", "")
+			syncRequested = true
+		end
+		
+	end
+	
 end
 
 local function rxTeleportFrom(data)
@@ -4615,116 +5018,116 @@ local function runEnvironment(dt)
 		return
 	end
 	if environment then
-		if environment.controlSun == true and defaultSunSet == true then
-			defaultSunSet = false
-		elseif environment.controlSun == true and defaultSunSet == false then
-			onTimePlay(environment.timePlay, dt)
-			if environment.ToD then
-				if firstReport == true then
-					if environment.timePlay == false or environment.timePlay == nil then
-						onTime(environment.ToD, environment.dayLength)
-					elseif timeUpdateQueued == true then
-						if timeUpdateTimer + dt > timeUpdateTimeout then
-							onTime(environment.ToD, environment.dayLength)
-							timeUpdateQueued = false
-							timeUpdateTimer = 0
-							core_environment.reset()
-						else
-							timeUpdateTimer = timeUpdateTimer + dt
-						end
-					end
-				else
-					onTime(environment.ToD, environment.dayLength)
-					firstReport = true
-				end
-			end
-			onDayLength(environment.dayLength)
-			onDayScale(environment.dayScale)
-			onNightScale(environment.nightScale)
-			onSunAzimuthOverride(environment.sunAzimuthOverride)
-			onSunSize(environment.sunSize)
-			onSkyBrightness(environment.skyBrightness)
-			onRayleighScattering(environment.rayleighScattering)
-			onSunLightBrightness(environment.sunLightBrightness)
-			onFlareScale(environment.flareScale)
-			onOcclusionScale(environment.occlusionScale)
-			onExposure(environment.exposure)
-			onShadowDistance(environment.shadowDistance)
-			onShadowSoftness(environment.shadowSoftness)
-			onShadowSplits(environment.shadowSplits)
-			onShadowTexSize(environment.shadowTexSize)
-			onShadowLogWeight(environment.shadowLogWeight)
-			onVisibleDistance(environment.visibleDistance)
-			onMoonAzimuth(environment.moonAzimuth)
-			onMoonElevation(environment.moonElevation)
-			onMoonScale(environment.moonScale)
-		elseif environment.controlSun == false and defaultSunSet == false then
-			onTimePlay(environment.timePlay_default)
-			onTime(environment.ToD_default, environment.dayLength_default)
-			onDayLength(environment.dayLength_default)
-			onDayScale(environment.dayScale_default)
-			onNightScale(environment.nightScale_default)
-			onSunAzimuthOverride(environment.sunAzimuthOverride_default)
-			onSunSize(environment.sunSize_default)
-			onSkyBrightness(environment.skyBrightness_default)
-			onRayleighScattering(environment.rayleighScattering_default)
-			onSunLightBrightness(environment.sunLightBrightness_default)
-			onFlareScale(environment.flareScale_default)
-			onOcclusionScale(environment.occlusionScale_default)
-			onExposure(environment.exposure_default)
-			onShadowDistance(environment.shadowDistance_default)
-			onShadowSoftness(environment.shadowSoftness_default)
-			onShadowSplits(environment.shadowSplits_default)
-			onShadowTexSize(environment.shadowTexSize_default)
-			onShadowLogWeight(environment.shadowLogWeight_default)
-			onVisibleDistance(environment.visibleDistance_default)
-			onMoonAzimuth(environment.moonAzimuth_default)
-			onMoonElevation(environment.moonElevation_default)
-			onMoonScale(environment.moonScale_default)
-			defaultSunSet = true
-		end
-		if environment.controlWeather == true and defaultWeatherSet == true then
-			defaultWeatherSet = false
-		elseif environment.controlWeather == true and defaultWeatherSet == false then
-			onFogDensity(environment.fogDensity)
-			onFogDensityOffset(environment.fogDensityOffset)
-			onFogAtmosphereHeight(environment.fogAtmosphereHeight)
-			onCloudHeight(environment.cloudHeight)
-			onCloudHeightOne(environment.cloudHeightOne)
-			onCloudCover(environment.cloudCover)
-			onCloudCoverOne(environment.cloudCoverOne)
-			onCloudSpeed(environment.cloudSpeed)
-			onCloudSpeedOne(environment.cloudSpeedOne)
-			onCloudExposure(environment.cloudExposure)
-			onCloudExposureOne(environment.cloudExposureOne)
-			onRainDrops(environment.rainDrops)
-			onDropSize(environment.dropSize)
-			onDropMinSpeed(environment.dropMinSpeed)
-			onDropMaxSpeed(environment.dropMaxSpeed)
-		elseif environment.controlWeather == false and defaultWeatherSet == false then
-			onFogDensity(environment.fogDensity_default)
-			onFogDensityOffset(environment.fogDensityOffset_default)
-			onFogAtmosphereHeight(environment.fogAtmosphereHeight_default)
-			onCloudHeight(environment.cloudHeight_default)
-			onCloudHeightOne(environment.cloudHeightOne_default)
-			onCloudCover(environment.cloudCover_default)
-			onCloudCoverOne(environment.cloudCoverOne_default)
-			onCloudSpeed(environment.cloudSpeed_default)
-			onCloudSpeedOne(environment.cloudSpeedOne_default)
-			onCloudExposure(environment.cloudExposure_default)
-			onCloudExposureOne(environment.cloudExposureOne_default)
-			onRainDrops(environment.rainDrops_default)
-			onDropSize(environment.dropSize_default)
-			onDropMinSpeed(environment.dropMinSpeed_default)
-			onDropMaxSpeed(environment.dropMaxSpeed_default)
-			defaultWeatherSet = true
-		end
-		onSimSpeed(environment.simSpeed)
-		onTempCurve()
-		onGravity(environment.gravity)
 		if lastEnvReport + dt > envReportRate then
-			lastEnvReport = 0
+			if environment.controlSun == true and defaultSunSet == true then
+				defaultSunSet = false
+			elseif environment.controlSun == true and defaultSunSet == false then
+				onTimePlay(environment.timePlay, dt)
+				if environment.ToD then
+					if firstReport == true then
+						if environment.timePlay == false or environment.timePlay == nil then
+							onTime(environment.ToD, environment.dayLength)
+						elseif timeUpdateQueued == true then
+							if timeUpdateTimer + dt > timeUpdateTimeout then
+								onTime(environment.ToD, environment.dayLength)
+								timeUpdateQueued = false
+								timeUpdateTimer = 0
+								core_environment.reset()
+							else
+								timeUpdateTimer = timeUpdateTimer + dt
+							end
+						end
+					else
+						onTime(environment.ToD, environment.dayLength)
+						firstReport = true
+					end
+				end
+				onDayLength(environment.dayLength)
+				onDayScale(environment.dayScale)
+				onNightScale(environment.nightScale)
+				onSunAzimuthOverride(environment.sunAzimuthOverride)
+				onSunSize(environment.sunSize)
+				onSkyBrightness(environment.skyBrightness)
+				onRayleighScattering(environment.rayleighScattering)
+				onSunLightBrightness(environment.sunLightBrightness)
+				onFlareScale(environment.flareScale)
+				onOcclusionScale(environment.occlusionScale)
+				onExposure(environment.exposure)
+				onShadowDistance(environment.shadowDistance)
+				onShadowSoftness(environment.shadowSoftness)
+				onShadowSplits(environment.shadowSplits)
+				onShadowTexSize(environment.shadowTexSize)
+				onShadowLogWeight(environment.shadowLogWeight)
+				onVisibleDistance(environment.visibleDistance)
+				onMoonAzimuth(environment.moonAzimuth)
+				onMoonElevation(environment.moonElevation)
+				onMoonScale(environment.moonScale)
+			elseif environment.controlSun == false and defaultSunSet == false then
+				onTimePlay(defaults.timePlay, dt)
+				onTime(defaults.time, defaults.dayLength)
+				onDayLength(defaults.dayLength)
+				onDayScale(defaults.dayScale)
+				onNightScale(defaults.nightScale)
+				onSunAzimuthOverride(defaults.sunAzimuthOverride)
+				onSunSize(defaults.sunSize)
+				onSkyBrightness(defaults.skyBrightness)
+				onRayleighScattering(defaults.rayleighScattering)
+				onSunLightBrightness(defaults.sunLightBrightness)
+				onFlareScale(defaults.flareScale)
+				onOcclusionScale(defaults.occlusionScale)
+				onExposure(defaults.exposure)
+				onShadowDistance(defaults.shadowDistance)
+				onShadowSoftness(defaults.shadowSoftness)
+				onShadowSplits(defaults.shadowSplits)
+				onShadowTexSize(defaults.shadowTexSize)
+				onShadowLogWeight(defaults.shadowLogWeight)
+				onVisibleDistance(defaults.visibleDistance)
+				onMoonAzimuth(defaults.moonAzimuth)
+				onMoonElevation(defaults.moonElevation)
+				onMoonScale(defaults.moonScale)
+				defaultSunSet = true
+			end
+			if environment.controlWeather == true and defaultWeatherSet == true then
+				defaultWeatherSet = false
+			elseif environment.controlWeather == true and defaultWeatherSet == false then
+				onFogDensity(environment.fogDensity)
+				onFogDensityOffset(environment.fogDensityOffset)
+				onFogAtmosphereHeight(environment.fogAtmosphereHeight)
+				onCloudHeight(environment.cloudHeight)
+				onCloudHeightOne(environment.cloudHeightOne)
+				onCloudCover(environment.cloudCover)
+				onCloudCoverOne(environment.cloudCoverOne)
+				onCloudSpeed(environment.cloudSpeed)
+				onCloudSpeedOne(environment.cloudSpeedOne)
+				onCloudExposure(environment.cloudExposure)
+				onCloudExposureOne(environment.cloudExposureOne)
+				onRainDrops(environment.rainDrops)
+				onDropSize(environment.dropSize)
+				onDropMinSpeed(environment.dropMinSpeed)
+				onDropMaxSpeed(environment.dropMaxSpeed)
+			elseif environment.controlWeather == false and defaultWeatherSet == false then
+				onFogDensity(defaults.fogDensity)
+				onFogDensityOffset(defaults.fogDensityOffset)
+				onFogAtmosphereHeight(defaults.fogAtmosphereHeight)
+				onCloudHeight(defaults.cloudHeight)
+				onCloudHeightOne(defaults.cloudHeightOne)
+				onCloudCover(defaults.cloudCover)
+				onCloudCoverOne(defaults.cloudCoverOne)
+				onCloudSpeed(defaults.cloudSpeed)
+				onCloudSpeedOne(defaults.cloudSpeedOne)
+				onCloudExposure(defaults.cloudExposure)
+				onCloudExposureOne(defaults.cloudExposureOne)
+				onRainDrops(defaults.rainDrops)
+				onDropSize(defaults.dropSize)
+				onDropMinSpeed(defaults.dropMinSpeed)
+				onDropMaxSpeed(defaults.dropMaxSpeed)
+				defaultWeatherSet = true
+			end
+			onSimSpeed(environment.simSpeed)
+			onTempCurve()
+			onGravity(environment.gravity)
 			core_environment.reset()
+			lastEnvReport = 0
 		else
 			lastEnvReport = lastEnvReport + dt
 		end
@@ -4735,13 +5138,13 @@ local function checkResetState(dt)
 	resetsTimerElapsedReset = resetsTimerElapsedReset + dt
 	if not resetExempt then
 		if config then
-			if config.resets then
-				if config.resets.control then
-					if not config.resets.enabled then
+			if config.restrictions then
+				if config.restrictions.control then
+					if not config.restrictions.enabled then
 						extensions.core_input_actionFilter.setGroup('cei', allResetsBlockedInputActions)
 						extensions.core_input_actionFilter.addAction(0, 'cei', true)
 					else
-						if resetsTimerElapsedReset <= tonumber(config.resets.timeout) then
+						if resetsTimerElapsedReset <= tonumber(config.restrictions.timeout) then
 							extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
 							extensions.core_input_actionFilter.addAction(0, 'cei', true)
 						else
@@ -4749,7 +5152,7 @@ local function checkResetState(dt)
 								extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
 								extensions.core_input_actionFilter.addAction(0, 'cei', false)
 							elseif resetsPlayerNotified == false then
-								guihooks.trigger('toastrMsg', {type="info", title = config.resets.title, msg = config.resets.elapsedMessage, config = {timeOut = config.resets.messageDuration * 1000 }})
+								guihooks.trigger('toastrMsg', {type="info", title = config.restrictions.title, msg = config.restrictions.elapsedMessage, config = {timeOut = config.restrictions.messageDuration * 1000 }})
 								resetsPlayerNotified = true
 							end
 						end
@@ -4772,6 +5175,67 @@ local function onUpdate(dt)
 		runEnvironment(dt)
 		lastTeleport = lastTeleport + dt
 	end
+end
+
+local function dropPlayerAtCamera()
+
+	local playerVehicle = be:getPlayerVehicle(0)
+	if not playerVehicle then return end
+	local transform = playerVehicle:getTransform()
+	commands.setFreeCamera()
+	local freeCamera = commands.getFreeCamera()
+	if not freeCamera then return end
+	freeCamera:setTransform(transform)
+
+	local gameVehicleID = be:getPlayerVehicleID(0)
+	if MPVehicleGE.isOwn(gameVehicleID) then
+		if not firstReset then
+			firstReset = true
+		end
+		if not firstTeleport then
+			firstTeleport = true
+		end
+	end
+	if config.restrictions then
+		if config.restrictions.control then
+			resetsNotify(gameVehicleID)
+		end
+	end
+
+end
+
+local function dropPlayerAtCameraNoReset()
+
+	local playerVehicle = be:getPlayerVehicle(0)
+	if not playerVehicle then return end
+	local pos = getCameraPosition()
+	local camDir = getCameraForward()
+	camDir.z = 0
+	local camRot = quatFromDir(camDir, vec3(0,0,1))
+	local rot =  quat(0, 0, 1, 0) * camRot -- vehicles' forward is inverted
+	playerVehicle:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w)
+	commands.setGameCamera()
+	if core_camera.getActiveCamName(0) == "bigMap" then
+		core_camera.setByName(0, "orbit", false)
+	end
+	core_camera.resetCamera(0)
+
+	local gameVehicleID = be:getPlayerVehicleID(0)
+	
+	if MPVehicleGE.isOwn(gameVehicleID) then
+		if not firstReset then
+			firstReset = true
+		end
+		if not firstTeleport then
+			firstTeleport = true
+		end
+	end
+	if config.restrictions then
+		if config.restrictions.control then
+			resetsNotify(gameVehicleID)
+		end
+	end
+
 end
 
 local function onVehicleSpawned(gameVehicleID)
@@ -4810,8 +5274,8 @@ local function onVehicleResetted(gameVehicleID)
 			firstTeleport = true
 		end
 	end
-	if config.resets then
-		if config.resets.control then
+	if config.restrictions then
+		if config.restrictions.control then
 			resetsNotify(gameVehicleID)
 		end
 	end
@@ -4917,6 +5381,7 @@ local function onExtensionLoaded()
 	AddEventHandler("rxConfigData", rxConfigData)
 	AddEventHandler("rxInputUpdate", rxInputUpdate)
 	AddEventHandler("rxEnvironment", rxEnvironment)
+	AddEventHandler("rxDescriptions", rxDescriptions)
 	AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
 	AddEventHandler("rxCEIstate", rxCEIstate)
 	AddEventHandler("rxCEItp", rxCEItp)
@@ -4948,6 +5413,9 @@ M.onWorldReadyState = onWorldReadyState
 
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
+
+commands.dropPlayerAtCamera = dropPlayerAtCamera
+commands.dropPlayerAtCameraNoReset = dropPlayerAtCameraNoReset
 
 M.onVehicleSpawned = onVehicleSpawned
 M.onVehicleDestroyed = onVehicleDestroyed

@@ -1,8 +1,8 @@
---CEI (SERVER) by Dudekahedron, 2022
+--CEI (SERVER) by Dudekahedron, 2023
 
 local M = {}
 
-M.COBALT_VERSION = "1.7.2"
+M.COBALT_VERSION = "1.7.3"
 
 utils.setLogType("CEI",93)
 
@@ -27,12 +27,20 @@ local tempPCV = {}
 
 local kickThresh
 
+local logTimer = 0
+local logInterval = 30
+
 local config = {}
+
 config.server = {}
+
 config.cobalt = {}
+
 config.cobalt.whitelistedPlayers = {}
+
 config.cobalt.permissions = {}
 config.cobalt.permissions.vehiclePerm = {}
+
 config.cobalt.interface = {}
 config.cobalt.interface.defaultState_default = true
 config.cobalt.interface.playerPermissions_default = 2
@@ -52,295 +60,320 @@ config.cobalt.interface.gravity_default = 2
 config.cobalt.interface.temperature_default = 2
 config.cobalt.interface.database_default = 3
 config.cobalt.interface.race_default = 2
-config.cobalt.interface.defaultState_description = "The state of the interface for new players."
-config.cobalt.interface.playerPermissions_description = "The level required to access playerPermissions."
-config.cobalt.interface.playerPermissionsPlus_description = "The level required to access more advanced playerPermissions."
-config.cobalt.interface.config_description = "The level required to access config."
-config.cobalt.interface.cobaltEssentials_description = "The level required to access CE settings."
-config.cobalt.interface.server_description = "The level required to access server settings."
-config.cobalt.interface.interface_description = "The level required to access interface settings."
-config.cobalt.interface.nametags_description = "The level required to access nametags settings."
-config.cobalt.interface.restrictions_description = "The level required to access restrictions settings."
-config.cobalt.interface.extras_description = "The level required to access extras settings."
-config.cobalt.interface.environmentAdmin_description = "The level required to access environment reset all."
-config.cobalt.interface.environment_description = "The level required to access environment settings."
-config.cobalt.interface.sun_description = "The level required to access sun settings."
-config.cobalt.interface.weather_description = "The level required to access weather settings."
-config.cobalt.interface.gravity_description = "The level required to access gravity settings."
-config.cobalt.interface.temperature_description = "The level required to access temperature settings."
-config.cobalt.interface.database_description = "The level required to access database settings."
-config.cobalt.interface.race_description = "The level required to access race countdown."
-config.cobalt.interface.defaultState = ""
-config.cobalt.interface.playerPermissions = ""
-config.cobalt.interface.playerPermissionsPlus = ""
-config.cobalt.interface.config = ""
-config.cobalt.interface.cobaltEssentials = ""
-config.cobalt.interface.server = ""
-config.cobalt.interface.interface = ""
-config.cobalt.interface.nametags = ""
-config.cobalt.interface.restrictions = ""
-config.cobalt.interface.extras = ""
-config.cobalt.interface.environmentAdmin = ""
-config.cobalt.interface.environment = ""
-config.cobalt.interface.sun = ""
-config.cobalt.interface.weather = ""
-config.cobalt.interface.gravity = ""
-config.cobalt.interface.temperature = ""
-config.cobalt.interface.database = ""
-config.cobalt.interface.race = ""
+
 config.cobalt.groups = {}
+
 config.nametags = {}
 config.nametags.whitelist = {}
 config.nametags.settings = {}
-config.resets = {}
-config.resets.control_default = false
-config.resets.messageDuration_default = 5
-config.resets.enabled_default = true
-config.resets.timeout_default = 10
-config.resets.title_default = "Vehicle Reset Limiter"
-config.resets.elapsedMessage_default = "You can now reset your vehicle."
-config.resets.message_default = "You can reset your vehicle in {secondsLeft} seconds."
-config.resets.disabledMessage_default = "Vehicle resetting is disabled on this server."
-config.resets.control_description = "Are resets controlled?"
-config.resets.messageDuration_description = "How long does the toast show?"
-config.resets.enabled_description = "Are resets allowed?"
-config.resets.timeout_description = "How often can a vehicle be reset (in seconds)?"
-config.resets.title_description = "Title shown when resetting is limited or disabled."
-config.resets.elapsedMessage_description = "Message shown when reset timeout has elapsed."
-config.resets.message_description = "Message shown when resetting is limited."
-config.resets.disabledMessage_description = "Message shown when resetting is completely disabled."
-config.resets.control = ""
-config.resets.messageDuration = ""
-config.resets.enabled = ""
-config.resets.timeout = ""
-config.resets.title = ""
-config.resets.elapsedMessage = ""
-config.resets.message = ""
-config.resets.disabledMessage = ""
+config.nametags.settings.blockingEnabled_default = false
+config.nametags.settings.blockingTimeout_default = 300
+config.nametags.settings.whitelist_default = "exampleName"
 
-local defaultNametagsBlockingEnabled = false
-local defaultNametagsBlockingTimeout = 300
-local defaultNametagsBlockingWhitelist = "exampleName"
+config.restrictions = {}
+config.restrictions.control_default = false
+config.restrictions.messageDuration_default = 5
+config.restrictions.enabled_default = true
+config.restrictions.timeout_default = 10
+config.restrictions.title_default = "Vehicle Reset Limiter"
+config.restrictions.elapsedMessage_default = "You can now reset your vehicle."
+config.restrictions.message_default = "You can reset your vehicle in {secondsLeft} seconds."
+config.restrictions.disabledMessage_default = "Vehicle resetting is disabled on this server."
 
-local logTimer = 0
-local logInterval = 30
+local environmentDefaults = {
+	controlSun = false,
+	ToD = 0.125,
+	timePlay = false,
+	dayLength = 1800,
+	dayScale = 1,
+	nightScale = 2,
+	sunAzimuthOverride = 0.0,
+	skyBrightness = 40,
+	sunSize = 1,
+	rayleighScattering = 0.003,
+	sunLightBrightness = 1,
+	flareScale = 5,
+	occlusionScale = 0.025,
+	exposure = 1,
+	shadowDistance = 1600,
+	shadowSoftness = 0.2,
+	shadowSplits = 4,
+	shadowTexSize = 1024,
+	shadowLogWeight = 0.98,
+	visibleDistance = 8000,
+	moonAzimuth = 0.0,
+	moonElevation = 45,
+	moonScale = 0.03,
+	controlWeather = false,
+	fogDensity = 0.001,
+	fogDensityOffset = 8.0,
+	fogAtmosphereHeight = 400,
+	cloudHeight = 2.5,
+	cloudHeightOne = 5,
+	cloudCover = 0.2,
+	cloudCoverOne = 0.2,
+	cloudSpeed = 0.2,
+	cloudSpeedOne = 0.2,
+	cloudExposure = 1.4,
+	cloudExposureOne = 1.6,
+	rainDrops = 0,
+	dropSize = 1,
+	dropMinSpeed = 0.1,
+	dropMaxSpeed = 0.2,
+	precipType = "rain_medium",
+	teleportTimeout = 5,
+	simSpeed = 1,
+	controlSimSpeed = false,
+	gravity = -9.81,
+	controlGravity = false,
+	tempCurveNoon = 38,
+	tempCurveDusk = 12,
+	tempCurveMidnight = -15,
+	tempCurveDawn = 12,
+	useTempCurve = false
+}
 
 local environment = {}
-environment.controlSun_default = false
-environment.ToD_default = 0.125
-environment.timePlay_default = false
-environment.dayLength_default = 1800
-environment.dayScale_default = 1
-environment.nightScale_default = 2
-environment.sunAzimuthOverride_default = 0.0
-environment.skyBrightness_default = 40
-environment.sunSize_default = 1
-environment.rayleighScattering_default = 0.003
-environment.sunLightBrightness_default = 1
-environment.flareScale_default = 5
-environment.occlusionScale_default = 0.025
-environment.exposure_default = 1
-environment.shadowDistance_default = 1600
-environment.shadowSoftness_default = 0.2
-environment.shadowSplits_default = 4
-environment.shadowTexSize_default = 1024
-environment.shadowLogWeight_default = 0.98
-environment.visibleDistance_default = 4000
-environment.moonAzimuth_default = 0.0
-environment.moonElevation_default = 45
-environment.moonScale_default = 0.03
-environment.controlWeather_default = false
-environment.fogDensity_default = 0.001
-environment.fogDensityOffset_default = 8.0
-environment.fogAtmosphereHeight_default = 400
-environment.cloudHeight_default = 2.5
-environment.cloudHeightOne_default = 5
-environment.cloudCover_default = 0.2
-environment.cloudCoverOne_default = 0.2
-environment.cloudSpeed_default = 0.2
-environment.cloudSpeedOne_default = 0.2
-environment.cloudExposure_default = 1.4
-environment.cloudExposureOne_default = 1.6
-environment.rainDrops_default = 0
-environment.dropSize_default = 1
-environment.dropMinSpeed_default = 0.1
-environment.dropMaxSpeed_default = 0.2
-environment.precipType_default = "rain_medium"
-environment.teleportTimeout_default = 5
-environment.simSpeed_default = 1
-environment.controlSimSpeed_default = false
-environment.gravity_default = -9.81
-environment.controlGravity_default = false
-environment.tempCurveNoon_default = 38
-environment.tempCurveDusk_default = 12
-environment.tempCurveMidnight_default = -15
-environment.tempCurveDawn_default = 12
-environment.useTempCurve_default = false
-environment.controlSun_description = "Do we control everyone's sun?"
-environment.ToD_description = "What is the Time of Day?"
-environment.timePlay_description = "Does time progress?"
-environment.dayLength_description = "How long is the day?"
-environment.dayScale_description = "At what rate does daytime progress?"
-environment.nightScale_description = "At what rate does nighttime progress?"
-environment.sunAzimuthOverride_description = "At what position on the horizon does the sun rise and set?"
-environment.skyBrightness_description = "How bright is the sky?"
-environment.sunSize_description = "How big is the sun?"
-environment.rayleighScattering_description = "How much rayleigh scattering?"
-environment.sunLightBrightness_description = "How bright is the sunlight?"
-environment.flareScale_description = "How big is the sun lens flare?"
-environment.occlusionScale_description = "How occluded is the sun lens flare?"
-environment.exposure_description = "How exposed is the environment?"
-environment.shadowDistance_description = "How far are the shadows?"
-environment.shadowSoftness_description = "How soft are the shadows?"
-environment.shadowSplits_description = "How many splits are there for shadows?"
-environment.shadowTexSize_description = "What is the texture resolution for shadows?"
-environment.shadowLogWeight_description = "How much does the log weigh?"
-environment.visibleDistance_description = "How far can we see?"
-environment.moonAzimuth_description = "Horizontal position of moon."
-environment.moonElevation_description = "Vertical position of moon."
-environment.moonScale_description = "How big is the moon?"
-environment.controlWeather_description = "Do we control everyone's weather?"
-environment.fogDensity_description = "How thicc is the fog?"
-environment.fogDensityOffset_description = "How far away is the fog?"
-environment.fogAtmosphereHeight_description = "How high is the fog?"
-environment.cloudHeight_description = "How high are the clouds?"
-environment.cloudHeightOne_description = "How high are the clouds?"
-environment.cloudCover_description = "How thicc are the clouds?"
-environment.cloudCoverOne_description = "How thicc are the clouds?"
-environment.cloudSpeed_description = "How fast are the clouds?"
-environment.cloudSpeedOne_description = "How fast are the clouds?"
-environment.cloudExposure_description = "How exposed are the clouds?"
-environment.cloudExposureOne_description = "How exposed are the clouds?"
-environment.rainDrops_description = "How many rain drops are there?"
-environment.dropSize_description = "What size are the drops of precipitation?"
-environment.dropMinSpeed_description = "What is the minimum speed of precipitation?"
-environment.dropMaxSpeed_description = "What is the maximum speed of precipitation?"
-environment.precipType_description = "What type of precipitation do we use?"
-environment.teleportTimeout_description = "How long between telports?"
-environment.simSpeed_description = "At what rate does the simulation run?"
-environment.controlSimSpeed_description = "Do we control everyone's sim speed?"
-environment.gravity_description = "At what rate do objects fall towards the ground?"
-environment.controlGravity_description = "Do we control everyone's gravity?"
-environment.tempCurveNoon_description = "What is the custom temperature in C at noon?"
-environment.tempCurveDusk_description = "What is the custom temperature in C at dusk?"
-environment.tempCurveMidnight_description = "What is the custom temperature in C at midnight?"
-environment.tempCurveDawn_description = "What is the custom temperature in C at dawn?"
-environment.useTempCurve_description = "Do we use a custom temperature curve?"
-environment.controlSun = ""
-environment.ToD = ""
-environment.timePlay = ""
-environment.dayLength = ""
-environment.dayScale = ""
-environment.nightScale = ""
-environment.sunAzimuthOverride = ""
-environment.skyBrightness = ""
-environment.sunSize = ""
-environment.rayleighScattering = ""
-environment.sunLightBrightness = ""
-environment.flareScale = ""
-environment.occlusionScale = ""
-environment.exposure = ""
-environment.shadowDistance = ""
-environment.shadowSoftness = ""
-environment.shadowSplits = ""
-environment.shadowTexSize = ""
-environment.shadowLogWeight = ""
-environment.visibleDistance = ""
-environment.moonAzimuth = ""
-environment.moonElevation = ""
-environment.moonScale = ""
-environment.controlWeather = ""
-environment.fogDensity = ""
-environment.fogDensityOffset = ""
-environment.fogAtmosphereHeight = ""
-environment.cloudHeight = ""
-environment.cloudHeightOne = ""
-environment.cloudCover = ""
-environment.cloudCoverOne = ""
-environment.cloudSpeed = ""
-environment.cloudSpeedOne = ""
-environment.cloudExposure = ""
-environment.cloudExposureOne = ""
-environment.rainDrops = ""
-environment.dropSize = ""
-environment.dropMinSpeed = ""
-environment.dropMaxSpeed = ""
-environment.precipType = ""
-environment.teleportTimeout = ""
-environment.simSpeed = ""
-environment.controlSimSpeed = ""
-environment.gravity = ""
-environment.controlGravity = ""
-environment.tempCurveNoon = ""
-environment.tempCurveDusk = ""
-environment.tempCurveMidnight = ""
-environment.tempCurveDawn = ""
-environment.useTempCurve = ""
+
+
+local descriptions = {
+	interface = {
+		defaultState = "The state of the interface for new players.",
+		playerPermissions = "The level required to access playerPermissions.",
+		playerPermissionsPlus = "The level required to access more advanced playerPermissions.",
+		config = "The level required to access config.",
+		cobaltEssentials = "The level required to access CE settings.",
+		server = "The level required to access server settings.",
+		interface = "The level required to access interface settings.",
+		nametags = "The level required to access nametags settings.",
+		restrictions = "The level required to access restrictions settings.",
+		extras = "The level required to access extras settings.",
+		environmentAdmin = "The level required to access environment reset all.",
+		environment = "The level required to access environment settings.",
+		sun = "The level required to access sun settings.",
+		weather = "The level required to access weather settings.",
+		gravity = "The level required to access gravity settings.",
+		temperature = "The level required to access temperature settings.",
+		database = "The level required to access database settings.",
+		race = "The level required to access race countdown."
+	},
+	restrictions = {
+		control = "Are resets controlled?",
+		messageDuration = "How long does the toast show?",
+		enabled = "Are resets allowed?",
+		timeout = "How often can a vehicle be reset (in seconds)?",
+		title = "Title shown when resetting is limited or disabled.",
+		elapsedMessage = "Message shown when reset timeout has elapsed.",
+		message = "Message shown when resetting is limited.",
+		disabledMessage = "Message shown when resetting is completely disabled."
+	},
+	environment = {
+		controlSun = "Do we control everyone's sun?",
+		ToD = "What is the Time of Day?",
+		timePlay = "Does time progress?",
+		dayLength = "How long is the day?",
+		dayScale = "At what rate does daytime progress?",
+		nightScale = "At what rate does nighttime progress?",
+		sunAzimuthOverride = "At what position on the horizon does the sun rise and set?",
+		skyBrightness = "How bright is the sky?",
+		sunSize = "How big is the sun?",
+		rayleighScattering = "How much rayleigh scattering?",
+		sunLightBrightness = "How bright is the sunlight?",
+		flareScale = "How big is the sun lens flare?",
+		occlusionScale = "How occluded is the sun lens flare?",
+		exposure = "How exposed is the environment?",
+		shadowDistance = "How far are the shadows?",
+		shadowSoftness = "How soft are the shadows?",
+		shadowSplits = "How many splits are there for shadows?",
+		shadowTexSize = "What is the texture resolution for shadows?",
+		shadowLogWeight = "How much does the log weigh?",
+		visibleDistance = "How far can we see?",
+		moonAzimuth = "Horizontal position of moon.",
+		moonElevation = "Vertical position of moon.",
+		moonScale = "How big is the moon?",
+		controlWeather = "Do we control everyone's weather?",
+		fogDensity = "How thicc is the fog?",
+		fogDensityOffset = "How far away is the fog?",
+		fogAtmosphereHeight = "How high is the fog?",
+		cloudHeight = "How high are the clouds?",
+		cloudHeightOne = "How high are the clouds?",
+		cloudCover = "How thicc are the clouds?",
+		cloudCoverOne = "How thicc are the clouds?",
+		cloudSpeed = "How fast are the clouds?",
+		cloudSpeedOne = "How fast are the clouds?",
+		cloudExposure = "How exposed are the clouds?",
+		cloudExposureOne = "How exposed are the clouds?",
+		rainDrops = "How many rain drops are there?",
+		dropSize = "What size are the drops of precipitation?",
+		dropMinSpeed = "What is the minimum speed of precipitation?",
+		dropMaxSpeed = "What is the maximum speed of precipitation?",
+		precipType = "What type of precipitation do we use?",
+		teleportTimeout = "How long between telports?",
+		simSpeed = "At what rate does the simulation run?",
+		controlSimSpeed = "Do we control everyone's sim speed?",
+		gravity = "At what rate do objects fall towards the ground?",
+		controlGravity = "Do we control everyone's gravity?",
+		tempCurveNoon = "What is the custom temperature in C at noon?",
+		tempCurveDusk = "What is the custom temperature in C at dusk?",
+		tempCurveMidnight = "What is the custom temperature in C at midnight?",
+		tempCurveDawn = "What is the custom temperature in C at dawn?",
+		useTempCurve = "Do we use a custom temperature curve?"
+	},
+	nametags = {
+		blockingEnabled = "Are nametags blocked?",
+		blockingTimeout = "For how long are nametags blocked?",
+		nametagsWhitelist = "Who is immune to nametag blocking?"
+	}
+}
 
 local environmentJson = CobaltDB.new("environment")
-local defaultEnvironment = {
-	controlSun = 			{value = environment.controlSun_default, 			description = environment.controlSun_description},
-	ToD = 					{value = environment.ToD_default, 					description = environment.ToD_description},
-	timePlay = 				{value = environment.timePlay_default, 				description = environment.timePlay_description},
-	dayLength = 			{value = environment.dayLength_default, 			description = environment.dayLength_description},
-	dayScale = 				{value = environment.dayScale_default, 				description = environment.dayScale_description},
-	nightScale = 			{value = environment.nightScale_default, 			description = environment.nightScale_description},
-	sunAzimuthOverride = 	{value = environment.sunAzimuthOverride_default, 	description = environment.sunAzimuthOverride_description},
-	skyBrightness = 		{value = environment.skyBrightness_default, 		description = environment.skyBrightness_description},
-	sunSize = 				{value = environment.sunSize_default, 				description = environment.sunSize_description},
-	rayleighScattering = 	{value = environment.rayleighScattering_default, 	description = environment.rayleighScattering_description},
-	sunLightBrightness = 	{value = environment.sunLightBrightness_default, 	description = environment.sunLightBrightness_description},
-	flareScale = 			{value = environment.flareScale_default, 			description = environment.flareScale_description},
-	occlusionScale = 		{value = environment.occlusionScale_default, 		description = environment.occlusionScale_description},
-	exposure = 				{value = environment.exposure_default, 				description = environment.exposure_description},
-	shadowDistance = 		{value = environment.shadowDistance_default, 		description = environment.shadowDistance_description},
-	shadowSoftness = 		{value = environment.shadowSoftness_default, 		description = environment.shadowSoftness_description},
-	shadowSplits = 			{value = environment.shadowSplits_default, 			description = environment.shadowSplits_description},
-	shadowTexSize = 		{value = environment.shadowTexSize_default, 		description = environment.shadowTexSize_description},
-	shadowLogWeight = 		{value = environment.shadowLogWeight_default, 		description = environment.shadowLogWeight_description},
-	visibleDistance = 		{value = environment.visibleDistance_default, 		description = environment.visibleDistance_description},
-	moonAzimuth = 			{value = environment.moonAzimuth_default, 			description = environment.moonAzimuth_description},
-	moonElevation = 		{value = environment.moonElevation_default, 		description = environment.moonElevation_description},
-	moonScale = 			{value = environment.moonScale_default, 			description = environment.moonScale_description},
-	controlWeather = 		{value = environment.controlWeather_default, 		description = environment.controlWeather_description},
-	fogDensity = 			{value = environment.fogDensity_default, 			description = environment.fogDensity_description},
-	fogDensityOffset = 		{value = environment.fogDensityOffset_default, 		description = environment.fogDensityOffset_description},
-	fogAtmosphereHeight = 	{value = environment.fogAtmosphereHeight_default, 	description = environment.fogAtmosphereHeight_description},
-	cloudHeight = 			{value = environment.cloudHeight_default, 			description = environment.cloudHeight_description},
-	cloudHeightOne = 		{value = environment.cloudHeightOne_default, 		description = environment.cloudHeightOne_description},
-	cloudCover = 			{value = environment.cloudCover_default, 			description = environment.cloudCover_description},
-	cloudCoverOne = 		{value = environment.cloudCoverOne_default, 		description = environment.cloudCoverOne_description},
-	cloudSpeed = 			{value = environment.cloudSpeed_default, 			description = environment.cloudSpeed_description},
-	cloudSpeedOne = 		{value = environment.cloudSpeedOne_default, 		description = environment.cloudSpeedOne_description},
-	cloudExposure = 		{value = environment.cloudExposure_default, 		description = environment.cloudExposure_description},
-	cloudExposureOne = 		{value = environment.cloudExposureOne_default, 		description = environment.cloudExposureOne_description},
-	rainDrops = 			{value = environment.rainDrops_default, 			description = environment.rainDrops_description},
-	dropSize = 				{value = environment.dropSize_default, 				description = environment.dropSize_description},
-	dropMinSpeed = 			{value = environment.dropMinSpeed_default, 			description = environment.dropMinSpeed_description},
-	dropMaxSpeed = 			{value = environment.dropMaxSpeed_default, 			description = environment.dropMaxSpeed_description},
-	precipType = 			{value = environment.precipType_default, 			description = environment.precipType_description},
-	teleportTimeout = 		{value = environment.teleportTimeout_default, 		description = environment.teleportTimeout_description},
-	simSpeed = 				{value = environment.simSpeed_default, 				description = environment.simSpeed_description},
-	controlSimSpeed = 		{value = environment.controlSimSpeed_default, 		description = environment.controlSimSpeed_description},
-	gravity = 				{value = environment.gravity_default, 				description = environment.gravity_description},
-	controlGravity = 		{value = environment.controlGravity_default, 		description = environment.controlGravity_description},
-	tempCurveNoon = 		{value = environment.tempCurveNoon_default, 		description = environment.tempCurveNoon_description},
-	tempCurveDusk = 		{value = environment.tempCurveDusk_default, 		description = environment.tempCurveDusk_description},
-	tempCurveMidnight = 	{value = environment.tempCurveMidnight_default, 	description = environment.tempCurveMidnight_description},
-	tempCurveDawn = 		{value = environment.tempCurveDawn_default, 		description = environment.tempCurveDawn_description},
-	useTempCurve = 			{value = environment.useTempCurve_default, 			description = environment.useTempCurve_description}
+local defaultEnvironmentValues = {
+	controlSun = 			{value = environmentDefaults.controlSun},
+	ToD = 					{value = environmentDefaults.ToD},
+	timePlay = 				{value = environmentDefaults.timePlay},
+	dayLength = 			{value = environmentDefaults.dayLength},
+	dayScale = 				{value = environmentDefaults.dayScale},
+	nightScale = 			{value = environmentDefaults.nightScale},
+	sunAzimuthOverride = 	{value = environmentDefaults.sunAzimuthOverride},
+	skyBrightness = 		{value = environmentDefaults.skyBrightness},
+	sunSize = 				{value = environmentDefaults.sunSize},
+	rayleighScattering = 	{value = environmentDefaults.rayleighScattering},
+	sunLightBrightness = 	{value = environmentDefaults.sunLightBrightness},
+	flareScale = 			{value = environmentDefaults.flareScale},
+	occlusionScale = 		{value = environmentDefaults.occlusionScale},
+	exposure = 				{value = environmentDefaults.exposure},
+	shadowDistance = 		{value = environmentDefaults.shadowDistance},
+	shadowSoftness = 		{value = environmentDefaults.shadowSoftness},
+	shadowSplits = 			{value = environmentDefaults.shadowSplits},
+	shadowTexSize = 		{value = environmentDefaults.shadowTexSize},
+	shadowLogWeight = 		{value = environmentDefaults.shadowLogWeight},
+	visibleDistance = 		{value = environmentDefaults.visibleDistance},
+	moonAzimuth = 			{value = environmentDefaults.moonAzimuth},
+	moonElevation = 		{value = environmentDefaults.moonElevation},
+	moonScale = 			{value = environmentDefaults.moonScale},
+	controlWeather = 		{value = environmentDefaults.controlWeather},
+	fogDensity = 			{value = environmentDefaults.fogDensity},
+	fogDensityOffset = 		{value = environmentDefaults.fogDensityOffset},
+	fogAtmosphereHeight = 	{value = environmentDefaults.fogAtmosphereHeight},
+	cloudHeight = 			{value = environmentDefaults.cloudHeight},
+	cloudHeightOne = 		{value = environmentDefaults.cloudHeightOne},
+	cloudCover = 			{value = environmentDefaults.cloudCover},
+	cloudCoverOne = 		{value = environmentDefaults.cloudCoverOne},
+	cloudSpeed = 			{value = environmentDefaults.cloudSpeed},
+	cloudSpeedOne = 		{value = environmentDefaults.cloudSpeedOne},
+	cloudExposure = 		{value = environmentDefaults.cloudExposure},
+	cloudExposureOne = 		{value = environmentDefaults.cloudExposureOne},
+	rainDrops = 			{value = environmentDefaults.rainDrops},
+	dropSize = 				{value = environmentDefaults.dropSize},
+	dropMinSpeed = 			{value = environmentDefaults.dropMinSpeed},
+	dropMaxSpeed = 			{value = environmentDefaults.dropMaxSpeed},
+	precipType = 			{value = environmentDefaults.precipType},
+	teleportTimeout = 		{value = environmentDefaults.teleportTimeout},
+	simSpeed = 				{value = environmentDefaults.simSpeed},
+	controlSimSpeed = 		{value = environmentDefaults.controlSimSpeed},
+	gravity = 				{value = environmentDefaults.gravity},
+	controlGravity = 		{value = environmentDefaults.controlGravity},
+	tempCurveNoon = 		{value = environmentDefaults.tempCurveNoon},
+	tempCurveDusk = 		{value = environmentDefaults.tempCurveDusk},
+	tempCurveMidnight = 	{value = environmentDefaults.tempCurveMidnight},
+	tempCurveDawn = 		{value = environmentDefaults.tempCurveDawn},
+	useTempCurve = 			{value = environmentDefaults.useTempCurve}
+}
+
+local descriptionsJson = CobaltDB.new("descriptions")
+local defaultDescriptions = {
+
+	controlSun =			{description = descriptions.environment.controlSun},
+	ToD =					{description = descriptions.environment.ToD},
+	timePlay =				{description = descriptions.environment.timePlay},
+	dayLength =				{description = descriptions.environment.dayLength},
+	dayScale =				{description = descriptions.environment.dayScale},
+	nightScale =			{description = descriptions.environment.nightScale},
+	sunAzimuthOverride =	{description = descriptions.environment.sunAzimuthOverride},
+	skyBrightness =			{description = descriptions.environment.skyBrightness},
+	sunSize =				{description = descriptions.environment.sunSize},
+	rayleighScattering =	{description = descriptions.environment.rayleighScattering},
+	sunLightBrightness =	{description = descriptions.environment.sunLightBrightness},
+	flareScale =			{description = descriptions.environment.flareScale},
+	occlusionScale =		{description = descriptions.environment.occlusionScale},
+	exposure =				{description = descriptions.environment.exposure},
+	shadowDistance =		{description = descriptions.environment.shadowDistance},
+	shadowSoftness =		{description = descriptions.environment.shadowSoftness},
+	shadowSplits =			{description = descriptions.environment.shadowSplits},
+	shadowTexSize =			{description = descriptions.environment.shadowTexSize},
+	shadowLogWeight =		{description = descriptions.environment.shadowLogWeight},
+	visibleDistance =		{description = descriptions.environment.visibleDistance},
+	moonAzimuth =			{description = descriptions.environment.moonAzimuth},
+	moonElevation =			{description = descriptions.environment.moonElevation},
+	moonScale =				{description = descriptions.environment.moonScale},
+	controlWeather =		{description = descriptions.environment.controlWeather},
+	fogDensity =			{description = descriptions.environment.fogDensity},
+	fogDensityOffset =		{description = descriptions.environment.fogDensityOffset},
+	fogAtmosphereHeight =	{description = descriptions.environment.fogAtmosphereHeight},
+	cloudHeight =			{description = descriptions.environment.cloudHeight},
+	cloudHeightOne =		{description = descriptions.environment.cloudHeightOne},
+	cloudCover =			{description = descriptions.environment.cloudCover},
+	cloudCoverOne =			{description = descriptions.environment.cloudCoverOne},
+	cloudSpeed =			{description = descriptions.environment.cloudSpeed},
+	cloudSpeedOne =			{description = descriptions.environment.cloudSpeedOne},
+	cloudExposure =			{description = descriptions.environment.cloudExposure},
+	cloudExposureOne =		{description = descriptions.environment.cloudExposureOne},
+	rainDrops =				{description = descriptions.environment.rainDrops},
+	dropSize =				{description = descriptions.environment.dropSize},
+	dropMinSpeed =			{description = descriptions.environment.dropMinSpeed},
+	dropMaxSpeed =			{description = descriptions.environment.dropMaxSpeed},
+	precipType =			{description = descriptions.environment.precipType},
+	teleportTimeout =		{description = descriptions.environment.teleportTimeout},
+	simSpeed =				{description = descriptions.environment.simSpeed},
+	controlSimSpeed =		{description = descriptions.environment.controlSimSpeed},
+	gravity =				{description = descriptions.environment.gravity},
+	controlGravity =		{description = descriptions.environment.controlGravity},
+	tempCurveNoon =			{description = descriptions.environment.tempCurveNoon},
+	tempCurveDusk =			{description = descriptions.environment.tempCurveDusk},
+	tempCurveMidnight =		{description = descriptions.environment.tempCurveMidnight},
+	tempCurveDawn =			{description = descriptions.environment.tempCurveDawn},
+	useTempCurve =			{description = descriptions.environment.useTempCurve},
+	
+	control = 				{description = descriptions.restrictions.control},
+	messageDuration = 		{description = descriptions.restrictions.messageDuration},
+	enabled = 				{description = descriptions.restrictions.enabled},
+	timeout = 				{description = descriptions.restrictions.timeout},
+	title = 				{description = descriptions.restrictions.title},
+	elapsedMessage = 		{description = descriptions.restrictions.elapsedMessage},
+	message = 				{description = descriptions.restrictions.message},
+	disabledMessage = 		{description = descriptions.restrictions.disabledMessage},
+	
+	defaultState = 			{description = descriptions.interface.defaultState},
+	playerPermissions = 	{description = descriptions.interface.playerPermissions},
+	playerPermissionsPlus = {description = descriptions.interface.playerPermissionsPlus},
+	config = 				{description = descriptions.interface.config},
+	cobaltEssentials = 		{description = descriptions.interface.cobaltEssentials},
+	server = 				{description = descriptions.interface.server},
+	interface = 			{description = descriptions.interface.interface},
+	nametags = 				{description = descriptions.interface.nametags},
+	restrictions = 			{description = descriptions.interface.restrictions},
+	extras = 				{description = descriptions.interface.extras},
+	environmentAdmin = 		{description = descriptions.interface.environmentAdmin},
+	environment = 			{description = descriptions.interface.environment},
+	sun = 					{description = descriptions.interface.sun},
+	weather = 				{description = descriptions.interface.weather},
+	gravity = 				{description = descriptions.interface.gravity},
+	temperature = 			{description = descriptions.interface.temperature},
+	database = 				{description = descriptions.interface.database},
+	race = 					{description = descriptions.interface.race}
+	
 }
 
 local restrictionsJson = CobaltDB.new("restrictions")
 local defaultRestrictions = {
-	control = 			{value = config.resets.control_default, 		description = config.resets.control_description},
-	messageDuration = 	{value = config.resets.messageDuration_default, description = config.resets.messageDuration_description},
-	enabled = 			{value = config.resets.enabled_default, 		description = config.resets.enabled_description},
-	timeout = 			{value = config.resets.timeout_default, 		description = config.resets.timeout_description},
-	title = 			{value = config.resets.title_default, 			description = config.resets.title_description},
-	elapsedMessage = 	{value = config.resets.elapsedMessage_default, 	description = config.resets.elapsedMessage_description},
-	message = 			{value = config.resets.message_default, 		description = config.resets.message_description},
-	disabledMessage = 	{value = config.resets.disabledMessage_default, description = config.resets.disabledMessage_description}
+	control = 			{value = config.restrictions.control_default},
+	messageDuration = 	{value = config.restrictions.messageDuration_default},
+	enabled = 			{value = config.restrictions.enabled_default},
+	timeout = 			{value = config.restrictions.timeout_default},
+	title = 			{value = config.restrictions.title_default},
+	elapsedMessage = 	{value = config.restrictions.elapsedMessage_default},
+	message = 			{value = config.restrictions.message_default},
+	disabledMessage = 	{value = config.restrictions.disabledMessage_default}
 }
 
 local vehiclesJson = CobaltDB.new("vehicles")
@@ -365,7 +398,7 @@ local defaultVehicles = {
 	cardboard_box = { level = 1 },
 	chair = { level = 1 },
 	christmas_tree = { level = 1 },
-	citybus = { level = 1, ["partlevel:citybus_ramplow"] = 1 },
+	citybus = { level = 1, ["partlevel:citybus_ramplow"] = 1, ["partlevel:citybus_jato_R"] = 1 },
 	cones = { level = 1 },
 	couch = { level = 1 },
 	coupe = { level = 1 },
@@ -443,31 +476,31 @@ local defaultVehicles = {
 
 local nametagsJson = CobaltDB.new("nametags")
 local defaultNametagsSettings = {
-	blockingEnabled = 	{value = defaultNametagsBlockingEnabled, 			description = "Are nametags blocked?"},
-	blockingTimeout = 	{value = defaultNametagsBlockingTimeout, 			description = "For how long are nametags blocked?"},
-	nametagsWhitelist = {exampleName = defaultNametagsBlockingWhitelist, 	description = "Who is immune to nametag blocking?"}
+	blockingEnabled = 	{value = config.nametags.settings.blockingEnabled_default},
+	blockingTimeout = 	{value = config.nametags.settings.blockingTimeout_default},
+	nametagsWhitelist = {exampleName = config.nametags.settings.whitelist_default}
 }
 
 local interfaceJson = CobaltDB.new("interface")
 local defaultInterfaceSettings = {
-	defaultState = 			{value = config.cobalt.interface.defaultState_default, 					description = config.cobalt.interface.defaultState_description},
-	playerPermissions = 	{value = config.cobalt.interface.playerPermissions_default, 	description = config.cobalt.interface.playerPermissions_description},
-	playerPermissionsPlus = {value = config.cobalt.interface.playerPermissionsPlus_default, description = config.cobalt.interface.playerPermissionsPlus_description},
-	config = 				{value = config.cobalt.interface.config_default, 				description = config.cobalt.interface.config_description},
-	cobaltEssentials = 		{value = config.cobalt.interface.cobaltEssentials_default, 		description = config.cobalt.interface.cobaltEssentials_description},
-	server = 				{value = config.cobalt.interface.server_default, 				description = config.cobalt.interface.server_description},
-	interface = 			{value = config.cobalt.interface.interface_default, 			description = config.cobalt.interface.interface_description},
-	nametags = 				{value = config.cobalt.interface.nametags_default, 				description = config.cobalt.interface.nametags_description},
-	restrictions = 			{value = config.cobalt.interface.restrictions_default, 			description = config.cobalt.interface.restrictions_description},
-	extras = 				{value = config.cobalt.interface.extras_default, 				description = config.cobalt.interface.extras_description},
-	environmentAdmin = 		{value = config.cobalt.interface.environmentAdmin_default, 		description = config.cobalt.interface.environmentAdmin_description},
-	environment = 			{value = config.cobalt.interface.environment_default, 			description = config.cobalt.interface.environment_description},
-	sun = 					{value = config.cobalt.interface.sun_default, 					description = config.cobalt.interface.sun_description},
-	weather = 				{value = config.cobalt.interface.weather_default, 				description = config.cobalt.interface.weather_description},
-	gravity = 				{value = config.cobalt.interface.gravity_default, 				description = config.cobalt.interface.gravity_description},
-	temperature = 			{value = config.cobalt.interface.temperature_default, 			description = config.cobalt.interface.temperature_description},
-	database = 				{value = config.cobalt.interface.database_default, 				description = config.cobalt.interface.database_description},
-	race = 					{value = config.cobalt.interface.race_default, 					description = config.cobalt.interface.race_description}
+	defaultState = 			{value = config.cobalt.interface.defaultState_default},
+	playerPermissions = 	{value = config.cobalt.interface.playerPermissions_default},
+	playerPermissionsPlus = {value = config.cobalt.interface.playerPermissionsPlus_default},
+	config = 				{value = config.cobalt.interface.config_default},
+	cobaltEssentials = 		{value = config.cobalt.interface.cobaltEssentials_default},
+	server = 				{value = config.cobalt.interface.server_default},
+	interface = 			{value = config.cobalt.interface.interface_default},
+	nametags = 				{value = config.cobalt.interface.nametags_default},
+	restrictions = 			{value = config.cobalt.interface.restrictions_default},
+	extras = 				{value = config.cobalt.interface.extras_default},
+	environmentAdmin = 		{value = config.cobalt.interface.environmentAdmin_default},
+	environment = 			{value = config.cobalt.interface.environment_default},
+	sun = 					{value = config.cobalt.interface.sun_default},
+	weather = 				{value = config.cobalt.interface.weather_default},
+	gravity = 				{value = config.cobalt.interface.gravity_default},
+	temperature = 			{value = config.cobalt.interface.temperature_default},
+	database = 				{value = config.cobalt.interface.database_default},
+	race = 					{value = config.cobalt.interface.race_default}
 }
 
 local CEICommands = {
@@ -537,7 +570,9 @@ local function updateCobaltDatabase(DBname)
 end
 
 local function onInit()
-	MP.RegisterEvent("onPlayerAuth", "onPlayerAuthHandler")
+
+	MP.RegisterEvent("requestCEISync","requestCEISync")
+	
 	MP.RegisterEvent("CEISetDefaultState","CEISetDefaultState")
 	MP.RegisterEvent("CEISetCurVeh","CEISetCurVeh")
 	MP.RegisterEvent("CEIPreRace","CEIPreRace")
@@ -586,27 +621,33 @@ local function onInit()
 	MP.RegisterEvent("CEISetResetPerm","CEISetResetPerm")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
+	
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
+	
 	MP.RegisterEvent("txPlayersDatabase","txPlayersDatabase")
 	MP.CreateEventTimer("txPlayersDatabase", 2000)
 	
 	config.server.name = utils.readCfg("ServerConfig.toml").General.Name
+	
 	if not utils.readCfg("ServerConfig.toml").General.Debug then
 		config.server.debug = false
 	else
 		config.server.debug = true
 	end
+	
 	if not utils.readCfg("ServerConfig.toml").General.Private then
 		config.server.private = false
 	else
 		config.server.private = true
 	end
+	
 	config.server.maxCars = utils.readCfg("ServerConfig.toml").General.MaxCars
 	config.server.maxPlayers = utils.readCfg("ServerConfig.toml").General.MaxPlayers
 	config.server.map = utils.readCfg("ServerConfig.toml").General.Map
 	config.server.description = utils.readCfg("ServerConfig.toml").General.Description
 	
-	applyStuff(environmentJson, defaultEnvironment)
+	applyStuff(descriptionsJson, defaultDescriptions)
+	applyStuff(environmentJson, defaultEnvironmentValues)
 	applyStuff(vehiclesJson, defaultVehicles)
 	applyStuff(nametagsJson, defaultNametagsSettings)
 	applyStuff(interfaceJson, defaultInterfaceSettings)
@@ -660,17 +701,16 @@ local function onInit()
 	config.cobalt.interface.database = CobaltDB.query("interface", "database", "value")
 	config.cobalt.interface.race = CobaltDB.query("interface", "race", "value")
 	
-	config.resets.control = CobaltDB.query("restrictions", "control", "value")
-	config.resets.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
-	config.resets.enabled = CobaltDB.query("restrictions", "enabled", "value")
-	config.resets.timeout = CobaltDB.query("restrictions", "timeout", "value")
-	config.resets.title = CobaltDB.query("restrictions", "title", "value")
-	config.resets.elapsedMessage = CobaltDB.query("restrictions", "elapsedMessage", "value")
-	config.resets.message = CobaltDB.query("restrictions", "message", "value")
-	config.resets.disabledMessage = CobaltDB.query("restrictions", "disabledMessage", "value")
+	config.restrictions.control = CobaltDB.query("restrictions", "control", "value")
+	config.restrictions.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
+	config.restrictions.enabled = CobaltDB.query("restrictions", "enabled", "value")
+	config.restrictions.timeout = CobaltDB.query("restrictions", "timeout", "value")
+	config.restrictions.title = CobaltDB.query("restrictions", "title", "value")
+	config.restrictions.elapsedMessage = CobaltDB.query("restrictions", "elapsedMessage", "value")
+	config.restrictions.message = CobaltDB.query("restrictions", "message", "value")
+	config.restrictions.disabledMessage = CobaltDB.query("restrictions", "disabledMessage", "value")
 	
 	config.nametags.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
-	config.nametags.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
 	config.nametags.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
 	
 	environment.controlSun = CobaltDB.query("environment", "controlSun", "value")
@@ -735,8 +775,6 @@ local function onInit()
 		CobaltDB.new("playersDB/" .. playerName)
 		tempPlayers[playerName] = {}
 	end
-		
-	CElog("CEI Loaded!", "CEI")
 end
 
 local function CEI(player)
@@ -750,28 +788,16 @@ local function CEI(player)
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 end
 
-local function txPlayersResetExempt()
-	for playerID, player in pairs(players) do
-		if player.connectStage == "connected" then
-			MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { resetExempt[player.name] } )
-		end
-	end
+local function txPlayersResetExempt(player)
+	MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { resetExempt[player.name] } )
 end
 
-local function txPlayersGroup()
-	for playerID, player in pairs(players) do
-		if player.connectStage == "connected" then
-			MP.TriggerClientEvent(player.playerID, "rxPlayerGroup", player.permissions.group)
-		end
-	end
+local function txPlayersGroup(player)
+	MP.TriggerClientEvent(player.playerID, "rxPlayerGroup", player.permissions.group)
 end
 
-local function txPlayersUIPerm()
-	for playerID, player in pairs(players) do
-		if player.connectStage == "connected" then
-			MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
-		end
-	end
+local function txPlayersUIPerm(player)
+	MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
 end
 
 function txPlayersDatabase(now)
@@ -816,7 +842,7 @@ function txPlayersDatabase(now)
 								playersDatabase[k].tempBanRemaining = nil
 							end
 						end
-						MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
+						MP.TriggerClientEventJson(playerID, "rxPlayersDatabase", playersDatabase[k])
 					end
 					playersDatabaseCount[player.name] = playersDatabaseCompare
 				end
@@ -826,11 +852,16 @@ function txPlayersDatabase(now)
 end
 
 local function txEnvironment(player)
-	MP.TriggerClientEventJson(player.playerID, "rxEnvironment", environment)
+	MP.TriggerClientEventJson(-1, "rxEnvironment", environment)
 end
 
-local function txPlayersData(player)
+local function txDescriptions(player)
+	MP.TriggerClientEventJson(player.playerID, "rxDescriptions", descriptions)
+end
+
+local function txPlayersData()
 	for playerID, player in pairs(players) do
+		local identifiers = MP.GetPlayerIdentifiers(playerID)
 		if player.connectStage and player.connectStage ~= 0 then
 			local connectedTime
 			connectedTime = ageTimer:GetCurrent()*1000 - player.joinTime
@@ -855,8 +886,6 @@ local function txPlayersData(player)
 						muted = player.permissions.muted,
 						muteReason = (player.permissions.muteReason or ""),
 						banned = player.permissions.banned,
-						ip = player.permissions.ip,
-						beammp = player.permissions.beammp,
 						UI = player.permissions.UI
 						},
 					teleport = teleport[player.name],
@@ -864,6 +893,10 @@ local function txPlayersData(player)
 					currentVehicle = tempPCV[player.name],
 					vehicles = (player.vehicles or {})
 					}
+			if identifiers.beammp then
+				playersTable[player.playerID].ip = identifiers.ip
+				playersTable[player.playerID].beammp = identifiers.beammp
+			end
 			if tempPlayers[player.name] then
 				playersTable[player.playerID].tempBanLength = tempPlayers[player.name].tempBanLength
 				playersTable[player.playerID].tempPermLevel = tempPlayers[player.name].tempPermLevel
@@ -887,7 +920,7 @@ local function txPlayersData(player)
 			end
 		end
 	end
-	MP.TriggerClientEventJson(player.playerID, "rxPlayersData", playersTable)
+	MP.TriggerClientEventJson(-1, "rxPlayersData", playersTable)
 end
 
 local function theConfigData()
@@ -954,10 +987,8 @@ local function theConfigData()
 	end
 end
 
-local function txConfigData(player)
-	if player.connectStage == "connected" then
-		MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
-	end
+local function txConfigData()
+	MP.TriggerClientEventJson(-1, "rxConfigData", config)
 end
 
 function txNametagWhitelisted(player)
@@ -980,9 +1011,9 @@ function txNametagWhitelisted(player)
 	MP.TriggerClientEventJson(player.playerID, "rxNametagWhitelisted", { isWhitelisted } )
 end
 
-function txNametagBlockerActive(player)
+function txNametagBlockerActive()
 	local data = CobaltDB.query("nametags","blockingEnabled","value")
-	MP.TriggerClientEventJson(player.playerID, "rxNametagBlockerActive", { data } )
+	MP.TriggerClientEventJson(-1, "rxNametagBlockerActive", { data } )
 end
 
 function txNametagBlockerTimeout(senderID, data)
@@ -991,18 +1022,10 @@ function txNametagBlockerTimeout(senderID, data)
 end
 
 local function txData()
-	for playerID, player in pairs(players) do
-		if player.connectStage == "connected" then
-			txPlayersData(player)
-			txPlayersGroup(player)
-			txEnvironment(player)
-			txNametagWhitelisted(player)
-			txNametagBlockerActive(player)
-			txConfigData(player)
-			txPlayersUIPerm(player)
-			txPlayersResetExempt(player)
-		end
-	end
+	txPlayersData()
+	txEnvironment()
+	txConfigData()
+	txNametagBlockerActive()
 end
 
 function CEIPreRace(senderID, data)
@@ -1126,20 +1149,6 @@ function CEISetTempBan(senderID, data)
 	end
 end
 
-function logEnvironment()
-	local environmentTables = CobaltDB.getTables("environment")
-	for k,v in pairs(environmentTables) do
-		local currentEnvironmentTable = CobaltDB.getTable("environment",v)
-		for x,y in pairs(currentEnvironmentTable) do
-			if x == "value" then
-				if environment[k] ~= y then
-					CobaltDB.set("environment", k, "value", environment[k])
-				end
-			end
-		end
-	end
-end
-
 function CEISetInterface(senderID, data)
 	if players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
@@ -1176,15 +1185,15 @@ function CEISetRestrictions(senderID, data)
 		local key = data[1]
 		local value = data[2]
 		if key == "all" then
-			for k in pairs(config.resets) do
-				config.resets[k] = config.resets[k .. "_default"]
-				CobaltDB.set("restrictions", k, "value", config.resets[k .. "_default"])
+			for k in pairs(config.restrictions) do
+				config.restrictions[k] = config.restrictions[k .. "_default"]
+				CobaltDB.set("restrictions", k, "value", config.restrictions[k .. "_default"])
 			end
 		elseif value == "default" then
-			config.resets[key] = config.resets[key .. "_default"]
-			CobaltDB.set("restrictions", key, "value", config.resets[key .. "_default"])
+			config.restrictions[key] = config.restrictions[key .. "_default"]
+			CobaltDB.set("restrictions", key, "value", config.restrictions[key .. "_default"])
 		else
-			config.resets[key] = value
+			config.restrictions[key] = value
 			CobaltDB.set("restrictions", key, "value", value)
 		end
 		for playerID, player in pairs(players) do
@@ -1205,58 +1214,58 @@ function CEISetEnv(senderID, data)
 		local value = data[2]
 		if key == "allWeather" then
 			if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
-				environment.controlWeather = environment.controlWeather_default
+				environment.controlWeather = environmentDefaults.controlWeather
 			end
-			environment.fogDensity = environment.fogDensity_default
-			environment.fogDensityOffset = environment.fogDensityOffset_default
-			environment.fogAtmosphereHeight = environment.fogAtmosphereHeight_default
-			environment.cloudHeight = environment.cloudHeight_default
-			environment.cloudHeightOne = environment.cloudHeightOne_default
-			environment.cloudCover = environment.cloudCover_default
-			environment.cloudCoverOne = environment.cloudCoverOne_default
-			environment.cloudSpeed = environment.cloudSpeed_default
-			environment.cloudSpeedOne = environment.cloudSpeedOne_default
-			environment.cloudExposure = environment.cloudExposure_default
-			environment.cloudExposureOne = environment.cloudExposureOne_default
-			environment.rainDrops = environment.rainDrops_default
-			environment.dropSize = environment.dropSize_default
-			environment.dropMinSpeed = environment.dropMinSpeed_default
-			environment.dropMaxSpeed = environment.dropMaxSpeed_default
-			environment.precipType = environment.precipType_default
+			environment.fogDensity = environmentDefaults.fogDensity
+			environment.fogDensityOffset = environmentDefaults.fogDensityOffset
+			environment.fogAtmosphereHeight = environmentDefaults.fogAtmosphereHeight
+			environment.cloudHeight = environmentDefaults.cloudHeight
+			environment.cloudHeightOne = environmentDefaults.cloudHeightOne
+			environment.cloudCover = environmentDefaults.cloudCover
+			environment.cloudCoverOne = environmentDefaults.cloudCoverOne
+			environment.cloudSpeed = environmentDefaults.cloudSpeed
+			environment.cloudSpeedOne = environmentDefaults.cloudSpeedOne
+			environment.cloudExposure = environmentDefaults.cloudExposure
+			environment.cloudExposureOne = environmentDefaults.cloudExposureOne
+			environment.rainDrops = environmentDefaults.rainDrops
+			environment.dropSize = environmentDefaults.dropSize
+			environment.dropMinSpeed = environmentDefaults.dropMinSpeed
+			environment.dropMaxSpeed = environmentDefaults.dropMaxSpeed
+			environment.precipType = environmentDefaults.precipType
 		elseif key == "allSun" then
 			if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
-				environment.controlSun = environment.controlSun_default
+				environment.controlSun = environmentDefaults.controlSun
 			end
-			environment.ToD = environment.ToD_default
-			environment.timePlay = environment.timePlay_default
-			environment.dayScale = environment.dayScale_default
-			environment.dayLength = environment.dayLength_default
-			environment.nightScale = environment.nightScale_default
-			environment.sunAzimuthOverride = environment.sunAzimuthOverride_default
-			environment.skyBrightness = environment.skyBrightness_default
-			environment.sunSize = environment.sunSize_default
-			environment.rayleighScattering = environment.rayleighScattering_default
-			environment.sunLightBrightness = environment.sunLightBrightness_default
-			environment.flareScale = environment.flareScale_default
-			environment.occlusionScale = environment.occlusionScale_default
-			environment.exposure = environment.exposure_default
-			environment.shadowDistance = environment.shadowDistance_default
-			environment.shadowSoftness = environment.shadowSoftness_default
-			environment.shadowSplits = environment.shadowSplits_default
-			environment.shadowTexSize = environment.shadowTexSize_default
-			environment.shadowLogWeight = environment.shadowLogWeight_default
-			environment.visibleDistance = environment.visibleDistance_default
-			environment.moonAzimuth = environment.moonAzimuth_default
-			environment.moonElevation = environment.moonElevation_default
-			environment.moonScale = environment.moonScale_default
+			environment.ToD = environmentDefaults.ToD
+			environment.timePlay = environmentDefaults.timePlay
+			environment.dayScale = environmentDefaults.dayScale
+			environment.dayLength = environmentDefaults.dayLength
+			environment.nightScale = environmentDefaults.nightScale
+			environment.sunAzimuthOverride = environmentDefaults.sunAzimuthOverride
+			environment.skyBrightness = environmentDefaults.skyBrightness
+			environment.sunSize = environmentDefaults.sunSize
+			environment.rayleighScattering = environmentDefaults.rayleighScattering
+			environment.sunLightBrightness = environmentDefaults.sunLightBrightness
+			environment.flareScale = environmentDefaults.flareScale
+			environment.occlusionScale = environmentDefaults.occlusionScale
+			environment.exposure = environmentDefaults.exposure
+			environment.shadowDistance = environmentDefaults.shadowDistance
+			environment.shadowSoftness = environmentDefaults.shadowSoftness
+			environment.shadowSplits = environmentDefaults.shadowSplits
+			environment.shadowTexSize = environmentDefaults.shadowTexSize
+			environment.shadowLogWeight = environmentDefaults.shadowLogWeight
+			environment.visibleDistance = environmentDefaults.visibleDistance
+			environment.moonAzimuth = environmentDefaults.moonAzimuth
+			environment.moonElevation = environmentDefaults.moonElevation
+			environment.moonScale = environmentDefaults.moonScale
 		elseif key == "all" then
 			for k in pairs(environment) do
 				if not string.find(k, "default") and not string.find(k, "description") then
-					environment[k] = environment[k .. "_default"]
+					environment[k] = environmentDefaults[k]
 				end
 			end
 		elseif value == "default" then
-			environment[key] = environment[key .. "_default"]
+			environment[key] = environmentDefaults[key]
 		elseif tonumber(value) then
 			environment[key] = tonumber(value)
 		else
@@ -1410,6 +1419,7 @@ function CEISetGroup(senderID, data)
 					MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s group to " .. string.gsub(group, "group:", "") .. " because it exceeds your own!")
 				end
 			end
+			txPlayersGroup(player)
 		else
 			if group == "none" then
 				players.database[name].group = nil
@@ -1497,6 +1507,7 @@ function CEISetUIPerm(senderID, data)
 				tempPlayers[targetName].tempUIPermLevel = players[player.playerID].permissions.UI
 				CobaltDB.set("playersDB/" .. targetName, "UI", "value", UIPermLvl)
 			end
+			txPlayersUIPerm(player)
 		else
 			if players[senderID].permissions.UI <= UIPermLvl then
 				MP.SendChatMessage(senderID, "Cannot set " .. targetName .. "'s UI Level to " .. UIPermLvl .. " because it exceeds your own!")
@@ -1878,9 +1889,14 @@ function CEIWhitelist(senderID, data)
 end
 
 function CEIRaceInclude(senderID, data)
-	local playerName = players[senderID].name
 	data = Util.JsonDecode(data)
-	tempPlayers[playerName].includeInRace = data[1]
+	local playerName = players[senderID].name
+	if data[2] then
+		tempPlayers[data[2]].includeInRace = data[1]
+		MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
+	else
+		tempPlayers[playerName].includeInRace = data[1]
+	end
 end
 
 function CEISetNametagWhitelist(senderID, data)
@@ -1901,6 +1917,10 @@ function CEISetNametagWhitelist(senderID, data)
 				end
 			end
 		end
+		local player = players.getPlayerByName(targetName)
+		if player then
+			txNametagWhitelisted(player)
+		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
@@ -1918,6 +1938,10 @@ function CEIRemoveNametagWhitelist(senderID, data)
 				nametagWhitelistIterator = nametagWhitelistIterator + 1
 				config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
 			end
+		end
+		local player = players.getPlayerByName(targetName)
+		if player then
+			txNametagWhitelisted(player)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
@@ -1957,7 +1981,7 @@ function CEISetResetPerm(senderID, data)
 		txPlayersDatabase(true)
 		local player = players.getPlayerByName(playerName)
 		if player then
-			MP.TriggerClientEventJson(player.playerID, "rxPlayersResetExempt", { data[2] } )
+			txPlayersResetExempt(player)
 		end
 	end
 end
@@ -1977,6 +2001,34 @@ function CEISetTeleportPerm(senderID, data)
 end
 
 local function onTick(age)
+	playTime()
+	logEnvironment()
+	raceTimer()
+	checkVoteKick()
+	theConfigData()
+	txData()
+end
+
+function logEnvironment()
+	logTimer = logTimer + 1
+	if logTimer >= logInterval then
+		CobaltDB.set("environment", "ToD", "value", environment.ToD)
+		local environmentTables = CobaltDB.getTables("environment")
+		for k,v in pairs(environmentTables) do
+			local currentEnvironmentTable = CobaltDB.getTable("environment",v)
+			for x,y in pairs(currentEnvironmentTable) do
+				if x == "value" then
+					if environment[k] ~= y then
+						CobaltDB.set("environment", k, "value", environment[k])
+					end
+				end
+			end
+		end
+		logTimer = 0
+	end
+end
+
+function playTime()
 	if environment.controlSun then
 		if environment.timePlay == true then
 			if environment.ToD >= 0.25 and environment.ToD <= 0.75 then
@@ -1989,25 +2041,12 @@ local function onTick(age)
 			end
 		end
 	end
-	theConfigData()
-	txData()
-	logTimer = logTimer + 1
-	if logTimer >= logInterval then
-		CobaltDB.set("environment", "ToD", "value", environment.ToD)
-		logEnvironment()
-		logTimer = 0
-	end
-	if raceCountdown ~= nil then
-		raceTimer()
-		raceCountdown = raceCountdown - 1
-		if raceCountdown == -1 then
-			raceCountdown = nil
-			raceCountdownStarted = nil
-		end
-	end
+end
+
+function checkVoteKick()
 	kickThresh = (MP.GetPlayerCount() - MP.GetPlayerCount() / 3)
 	for playerID, player in pairs(players) do 
-		if type(playerID) == "number" then
+		if player.connectStage == "connected" then
 			if playersTable[tonumber(player.playerID)] then
 				if tempPlayers[player.name].kickVotes then
 					if tempPlayers[player.name].kickVotes > kickThresh then
@@ -2029,34 +2068,41 @@ local function onTick(age)
 end
 
 function raceTimer()
-	if raceCountdown == 15 then
-		for _, v in pairs(tempPlayers) do
-			if v.includeInRace == true then
-				MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "3ping")
-				local data = { "You have been frozen, prepare to race!", 5 }
-				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
+	if raceCountdown ~= nil then
+		if raceCountdown == 15 then
+			for _, v in pairs(tempPlayers) do
+				if v.includeInRace == true then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "3ping")
+					local data = { "You have been frozen, prepare to race!", 5 }
+					MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
+				end
+			end
+		elseif raceCountdown == 11 then
+			for _, v in pairs(tempPlayers) do
+				if v.includeInRace == true then
+					MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "countTenHorn")
+				end
+			end
+		elseif raceCountdown < 11 and raceCountdown > 0 then
+			for _, v in pairs(tempPlayers) do
+				if v.includeInRace == true then
+					local data = { raceCountdown .. "...", 1, true }
+					MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
+				end
+			end
+		elseif raceCountdown == 0 then
+			for _, v in pairs(tempPlayers) do
+				if v.includeInRace == true then
+					local data = { "GO!!!", 3, true }
+					MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
+					raceStart()
+				end
 			end
 		end
-	elseif raceCountdown == 11 then
-		for _, v in pairs(tempPlayers) do
-			if v.includeInRace == true then
-				MP.TriggerClientEvent(v.player_id, "CEIRaceCountSound", "countTenHorn")
-			end
-		end
-	elseif raceCountdown < 11 and raceCountdown > 0 then
-		for _, v in pairs(tempPlayers) do
-			if v.includeInRace == true then
-				local data = { raceCountdown .. "...", 1, true }
-				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
-			end
-		end
-	elseif raceCountdown == 0 then
-		for _, v in pairs(tempPlayers) do
-			if v.includeInRace == true then
-				local data = { "GO!!!", 3, true }
-				MP.TriggerClientEventJson(v.player_id, "CEIRaceCountdown", data)
-				raceStart()
-			end
+		raceCountdown = raceCountdown - 1
+		if raceCountdown == -1 then
+			raceCountdown = nil
+			raceCountdownStarted = nil
 		end
 	end
 end
@@ -2075,42 +2121,85 @@ function raceStart()
 end
 
 local function sendDelayedMessage(player, message)
-	if player.connectStage == "connected" then
-		MP.SendChatMessage(player.playerID, message)
+	if player then
+		if player.connectStage == "connected" then
+			MP.SendChatMessage(player.playerID, message)
+		end
 	end
 end
 
-function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
-	if CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") == 0 then
-	elseif CobaltDB.query("playersDB/" .. player_name, "tempBan", "value") > os.time() then
-		return 1
-	end
-	tempPlayers[player_name] = {}
-	tempPlayers[player_name].tempPermLevel = 0
-	tempPlayers[player_name].tempUIPermLevel = 1
-	tempPlayers[player_name].tempBanLength = 1
-	tempPlayers[player_name].includeInRace = false
-	tempPlayers[player_name].votedFor = {}
-	tempPCV[player_name] = "none"
-	if identifiers.beammp then
-		CobaltDB.new("playersDB/" .. identifiers.beammp)
-		CobaltDB.set("playersDB/" .. player_name, "beammp", "value", identifiers.beammp)
-		CobaltDB.set("playersDB/" .. player_name, "ip", "value", identifiers.ip)
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
-		CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
-		if CobaltDB.query("playersDB/" .. player_name, "banned", "value") == true then
-			local reason = CobaltDB.query("playersDB/" .. player_name, "banReason", "value") or "You are banned from this server!"
-			return reason
+local function onPlayerJoining(player)
+	if player then
+	
+		local identifiers = MP.GetPlayerIdentifiers(player.playerID)
+	
+		if CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == 0 then
+		elseif CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") > os.time() then
+			return false
 		end
-		if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
-			CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
-		elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
-			local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
-			CobaltDB.set("playersDB/" .. player_name, "banned", "value", true)
-			CobaltDB.set("playersDB/" .. player_name, "banReason", "value", reason)
-			players.database[player_name].banned = true
-			players.database[player_name].banReason = reason
-			return reason
+		tempPlayers[player.name] = {}
+		tempPlayers[player.name].tempPermLevel = 0
+		tempPlayers[player.name].tempUIPermLevel = 1
+		tempPlayers[player.name].tempBanLength = 1
+		tempPlayers[player.name].includeInRace = false
+		tempPlayers[player.name].votedFor = {}
+		tempPCV[player.name] = "none"
+		if isGuest then
+			identifiers.beammp = tonumber(player.name:sub(6)) * -1
+		end
+		if identifiers.beammp then
+			CobaltDB.new("playersDB/" .. identifiers.beammp)
+			CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+			CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
+
+			CobaltDB.set("playersDB/" .. player.name, "beammp", "value", identifiers.beammp)
+			CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
+			if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
+				local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
+				return reason
+			end
+			if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
+				CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
+			elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
+				local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
+				CobaltDB.set("playersDB/" .. player.name, "banned", "value", true)
+				CobaltDB.set("playersDB/" .. player.name, "banReason", "value", reason)
+				players.database[player.name].banned = true
+				players.database[player.name].banReason = reason
+				return reason
+			end
+		end
+		tempPlayers[player.name].tempPermLevel = player.permissions.level
+		if player.permissions.UI then
+			tempPlayers[player.name].tempUIPermLevel = player.permissions.UI
+		else
+			CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
+		end
+		tempPlayers[player.name].player_id = player.playerID
+		if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
+			CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
+			showCEI[player.name] = config.cobalt.interface.defaultState
+		else
+			showCEI[player.name] = CobaltDB.query("playersDB/" .. player.name, "showCEI", "value")
+		end
+		if CobaltDB.query("playersDB/" .. player.name, "teleport", "value") == nil then
+			CobaltDB.set("playersDB/" .. player.name, "teleport", "value", false)
+			teleport[player.name] = false
+		else
+			teleport[player.name] = CobaltDB.query("playersDB/" .. player.name, "teleport", "value")
+		end
+		if CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value") == nil then
+			CobaltDB.set("playersDB/" ..  player.name, "resetExempt", "value", false)
+			resetExempt[player.name] = false
+		else
+			resetExempt[player.name] = CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value")
+		end
+		for k,v in pairs(player.permissions) do
+			CobaltDB.set("playersDB/" .. player.name, k, "value", v)
+		end
+		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+		if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
+			playersDatabaseCount[player.name] = 0
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
@@ -2118,74 +2207,54 @@ function onPlayerAuthHandler(player_name, player_role, is_guest, identifiers)
 	end
 end
 
-local function onPlayerJoining(player)
-	tempPlayers[player.name].tempPermLevel = player.permissions.level
-	if player.permissions.UI then
-		tempPlayers[player.name].tempUIPermLevel = player.permissions.UI
-	else
-		CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
+function requestCEISync(player_id)
+	local name = MP.GetPlayerName(player_id)
+	local player = players.getPlayerByName(name)
+	if player then
+		print(name)
+		txDescriptions(player)
+		txPlayersGroup(player)
+		txPlayersResetExempt(player)
+		txPlayersUIPerm(player)
+		txNametagWhitelisted(player)
+		MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
+		MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
+		CE.delayExec( 6000 , sendDelayedMessage , { player , "Use /CEI or /cei in chat to toggle." } )
 	end
-	tempPlayers[player.name].player_id = player.playerID
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
-end
-
-local function onPlayerJoin(player)
-	if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
-		CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
-		showCEI[player.name] = config.cobalt.interface.defaultState
-	else
-		showCEI[player.name] = CobaltDB.query("playersDB/" .. player.name, "showCEI", "value")
-	end
-	if CobaltDB.query("playersDB/" .. player.name, "teleport", "value") == nil then
-		CobaltDB.set("playersDB/" .. player.name, "teleport", "value", false)
-		teleport[player.name] = false
-	else
-		teleport[player.name] = CobaltDB.query("playersDB/" .. player.name, "teleport", "value")
-	end
-	if CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value") == nil then
-		CobaltDB.set("playersDB/" ..  player.name, "resetExempt", "value", false)
-		resetExempt[player.name] = false
-	else
-		resetExempt[player.name] = CobaltDB.query("playersDB/" .. player.name, "resetExempt", "value")
-	end
-	MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
-	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
-	CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
-	CE.delayExec( 6000 , sendDelayedMessage , { player , "Use /CEI or /cei in chat to toggle." } )
-	for k,v in pairs(player.permissions) do
-		CobaltDB.set("playersDB/" .. player.name, k, "value", v)
-	end
-	playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
-	if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
-		playersDatabaseCount[player.name] = 0
-	end
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 end
 
 local function onPlayerDisconnect(player)
-	playersTable[player.playerID] = nil
-	tempPlayers[player.name] = nil
-	tempPCV[player.name] = nil
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
-	MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+	if player then
+		playersTable[player.playerID] = nil
+		tempPlayers[player.name] = nil
+		tempPCV[player.name] = nil
+		showCEI[player.name] = nil
+		teleport[player.name] = nil
+		resetExempt[player.name] = nil
+		playersDatabaseCount[player.name] = nil
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+	end
 end
 
 local function onVehicleSpawn(player, vehID,  data)
-	tempPCV[player.name] = player.playerID .. "-" .. vehID
+	if player then
+		tempPCV[player.name] = player.playerID .. "-" .. vehID
+	end
 end
 
 M.applyStuff = applyStuff
 
 M.onInit = onInit
 M.onTick = onTick
-M.onPlayerConnecting = onPlayerConnecting
+
 M.onPlayerJoining = onPlayerJoining
-M.onPlayerJoin = onPlayerJoin
+
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
 
