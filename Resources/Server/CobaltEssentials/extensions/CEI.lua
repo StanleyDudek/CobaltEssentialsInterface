@@ -861,6 +861,7 @@ end
 
 local function txPlayersData()
 	for playerID, player in pairs(players) do
+		local identifiers = MP.GetPlayerIdentifiers(playerID)
 		if player.connectStage and player.connectStage ~= 0 then
 			local connectedTime
 			connectedTime = ageTimer:GetCurrent()*1000 - player.joinTime
@@ -872,8 +873,6 @@ local function txPlayersData()
 					guest = player.guest,
 					joinTime = player.joinTime / 1000,
 					connectedTime = connectedTime,
-					ip = player.ip,
-					beammp = player.beammp,
 					gamemode = {
 						mode = player.gamemode.mode,
 						source = player.gamemode.source,
@@ -894,6 +893,10 @@ local function txPlayersData()
 					currentVehicle = tempPCV[player.name],
 					vehicles = (player.vehicles or {})
 					}
+			if identifiers.beammp then
+				playersTable[player.playerID].ip = identifiers.ip
+				playersTable[player.playerID].beammp = identifiers.beammp
+			end
 			if tempPlayers[player.name] then
 				playersTable[player.playerID].tempBanLength = tempPlayers[player.name].tempBanLength
 				playersTable[player.playerID].tempPermLevel = tempPlayers[player.name].tempPermLevel
@@ -2125,16 +2128,11 @@ local function sendDelayedMessage(player, message)
 	end
 end
 
-local function onPlayerAuth(player)
-	--bad things happen here
-end
-
-local function onPlayerConnecting(player)
-	--not called by CE
-end
-
 local function onPlayerJoining(player)
 	if player then
+	
+		local identifiers = MP.GetPlayerIdentifiers(player.playerID)
+	
 		if CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == 0 then
 		elseif CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") > os.time() then
 			return false
@@ -2147,23 +2145,23 @@ local function onPlayerJoining(player)
 		tempPlayers[player.name].votedFor = {}
 		tempPCV[player.name] = "none"
 		if isGuest then
-			player.beammp = tonumber(player.name:sub(6)) * -1
+			identifiers.beammp = tonumber(player.name:sub(6)) * -1
 		end
-		if player.beammp then
-			CobaltDB.new("playersDB/" .. player.beammp)
-			CobaltDB.set("playersDB/" .. player.beammp, "beammp", "value", player.beammp)
-			CobaltDB.set("playersDB/" .. player.beammp, "ip", "value", player.ip)
+		if identifiers.beammp then
+			CobaltDB.new("playersDB/" .. identifiers.beammp)
+			CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
+			CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
 
-			CobaltDB.set("playersDB/" .. player.name, "beammp", "value", player.beammp)
-			CobaltDB.set("playersDB/" .. player.name, "ip", "value", player.ip)
+			CobaltDB.set("playersDB/" .. player.name, "beammp", "value", identifiers.beammp)
+			CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
 			if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
 				local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
 				return reason
 			end
-			if CobaltDB.query("playersDB/" .. player.beammp, "banned", "value") == nil then
-				CobaltDB.set("playersDB/" .. player.beammp, "banned", "value", false)
-			elseif CobaltDB.query("playersDB/" .. player.beammp, "banned", "value") == true then
-				local reason = CobaltDB.query("playersDB/" .. player.beammp, "banReason", "value") or "You are banned from this server!"
+			if CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == nil then
+				CobaltDB.set("playersDB/" .. identifiers.beammp, "banned", "value", false)
+			elseif CobaltDB.query("playersDB/" .. identifiers.beammp, "banned", "value") == true then
+				local reason = CobaltDB.query("playersDB/" .. identifiers.beammp, "banReason", "value") or "You are banned from this server!"
 				CobaltDB.set("playersDB/" .. player.name, "banned", "value", true)
 				CobaltDB.set("playersDB/" .. player.name, "banReason", "value", reason)
 				players.database[player.name].banned = true
@@ -2207,10 +2205,6 @@ local function onPlayerJoining(player)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
-end
-
-local function onPlayerJoin(player)
-	--bad things also happen here
 end
 
 function requestCEISync(player_id)
@@ -2258,10 +2252,9 @@ M.applyStuff = applyStuff
 
 M.onInit = onInit
 M.onTick = onTick
-M.onPlayerAuth = onPlayerAuth
-M.onPlayerConnecting = onPlayerConnecting
+
 M.onPlayerJoining = onPlayerJoining
-M.onPlayerJoin = onPlayerJoin
+
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
 
