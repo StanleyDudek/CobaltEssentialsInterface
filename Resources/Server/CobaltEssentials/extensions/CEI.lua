@@ -962,6 +962,12 @@ local function theConfigData()
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
+			if not config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles then
+				config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = 0
+			end
+		end
+		if vehicleCapsLength == 0 then
+			vehicles = CobaltDB.new("vehicles")
 		end
 	end
 	local vehiclePerms = CobaltDB.getTables("vehicles")
@@ -1876,11 +1882,15 @@ function CEIWhitelist(senderID, data)
 		end
 		if action == "add" then
 			players.database[targetName].whitelisted = true
+			CobaltDB.new("playersDB/" .. targetName)
 			CobaltDB.set("playersDB/" .. targetName, "whitelisted", "value", true)
-		end
-		if action == "remove" then
+		elseif action == "remove" then
 			config.cobalt.whitelistedPlayers = {}
+			players.database[targetName].whitelisted = false
+			CobaltDB.new("playersDB/" .. targetName)
 			CobaltDB.set("playersDB/" .. targetName, "whitelisted", "value", false)
+		else
+			CC.whitelist(players[senderID], arguments)
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
@@ -2211,7 +2221,6 @@ function requestCEISync(player_id)
 	local name = MP.GetPlayerName(player_id)
 	local player = players.getPlayerByName(name)
 	if player then
-		print(name)
 		txDescriptions(player)
 		txPlayersGroup(player)
 		txPlayersResetExempt(player)
