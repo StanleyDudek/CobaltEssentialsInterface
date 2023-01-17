@@ -556,7 +556,7 @@ local function applyStuff(targetDatabase, tables)
 end
 
 local function updateCobaltDatabase(DBname)
-	local filePath = dbpath .. DBname
+	local filePath = pluginPath .. "/CobaltDB/" .. DBname
 	local success, error = utils.writeJson(filePath..".temp", loadedDatabases[DBname])
 	if success then
 		success, error = FS.Remove(filePath .. ".json")
