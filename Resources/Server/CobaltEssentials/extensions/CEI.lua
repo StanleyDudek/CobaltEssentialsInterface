@@ -962,6 +962,12 @@ local function theConfigData()
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = CobaltDB.query("permissions","vehicleCap",k)
+			if not config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles then
+				config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = 0
+			end
+		end
+		if vehicleCapsLength == 0 then
+			vehicles = CobaltDB.new("vehicles")
 		end
 	end
 	local vehiclePerms = CobaltDB.getTables("vehicles")
