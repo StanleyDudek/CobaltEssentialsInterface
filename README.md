@@ -13,8 +13,8 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
 ## Pre-requisites:
 
-1. BeamMP Server 3.1.0 (as of CEI v0.7)
-2. [CobaltEssentials](https://github.com/prestonelam2003/CobaltEssentials) 1.7.2 or newer installed.
+1. BeamMP Server 3.1.0 or newer (as of CEI v0.7)
+2. [CobaltEssentials](https://github.com/prestonelam2003/CobaltEssentials) 1.7.3 or newer installed.
 3. As owner, have yourself set as owner group in CobaltEssentials (i.e. `ce setgroup yourName owner` in server console)
 
 ## Installation:
@@ -25,12 +25,12 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 4. Start the server, and join.
 5. The interface should be enabled by default. In the chat, enter the command /CEI to toggle the interface. You may set the default interface state in the Cobalt Essentials section of the interface's Config tab.
 
-## Updating from pre-v0.7 to v0.7 and up:
+## Updating:
 
 1. Grab the latest release from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
 2. Unpack it somewhere.
 3. Drag the folder `Resources` into the directory where your server is installed, accept the overwrites.
-4. HIGHLY RECCOMMENDED that you delete `environment.json`, `interface.json`, and `nametags.json` from the CobaltDB folder, YMMV if you do not.
+4. (Optional) If coming from pre-0.7 CEI, I HIGHLY RECCOMMENDED that you delete `environment.json`, `interface.json`, and `nametags.json` from the CobaltDB folder.
 
 ## How it looks:
 
