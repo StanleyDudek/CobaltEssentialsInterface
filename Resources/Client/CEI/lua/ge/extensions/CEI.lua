@@ -2,6 +2,7 @@
 
 local M = {}
 
+local CEI_VERSION = "0.7.9"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -414,7 +415,8 @@ local function drawCEI()
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
-	im.Begin("Cobalt Essentials Interface")
+	im.Begin("Cobalt Essentials Interface v" .. CEI_VERSION)
+	im.BeginChild1("QuickInfo", im.ImVec2(0, 55), true )
 	im.Text("Nametags")
 	if nametagBlockerTimeout ~= nil then
 		im.SameLine()
@@ -511,6 +513,8 @@ local function drawCEI()
 		im.SameLine()
 		im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	end
+	im.EndChild()
+	im.BeginChild1("Tabs")
 ----------------------------------------------------------------------------------TAB BAR
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
@@ -519,6 +523,7 @@ local function drawCEI()
 			playersCounter = playersCounter + 1
 		end
 		if im.BeginTabItem("Players") then
+			im.BeginChild1("Players1", im.ImVec2(0, 77))
 			im.Text("Current Players:")
 			im.SameLine()
 			im.Text(tostring(playersCounter))
@@ -627,6 +632,8 @@ local function drawCEI()
 				im.PopStyleColor(3)
 				im.Separator()
 			end
+			im.EndChild()
+			im.BeginChild1("Players2")
 ----------------------------------------------------------------------------------PLAYER HEADER
 			for k in pairs(players) do
 				local vehiclesCounter = 0
@@ -1164,11 +1171,13 @@ local function drawCEI()
 					im.Unindent()
 				end
 			end
+			im.EndChild()
 			im.EndTabItem()
 		end
 ----------------------------------------------------------------------------------CONFIG TAB
 		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.config then
 			if im.BeginTabItem("Config") then
+				im.BeginChild1("ConfigTab")
 ----------------------------------------------------------------------------------COBALT HEADER
 				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.cobaltEssentials then
 					if im.CollapsingHeader1("Cobalt Essentials") then
@@ -1919,6 +1928,11 @@ local function drawCEI()
 ----------------------------------------------------------------------------------INTERFACE HEADER
 				if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
 					if im.CollapsingHeader1("Interface") then
+						if im.SmallButton("Reset All##INT") then
+							local data = jsonEncode( { "all", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Indent()
 						im.ShowHelpMarker(descriptions.interface.playerPermissions)
 						im.SameLine()
@@ -1931,6 +1945,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##PP") then
+							local data = jsonEncode( { "playerPermissions", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.playerPermissionsPlus)
 						im.SameLine()
@@ -1943,6 +1963,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##PPP") then
+							local data = jsonEncode( { "playerPermissionsPlus", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.config)
 						im.SameLine()
@@ -1955,6 +1981,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##C") then
+							local data = jsonEncode( { "config", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.cobaltEssentials)
 						im.SameLine()
@@ -1967,6 +1999,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##CE") then
+							local data = jsonEncode( { "cobaltEssentials", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.server)
 						im.SameLine()
@@ -1979,6 +2017,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##S") then
+							local data = jsonEncode( { "server", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.interface)
 						im.SameLine()
@@ -1991,6 +2035,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##I") then
+							local data = jsonEncode( { "interface", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.nametags)
 						im.SameLine()
@@ -2003,6 +2053,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##NT") then
+							local data = jsonEncode( { "nametags", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.restrictions)
 						im.SameLine()
@@ -2015,6 +2071,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##R") then
+							local data = jsonEncode( { "restrictions", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.extras)
 						im.SameLine()
@@ -2027,6 +2089,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##E") then
+							local data = jsonEncode( { "extras", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.environmentAdmin)
 						im.SameLine()
@@ -2039,6 +2107,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##ENVA") then
+							local data = jsonEncode( { "environmentAdmin", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.environment)
 						im.SameLine()
@@ -2051,6 +2125,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##ENV") then
+							local data = jsonEncode( { "environment", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.sun)
 						im.SameLine()
@@ -2063,6 +2143,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##ENVSUN") then
+							local data = jsonEncode( { "sun", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.weather)
 						im.SameLine()
@@ -2075,6 +2161,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##ENVWET") then
+							local data = jsonEncode( { "weather", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.gravity)
 						im.SameLine()
@@ -2087,6 +2179,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##ENVGRV") then
+							local data = jsonEncode( { "gravity", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.temperature)
 						im.SameLine()
@@ -2099,6 +2197,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##ENVTEMP") then
+							local data = jsonEncode( { "temperature", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.database)
 						im.SameLine()
@@ -2111,6 +2215,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##DB") then
+							local data = jsonEncode( { "database", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.ShowHelpMarker(descriptions.interface.race)
 						im.SameLine()
@@ -2123,6 +2233,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##RACE") then
+							local data = jsonEncode( { "race", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
 						im.Separator()
 						im.Unindent()
 					end
@@ -2132,8 +2248,10 @@ local function drawCEI()
 					if im.CollapsingHeader1("Nametags") then
 						local nametagWhitelist = config.nametags.whitelist
 						local nametagWhitelistCounter = 0
-						for _ in pairs(nametagWhitelist) do
-							nametagWhitelistCounter = nametagWhitelistCounter + 1
+						if nametagWhitelist then
+							for _ in pairs(nametagWhitelist) do
+								nametagWhitelistCounter = nametagWhitelistCounter + 1
+							end
 						end
 						im.Indent()
 						if im.TreeNode1("Nametag Settings") then
@@ -2201,15 +2319,17 @@ local function drawCEI()
 						if im.TreeNode1("Nametag Whitelist: ") then
 							im.SameLine()
 							im.Text(tostring(nametagWhitelistCounter))
-							for k in pairs(config.nametags.whitelist) do
-								im.Text("		")
-								im.SameLine()
-								im.Text(config.nametags.whitelist[k])
-								im.SameLine()
-								if im.SmallButton("Remove##"..config.nametags.whitelist[k]) then
-									local data = jsonEncode( { config.nametags.whitelist[k] } )
-									TriggerServerEvent("CEIRemoveNametagWhitelist", data)
-									log('W', logTag, "CEIRemoveNametagWhitelist Called: " .. data)
+							if config.nametags.whitelist then
+								for k in pairs(config.nametags.whitelist) do
+									im.Text("		")
+									im.SameLine()
+									im.Text(config.nametags.whitelist[k])
+									im.SameLine()
+									if im.SmallButton("Remove##"..config.nametags.whitelist[k]) then
+										local data = jsonEncode( { config.nametags.whitelist[k] } )
+										TriggerServerEvent("CEIRemoveNametagWhitelist", data)
+										log('W', logTag, "CEIRemoveNametagWhitelist Called: " .. data)
+									end
 								end
 							end
 							im.Text("		")
@@ -2486,12 +2606,14 @@ local function drawCEI()
 						im.Unindent()
 					end
 				end
+				im.EndChild()
 				im.EndTabItem()
 			end
 		end
 ----------------------------------------------------------------------------------ENVIRONMENT TAB
 		if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environment then
 			if im.BeginTabItem("Environment") then
+				im.BeginChild1("EnvironmentTab")
 				im.Indent()
 				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 					if im.SmallButton("Reset All##ENV") then
@@ -3865,12 +3987,14 @@ local function drawCEI()
 						end
 					end
 				end
+				im.EndChild()
 				im.EndTabItem()
 			end
 		end
 ----------------------------------------------------------------------------------DATABASE TAB
 		if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.database then
 			if im.BeginTabItem("Database") then
+				im.BeginChild1("Database1", im.ImVec2(0, 60))
 				im.Indent()
 				im.Text("Reason:")
 				im.SameLine()
@@ -3889,6 +4013,8 @@ local function drawCEI()
 				im.SameLine()
 				im.Text("days = " .. string.format("%.2f", (playersDatabaseVals.tempBanLength[0] * 1440)) .. " minutes")
 				im.PopItemWidth()
+				im.EndChild()
+				im.BeginChild1("Database2")
 				--im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
 				--for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
 					--if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
@@ -4218,11 +4344,14 @@ local function drawCEI()
 					--end
 				--end
 				im.Unindent()
+				im.EndChild()
 				im.EndTabItem()
 			end
+			im.EndChild()
 			im.EndTabBar()
 		end
 	end
+	im.EndChild()
 	im.PopStyleColor(22)
 	im.End()
 end

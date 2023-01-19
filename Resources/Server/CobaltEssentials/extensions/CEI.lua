@@ -4,6 +4,8 @@ local M = {}
 
 M.COBALT_VERSION = "1.7.3"
 
+local CEI_VERSION = "0.7.9"
+
 utils.setLogType("CEI",93)
 
 local tomlParser = require("toml")
@@ -134,7 +136,6 @@ local environmentDefaults = {
 }
 
 local environment = {}
-
 
 local descriptions = {
 	interface = {
@@ -775,6 +776,8 @@ local function onInit()
 		CobaltDB.new("playersDB/" .. playerName)
 		tempPlayers[playerName] = {}
 	end
+	
+	CElog("v" .. CEI_VERSION, "CEI")
 end
 
 local function CEI(player)
@@ -957,7 +960,7 @@ local function theConfigData()
 	local vehicleCapsLength = 0
 	config.cobalt.permissions.vehicleCap = {}
 	for k in pairs(vehicleCaps) do
-		if string.find(k, "%d+") then
+		if not string.find(k, "description") then
 			vehicleCapsLength = vehicleCapsLength + 1
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength] = {}
 			config.cobalt.permissions.vehicleCap[vehicleCapsLength].level = k
@@ -965,9 +968,6 @@ local function theConfigData()
 			if not config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles then
 				config.cobalt.permissions.vehicleCap[vehicleCapsLength].vehicles = 0
 			end
-		end
-		if vehicleCapsLength == 0 then
-			vehicles = CobaltDB.new("vehicles")
 		end
 	end
 	local vehiclePerms = CobaltDB.getTables("vehicles")
@@ -1159,10 +1159,10 @@ function CEISetInterface(senderID, data)
 	if players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local key = data[1]
-		local value = tonumber(data[2])
+		local value = data[2]
 		if key == "all" then
 			for k in pairs(config.cobalt.interface) do
-				if k ~= config.cobalt.interface.defaultState then
+				if not string.find(k, "default") then
 					config.cobalt.interface[k] = config.cobalt.interface[k .. "_default"]
 					CobaltDB.set("interface", k, "value", config.cobalt.interface[k .. "_default"])
 				end
@@ -1192,8 +1192,10 @@ function CEISetRestrictions(senderID, data)
 		local value = data[2]
 		if key == "all" then
 			for k in pairs(config.restrictions) do
-				config.restrictions[k] = config.restrictions[k .. "_default"]
-				CobaltDB.set("restrictions", k, "value", config.restrictions[k .. "_default"])
+				if not string.find(k, "default") then
+					config.restrictions[k] = config.restrictions[k .. "_default"]
+					CobaltDB.set("restrictions", k, "value", config.restrictions[k .. "_default"])
+				end
 			end
 		elseif value == "default" then
 			config.restrictions[key] = config.restrictions[key .. "_default"]
@@ -1941,12 +1943,14 @@ function CEIRemoveNametagWhitelist(senderID, data)
 		local targetName = data[1]
 		CobaltDB.set("nametags", "nametagsWhitelist", targetName, nil)
 		local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
-		local nametagWhitelistIterator = 0
-		config.nametags.whitelist = {}
-		for k in pairs(nametagsBlockingWhitelist) do
-			if k ~= "description" then
-				nametagWhitelistIterator = nametagWhitelistIterator + 1
-				config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+		if nametagsBlockingWhitelist then
+			local nametagWhitelistIterator = 0
+			config.nametags.whitelist = {}
+			for k in pairs(nametagsBlockingWhitelist) do
+				if k ~= "description" then
+					nametagWhitelistIterator = nametagWhitelistIterator + 1
+					config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+				end
 			end
 		end
 		local player = players.getPlayerByName(targetName)
