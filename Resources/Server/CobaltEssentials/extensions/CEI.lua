@@ -765,8 +765,8 @@ local function onInit()
 	environment.tempCurveDawn = CobaltDB.query("environment", "tempCurveDawn", "value")
 	environment.useTempCurve = CobaltDB.query("environment", "useTempCurve", "value")
 	
-	if FS.Exists("Resources/Server/CobaltEssentials/CobaltDB/playersDB") then
-		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+	if FS.Exists(pluginPath .. "/CobaltDB/playersDB") then
+		playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
 	else
 		playersDatabase = {}
 	end
@@ -807,7 +807,7 @@ function txPlayersDatabase(now)
 	for playerID, player in pairs(players) do
 		if player.connectStage == "connected" then
 			if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
-				local playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+				local playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
 				local playersDatabaseCompare = 0
 				for k,v in pairs(playersDatabase) do
 					playersDatabaseCompare = playersDatabaseCompare + 1
@@ -2211,7 +2211,7 @@ local function onPlayerJoining(player)
 		for k,v in pairs(player.permissions) do
 			CobaltDB.set("playersDB/" .. player.name, k, "value", v)
 		end
-		playersDatabase = FS.ListFiles("Resources/Server/CobaltEssentials/CobaltDB/playersDB")
+		playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
 		if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
 			playersDatabaseCount[player.name] = 0
 		end
