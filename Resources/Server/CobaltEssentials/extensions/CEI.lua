@@ -1032,6 +1032,11 @@ local function txData()
 	txEnvironment()
 	txConfigData()
 	txNametagBlockerActive()
+	for player_id, player_name in pairs(MP.GetPlayers()) do
+		local player = players.getPlayerByName(player_name)
+		txPlayersGroup(player)
+		txPlayersUIPerm(player)
+	end
 end
 
 function CEIPreRace(senderID, data)
