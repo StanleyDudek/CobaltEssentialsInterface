@@ -1034,8 +1034,10 @@ local function txData()
 	txNametagBlockerActive()
 	for player_id, player_name in pairs(MP.GetPlayers()) do
 		local player = players.getPlayerByName(player_name)
-		txPlayersGroup(player)
-		txPlayersUIPerm(player)
+		if player.connectStage == "connected" then
+			txPlayersGroup(player)
+			txPlayersUIPerm(player)
+		end
 	end
 end
 
