@@ -9,7 +9,6 @@ local gui = {setupEditorGuiTheme = nop}
 local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
-local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 local resetExempt
 local currentGroup
 local currentUIPerm
@@ -38,10 +37,11 @@ local allResetsBlockedInputActions = {
 	"goto_checkpoint"
 }
 local editorBlocked = {
-	"editorToggle",
-	"objectEditorToggle",
 	--"toggleConsoleNG",
-	"editorSafeModeToggle"
+	--"editorToggle",
+	--"editorSafeModeToggle",
+	--"objectEditorToggle",
+	--"nodegrabberRender"
 }
 local descriptions = {}
 local environmentValsSet = false
@@ -5129,8 +5129,10 @@ local function onWorldReadyState(state)
 		extensions.core_input_actionFilter.addAction(0, 'cei2', true)
 		
 		if not syncRequested then
-			TriggerServerEvent("requestCEISync", "")
-			syncRequested = true
+			if MPConfig then
+				TriggerServerEvent("requestCEISync", "")
+				syncRequested = true
+			end
 		end
 		
 	end
@@ -5395,134 +5397,118 @@ local function onVehicleDestroyed(gameVehicleID)
 end
 
 local function onVehicleResetted(gameVehicleID)
-	if MPVehicleGE.isOwn(gameVehicleID) then
-		if not firstReset then
-			firstReset = true
+	if MPVehicleGE then
+		if MPVehicleGE.isOwn(gameVehicleID) then
+			if not firstReset then
+				firstReset = true
+			end
+			if not firstTeleport then
+				firstTeleport = true
+			end
 		end
-		if not firstTeleport then
-			firstTeleport = true
+		if config.restrictions then
+			if config.restrictions.control then
+				resetsNotify(gameVehicleID)
+			end
 		end
-	end
-	if config.restrictions then
-		if config.restrictions.control then
-			resetsNotify(gameVehicleID)
-		end
-	end
-	local veh = be:getObjectByID(gameVehicleID)
-	if veh then
-		if isFrozen[gameVehicleID] == false then
-			veh:queueLuaCommand('controller.setFreeze(0)')
-		elseif isFrozen[gameVehicleID] == true then
-			veh:queueLuaCommand('controller.setFreeze(1)')
-		end
-		if ignitionEnabled[gameVehicleID] == true then
-			veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
-		elseif ignitionEnabled[gameVehicleID] == false then
-			veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
+		local veh = be:getObjectByID(gameVehicleID)
+		if veh then
+			if isFrozen[gameVehicleID] == false then
+				veh:queueLuaCommand('controller.setFreeze(0)')
+			elseif isFrozen[gameVehicleID] == true then
+				veh:queueLuaCommand('controller.setFreeze(1)')
+			end
+			if ignitionEnabled[gameVehicleID] == true then
+				veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
+			elseif ignitionEnabled[gameVehicleID] == false then
+				veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
+			end
 		end
 	end
 end
 
 local function onVehicleSwitched(oldGameVehicleID, newGameVehicleID)
-	local veh = be:getObjectByID(newGameVehicleID)
-	if veh then
-		if isFrozen[newGameVehicleID] == false then
-			veh:queueLuaCommand('controller.setFreeze(0)')
-		elseif isFrozen[newGameVehicleID] == true then
-			veh:queueLuaCommand('controller.setFreeze(1)')
+	if MPVehicleGE then
+		local veh = be:getObjectByID(newGameVehicleID)
+		if veh then
+			if isFrozen[newGameVehicleID] == false then
+				veh:queueLuaCommand('controller.setFreeze(0)')
+			elseif isFrozen[newGameVehicleID] == true then
+				veh:queueLuaCommand('controller.setFreeze(1)')
+			end
+			if ignitionEnabled[newGameVehicleID] == true then
+				veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
+			elseif ignitionEnabled[newGameVehicleID] == false then
+				veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
+			end
 		end
-		if ignitionEnabled[newGameVehicleID] == true then
-			veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
-		elseif ignitionEnabled[newGameVehicleID] == false then
-			veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
-		end
-	end
-	if newGameVehicleID and newGameVehicleID > -1 then
-		local newVehObj = MPVehicleGE.getVehicleByGameID(newGameVehicleID) or {}
-		local newServerVehicleID = newVehObj.serverVehicleString
-		if newServerVehicleID then
-			local data = jsonEncode( { newServerVehicleID } )
-			TriggerServerEvent("CEISetCurVeh", data)
-			log('W', logTag, "CEISetCurVeh Called: " .. data)
+		if newGameVehicleID and newGameVehicleID > -1 then
+			local newVehObj = MPVehicleGE.getVehicleByGameID(newGameVehicleID) or {}
+			local newServerVehicleID = newVehObj.serverVehicleString
+			if newServerVehicleID then
+				local data = jsonEncode( { newServerVehicleID } )
+				TriggerServerEvent("CEISetCurVeh", data)
+				log('W', logTag, "CEISetCurVeh Called: " .. data)
+			end
 		end
 	end
 end
 
 local function onPreRender(dt)
-	if nametagBlockerActive then
-		if nametagBlockerTimeout ~= nil then
-			nametagBlockerTimeout = nametagBlockerTimeout - dt
-			if nametagBlockerTimeout > 0 then
+	if MPVehicleGE then
+		if nametagBlockerActive then
+			if nametagBlockerTimeout ~= nil then
+				nametagBlockerTimeout = nametagBlockerTimeout - dt
+				if nametagBlockerTimeout > 0 then
+					if not nametagWhitelisted then
+						MPVehicleGE.hideNicknames(true)
+					else
+						MPVehicleGE.hideNicknames(false)
+					end
+				else
+					nametagBlockerTimeout = nil
+					local data = jsonEncode( { false } )
+					TriggerServerEvent("CEINametagSetting", data)
+					log('W', logTag, "CEINametagSetting: " .. data)
+				end
+			else
 				if not nametagWhitelisted then
 					MPVehicleGE.hideNicknames(true)
 				else
 					MPVehicleGE.hideNicknames(false)
 				end
-			else
-				nametagBlockerTimeout = nil
-				local data = jsonEncode( { false } )
-				TriggerServerEvent("CEINametagSetting", data)
-				log('W', logTag, "CEINametagSetting: " .. data)
 			end
 		else
-			if not nametagWhitelisted then
-				MPVehicleGE.hideNicknames(true)
-			else
-				MPVehicleGE.hideNicknames(false)
-			end
+			MPVehicleGE.hideNicknames(false)
 		end
-	else
-		MPVehicleGE.hideNicknames(false)
 	end
 end
 
 local function onExtensionLoaded()
-	log('W', logTag, "-=$=- INJECTING UI APPS -=$=-")
-	local currentMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
-	local found
-	if currentMpLayout then 
-		for _, v in pairs(currentMpLayout.apps) do
-			if v.appName == "raceCountdown" then
-				found = true
-			end
-		end
-		if not found then
-			local raceCountdown = {}
-			raceCountdown.appName = "raceCountdown"
-			raceCountdown.placement = {}
-			raceCountdown.placement.bottom = ""
-			raceCountdown.placement.height = "160px"
-			raceCountdown.placement.left = 0
-			raceCountdown.placement.margin = "auto"
-			raceCountdown.placement.position = "absolute"
-			raceCountdown.placement.right = 0
-			raceCountdown.placement.top = "40px"
-			raceCountdown.placement.width = "690px"
-			table.insert(currentMpLayout.apps, raceCountdown)
-			jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", currentMpLayout, 1)
-			currentMpLayout = nil
-		end
+	if MPConfig then
+		AddEventHandler("rxFloodInfo", rxFloodInfo)
+		AddEventHandler("rxFloodOptions", rxFloodOptions)
+		AddEventHandler("rxPlayersData", rxPlayersData)
+		AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
+		AddEventHandler("rxPlayerGroup", rxPlayerGroup)
+		AddEventHandler("rxPlayersResetExempt", rxPlayersResetExempt)
+		AddEventHandler("rxConfigData", rxConfigData)
+		AddEventHandler("rxInputUpdate", rxInputUpdate)
+		AddEventHandler("rxEnvironment", rxEnvironment)
+		AddEventHandler("rxDescriptions", rxDescriptions)
+		AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
+		AddEventHandler("rxCEIstate", rxCEIstate)
+		AddEventHandler("rxCEItp", rxCEItp)
+		AddEventHandler("rxCEIrace", rxCEIrace)
+		AddEventHandler("rxTeleportFrom", rxTeleportFrom)
+		AddEventHandler("rxNametagWhitelisted", rxNametagWhitelisted)
+		AddEventHandler("rxNametagBlockerActive", rxNametagBlockerActive)
+		AddEventHandler("rxNametagBlockerTimeout", rxNametagBlockerTimeout)
+		AddEventHandler("CEIToggleIgnition", CEIToggleIgnition)
+		AddEventHandler("CEIToggleLock", CEIToggleLock)
+		AddEventHandler("CEIRaceCountdown", CEIRaceCountdown)
+		AddEventHandler("CEIRaceCountSound", CEIRaceCountSound)
 	end
-	AddEventHandler("rxPlayersData", rxPlayersData)
-	AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
-	AddEventHandler("rxPlayerGroup", rxPlayerGroup)
-	AddEventHandler("rxPlayersResetExempt", rxPlayersResetExempt)
-	AddEventHandler("rxConfigData", rxConfigData)
-	AddEventHandler("rxInputUpdate", rxInputUpdate)
-	AddEventHandler("rxEnvironment", rxEnvironment)
-	AddEventHandler("rxDescriptions", rxDescriptions)
-	AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
-	AddEventHandler("rxCEIstate", rxCEIstate)
-	AddEventHandler("rxCEItp", rxCEItp)
-	AddEventHandler("rxCEIrace", rxCEIrace)
-	AddEventHandler("rxTeleportFrom", rxTeleportFrom)
-	AddEventHandler("rxNametagWhitelisted", rxNametagWhitelisted)
-	AddEventHandler("rxNametagBlockerActive", rxNametagBlockerActive)
-	AddEventHandler("rxNametagBlockerTimeout", rxNametagBlockerTimeout)
-	AddEventHandler("CEIToggleIgnition", CEIToggleIgnition)
-	AddEventHandler("CEIToggleLock", CEIToggleLock)
-	AddEventHandler("CEIRaceCountdown", CEIRaceCountdown)
-	AddEventHandler("CEIRaceCountSound", CEIRaceCountSound)
 	gui_module.initialize(gui)
 	gui.registerWindow("CEI", im.ImVec2(512, 256))
 	gui.showWindow("CEI")
@@ -5530,8 +5516,6 @@ local function onExtensionLoaded()
 end
 
 local function onExtensionUnloaded()
-	log('W', logTag, "-=$=- RESETTING UI APPS -=$=-")
-	jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", originalMpLayout, 1)
 	log('W', logTag, "-=$=- CEI UNLOADED -=$=-")
 end
 
