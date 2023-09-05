@@ -408,6 +408,7 @@ local defaultVehicles = {
 	default = { level = 1 },
 	drag_tree = { level = 1 },
 	dryvan = { level = 1 },
+	engine_props = { level = 1 },
 	etk800 = { level = 1 },
 	etkc = { level = 1 },
 	etki = { level = 1 },
@@ -421,6 +422,7 @@ local defaultVehicles = {
 	hopper = { level = 1 },
 	inflated_mat = { level = 1 },
 	kickplate = { level = 1 },
+	lansdale = { level = 1 },
 	large_angletester = { level = 1 },
 	large_bridge = { level = 1 },
 	large_cannon = { level = 1 },
@@ -442,6 +444,7 @@ local defaultVehicles = {
 	piano = { level = 1 },
 	pickup = { level = 1 },
 	pigeon = { level = 1 },
+	porta_potty = { level = 1 },
 	racetruck = { level = 1 },
 	roadsigns = { level = 1 },
 	roamer = { level = 1 },
@@ -462,6 +465,7 @@ local defaultVehicles = {
 	tirewall = { level = 1 },
 	trafficbarrel = { level = 1 },
 	tsfb = { level = 1 },
+	tub = { level = 1 },
 	tube = { level = 1 },
 	tv = { level = 1 },
 	unicycle = { level = 1 },
@@ -1017,9 +1021,9 @@ function txNametagWhitelisted(player)
 	MP.TriggerClientEventJson(player.playerID, "rxNametagWhitelisted", { isWhitelisted } )
 end
 
-function txNametagBlockerActive()
+function txNametagBlockerActive(player)
 	local data = CobaltDB.query("nametags","blockingEnabled","value")
-	MP.TriggerClientEventJson(-1, "rxNametagBlockerActive", { data } )
+	MP.TriggerClientEventJson(player.playerID, "rxNametagBlockerActive", { data } )
 end
 
 function txNametagBlockerTimeout(senderID, data)
@@ -1031,7 +1035,6 @@ local function txData()
 	txPlayersData()
 	txEnvironment()
 	txConfigData()
-	txNametagBlockerActive()
 	for player_id, player_name in pairs(MP.GetPlayers()) do
 		local player = players.getPlayerByName(player_name)
 		if player.connectStage == "connected" then
@@ -1977,6 +1980,9 @@ function CEINametagSetting(senderID, data)
 		else
 			CobaltDB.set("nametags", "blockingEnabled", "value", data[1])
 			config.nametags.settings.blockingEnabled = data[1]
+			for playerID, player in pairs(players) do
+				txNametagBlockerActive(player)
+			end
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
@@ -2237,6 +2243,7 @@ function requestCEISync(player_id)
 		txPlayersResetExempt(player)
 		txPlayersUIPerm(player)
 		txNametagWhitelisted(player)
+		txNametagBlockerActive(player)
 		MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 		MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
