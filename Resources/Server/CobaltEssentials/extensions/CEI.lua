@@ -1021,9 +1021,9 @@ function txNametagWhitelisted(player)
 	MP.TriggerClientEventJson(player.playerID, "rxNametagWhitelisted", { isWhitelisted } )
 end
 
-function txNametagBlockerActive()
+function txNametagBlockerActive(player)
 	local data = CobaltDB.query("nametags","blockingEnabled","value")
-	MP.TriggerClientEventJson(-1, "rxNametagBlockerActive", { data } )
+	MP.TriggerClientEventJson(player.playerID, "rxNametagBlockerActive", { data } )
 end
 
 function txNametagBlockerTimeout(senderID, data)
@@ -1035,7 +1035,6 @@ local function txData()
 	txPlayersData()
 	txEnvironment()
 	txConfigData()
-	txNametagBlockerActive()
 	for player_id, player_name in pairs(MP.GetPlayers()) do
 		local player = players.getPlayerByName(player_name)
 		if player.connectStage == "connected" then
@@ -1981,6 +1980,9 @@ function CEINametagSetting(senderID, data)
 		else
 			CobaltDB.set("nametags", "blockingEnabled", "value", data[1])
 			config.nametags.settings.blockingEnabled = data[1]
+			for playerID, player in pairs(players) do
+				txNametagBlockerActive(player)
+			end
 		end
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
@@ -2241,6 +2243,7 @@ function requestCEISync(player_id)
 		txPlayersResetExempt(player)
 		txPlayersUIPerm(player)
 		txNametagWhitelisted(player)
+		txNametagBlockerActive(player)
 		MP.TriggerClientEventJson(player.playerID, "rxCEItp", { teleport[player.name] } )
 		MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
