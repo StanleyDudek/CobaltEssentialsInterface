@@ -358,6 +358,7 @@ end
 local function rxNametagBlockerActive(data)
 	data = jsonDecode(data)
 	nametagBlockerActive = data[1]
+	MPVehicleGE.hideNicknames(nametagBlockerActive)
 end
 
 local function rxNametagBlockerTimeout(data)
@@ -5478,8 +5479,6 @@ local function onPreRender(dt)
 					MPVehicleGE.hideNicknames(false)
 				end
 			end
-		else
-			MPVehicleGE.hideNicknames(false)
 		end
 	end
 end
