@@ -848,52 +848,70 @@ local function drawCEI()
 								im.Text(tostring(players[k].vehicles[x].vehicleID) .. ":")
 								im.SameLine()
 								im.Text(players[k].vehicles[x].jbm)
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
-									for i,j in pairs(ignitionEnabled) do
-										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
-											if j == true then
-												im.SameLine()
-												if im.SmallButton("Remote Stop##"..tostring(x)) then
-													local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
-													TriggerServerEvent("CEIToggleIgnition", data)
-													log('W', logTag, "CEIToggleIgnition Called: " .. data)
-												end
-											elseif j == false then
-												im.SameLine()
-												if im.SmallButton("Remote Start##"..tostring(x)) then
-													local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
-													TriggerServerEvent("CEIToggleIgnition", data)
-													log('W', logTag, "CEIToggleIgnition Called: " .. data)
-												end
-											end
-										end
+								local map = MPVehicleGE.getVehicleMap()
+								local vehiclePresent = false
+								for aa, bb in pairs(map) do
+									if aa == tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID) then
+										vehiclePresent = true
 									end
 								end
-								if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
-									for i,j in pairs(isFrozen) do
-										if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
-											if j == false then
-												im.SameLine()
-												if im.SmallButton("Freeze##"..tostring(x)) then
-													local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
-													TriggerServerEvent("CEIToggleLock", data)
-													log('W', logTag, "CEIToggleLock Called: " .. data)
-												end
-											elseif j == true then
-												im.SameLine()
-												if im.SmallButton("Unfreeze##"..tostring(x)) then
-													local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
-													TriggerServerEvent("CEIToggleLock", data)
-													log('W', logTag, "CEIToggleLock Called: " .. data)
+								if vehiclePresent then
+									if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
+										for i,j in pairs(ignitionEnabled) do
+											if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
+												if j == true then
+													im.SameLine()
+													if im.SmallButton("Remote Stop##"..tostring(x)) then
+														local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
+														TriggerServerEvent("CEIToggleIgnition", data)
+														log('W', logTag, "CEIToggleIgnition Called: " .. data)
+													end
+												elseif j == false then
+													im.SameLine()
+													if im.SmallButton("Remote Start##"..tostring(x)) then
+														local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
+														TriggerServerEvent("CEIToggleIgnition", data)
+														log('W', logTag, "CEIToggleIgnition Called: " .. data)
+													end
 												end
 											end
 										end
 									end
-									im.SameLine()
-									if im.SmallButton("Delete##"..tostring(x)) then
-										local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), ffi.string(playersVals[k].vehDeleteReason) } )
-										TriggerServerEvent("CEIRemoveVehicle", data)
-										log('W', logTag, "CEIRemoveVehicle Called: " .. data)
+									local map = MPVehicleGE.getVehicleMap()
+									local vehiclePresent = false
+									for aa, bb in pairs(map) do
+										if aa == tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID) then
+											vehiclePresent = true
+										end
+									end
+									if vehiclePresent then
+										if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
+											for i,j in pairs(isFrozen) do
+												if i == MPVehicleGE.getGameVehicleID(tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID)) then
+													if j == false then
+														im.SameLine()
+														if im.SmallButton("Freeze##"..tostring(x)) then
+															local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), true } )
+															TriggerServerEvent("CEIToggleLock", data)
+															log('W', logTag, "CEIToggleLock Called: " .. data)
+														end
+													elseif j == true then
+														im.SameLine()
+														if im.SmallButton("Unfreeze##"..tostring(x)) then
+															local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), false } )
+															TriggerServerEvent("CEIToggleLock", data)
+															log('W', logTag, "CEIToggleLock Called: " .. data)
+														end
+													end
+												end
+											end
+											im.SameLine()
+											if im.SmallButton("Delete##"..tostring(x)) then
+												local data = jsonEncode( { players[k].playerID, tostring(players[k].vehicles[x].vehicleID), ffi.string(playersVals[k].vehDeleteReason) } )
+												TriggerServerEvent("CEIRemoveVehicle", data)
+												log('W', logTag, "CEIRemoveVehicle Called: " .. data)
+											end
+										end
 									end
 								end
 							end
