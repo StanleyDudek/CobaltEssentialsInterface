@@ -560,7 +560,6 @@ local function drawCEI()
 					local data = jsonEncode( { true } )
 					TriggerServerEvent("CEIRaceInclude", data)
 					log('W', logTag, "CEIRaceInclude Called: " .. data)
-					includeInRace = true
 				end
 				im.PopStyleColor(3)
 			else
@@ -571,7 +570,6 @@ local function drawCEI()
 					local data = jsonEncode( { false } )
 					TriggerServerEvent("CEIRaceInclude", data)
 					log('W', logTag, "CEIRaceInclude Called: " .. data)
-					includeInRace = false
 				end
 				im.PopStyleColor(3)
 			end
@@ -779,7 +777,7 @@ local function drawCEI()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.55, 0.05, 0.333))
 								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.55, 0.09, 0.5))
 								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.55, 0.05, 0.999))
-								if im.SmallButton("Add to Race") then
+								if im.SmallButton("Add to Race##" .. tostring(k)) then
 									local data = jsonEncode( { true, players[k].playerName } )
 									TriggerServerEvent("CEIRaceInclude", data)
 									log('W', logTag, "CEIRaceInclude Called: " .. data)
@@ -789,7 +787,7 @@ local function drawCEI()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.77, 0.15, 0.05, 0.333))
 								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.1, 0.09, 0.5))
 								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.05, 0.05, 0.999))
-								if im.SmallButton("Remove from Race") then
+								if im.SmallButton("Remove from Race##" .. tostring(k)) then
 									local data = jsonEncode( { false, players[k].playerName } )
 									TriggerServerEvent("CEIRaceInclude", data)
 									log('W', logTag, "CEIRaceInclude Called: " .. data)
@@ -1150,7 +1148,7 @@ local function drawCEI()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.55, 0.05, 0.333))
 								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.55, 0.09, 0.5))
 								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.55, 0.05, 0.999))
-								if im.SmallButton("Add to Race") then
+								if im.SmallButton("Add to Race##" .. tostring(k)) then
 									local data = jsonEncode( { true, players[k].playerName } )
 									TriggerServerEvent("CEIRaceInclude", data)
 									log('W', logTag, "CEIRaceInclude Called: " .. data)
@@ -1160,7 +1158,7 @@ local function drawCEI()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.77, 0.15, 0.05, 0.333))
 								im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.77, 0.1, 0.09, 0.5))
 								im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.05, 0.05, 0.999))
-								if im.SmallButton("Remove from Race") then
+								if im.SmallButton("Remove from Race##" .. tostring(k)) then
 									local data = jsonEncode( { false, players[k].playerName } )
 									TriggerServerEvent("CEIRaceInclude", data)
 									log('W', logTag, "CEIRaceInclude Called: " .. data)
