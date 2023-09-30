@@ -525,7 +525,6 @@ local function drawCEI()
 			playersCounter = playersCounter + 1
 		end
 		if im.BeginTabItem("Players") then
-			im.BeginChild1("Players1", im.ImVec2(0, 77))
 			im.Text("Current Players:")
 			im.SameLine()
 			im.Text(tostring(playersCounter))
@@ -576,6 +575,7 @@ local function drawCEI()
 			end
 			im.Separator()
 			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
+				im.BeginChild1("Players1", im.ImVec2(0, 50))
 				im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
@@ -631,8 +631,8 @@ local function drawCEI()
 				end
 				im.PopStyleColor(3)
 				im.Separator()
+				im.EndChild()
 			end
-			im.EndChild()
 			im.BeginChild1("Players2")
 ----------------------------------------------------------------------------------PLAYER HEADER
 			for k in pairs(players) do
