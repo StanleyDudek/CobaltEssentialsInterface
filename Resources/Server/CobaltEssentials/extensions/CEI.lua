@@ -2,9 +2,9 @@
 
 local M = {}
 
-M.COBALT_VERSION = "1.7.4"
+M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.7.91"
+local CEI_VERSION = "0.7.93"
 
 utils.setLogType("CEI",93)
 
@@ -73,14 +73,33 @@ config.nametags.settings.blockingTimeout_default = 300
 config.nametags.settings.whitelist_default = "exampleName"
 
 config.restrictions = {}
-config.restrictions.control_default = false
-config.restrictions.messageDuration_default = 5
-config.restrictions.enabled_default = true
-config.restrictions.timeout_default = 10
-config.restrictions.title_default = "Vehicle Reset Limiter"
-config.restrictions.elapsedMessage_default = "You can now reset your vehicle."
-config.restrictions.message_default = "You can reset your vehicle in {secondsLeft} seconds."
-config.restrictions.disabledMessage_default = "Vehicle resetting is disabled on this server."
+config.restrictions.reset = {}
+config.restrictions.reset.reset_physics_default = true
+config.restrictions.reset.reset_all_physics_default = true
+config.restrictions.reset.recover_vehicle_default = true
+config.restrictions.reset.recover_vehicle_alt_default = true
+config.restrictions.reset.recover_to_last_road_default = true
+config.restrictions.reset.reload_vehicle_default = true
+config.restrictions.reset.reload_all_vehicles_default = true
+config.restrictions.reset.loadHome_default = true
+config.restrictions.reset.saveHome_default = true
+config.restrictions.reset.dropPlayerAtCamera_default = true
+config.restrictions.reset.dropPlayerAtCameraNoReset_default = true
+config.restrictions.reset.goto_checkpoint_default = true
+config.restrictions.reset.control_default = false
+config.restrictions.reset.messageDuration_default = 5
+config.restrictions.reset.enabled_default = true
+config.restrictions.reset.timeout_default = 10
+config.restrictions.reset.title_default = "Vehicle Reset Limiter"
+config.restrictions.reset.elapsedMessage_default = "You can now reset your vehicle."
+config.restrictions.reset.message_default = "You can reset your vehicle in {secondsLeft} seconds."
+config.restrictions.reset.disabledMessage_default = "Vehicle resetting is disabled on this server."
+config.restrictions.CEN = {}
+config.restrictions.CEN.toggleConsoleNG_default = false
+config.restrictions.CEN.editorToggle_default = false
+config.restrictions.CEN.editorSafeModeToggle_default = false
+config.restrictions.CEN.objectEditorToggle_default = false
+config.restrictions.CEN.nodegrabberRender_default = false
 
 local environmentDefaults = {
 	controlSun = false,
@@ -166,7 +185,24 @@ local descriptions = {
 		title = "Title shown when resetting is limited or disabled.",
 		elapsedMessage = "Message shown when reset timeout has elapsed.",
 		message = "Message shown when resetting is limited.",
-		disabledMessage = "Message shown when resetting is completely disabled."
+		disabledMessage = "Message shown when resetting is completely disabled.",
+		reset_physics = "While restricted, is resetting physics disabled?",
+		reset_all_physics = "While restricted, is resetting all physics disabled?",
+		recover_vehicle = "While restricted, is vehicle recovery disabled?",
+		recover_vehicle_alt = "While restricted, is alternate vehicle recovery disabled?",
+		recover_to_last_road = "While restricted, is recover to last road disabled?",
+		reload_vehicle = "While restricted, is reloading vehicle disabled?",
+		reload_all_vehicles = "While restricted, is reloading all vehicles disabled?",
+		loadHome = "While restricted, is loading Home disabled?",
+		saveHome = "While restricted, is saving Home disabled?",
+		dropPlayerAtCamera = "While restricted, is dropping player at camera disabled?",
+		dropPlayerAtCameraNoReset = "While restricted, is dropping player at camera with no reset disabled?",
+		goto_checkpoint = "While restricted, is goto checkpoint disabled?",
+		toggleConsoleNG = "While restricted, is console disabled?",
+		editorToggle = "While restricted, is editor disabled?",
+		editorSafeModeToggle = "While restricted, is editor safe mode disabled?",
+		objectEditorToggle = "While restricted, is object editor disabled?",
+		nodegrabberRender = "While restricted, is nodegrabber disabled?"
 	},
 	environment = {
 		controlSun = "Do we control everyone's sun?",
@@ -344,6 +380,24 @@ local defaultDescriptions = {
 	message = 				{description = descriptions.restrictions.message},
 	disabledMessage = 		{description = descriptions.restrictions.disabledMessage},
 	
+	reset_physics = 		{description = descriptions.restrictions.reset_physics},
+	reset_all_physics = 	{description = descriptions.restrictions.reset_all_physics},
+	recover_vehicle = 		{description = descriptions.restrictions.recover_vehicle},
+	recover_vehicle_alt = 	{description = descriptions.restrictions.recover_vehicle_alt},
+	recover_to_last_road = 	{description = descriptions.restrictions.recover_to_last_road},
+	reload_vehicle = 		{description = descriptions.restrictions.reload_vehicle},
+	reload_all_vehicles = 	{description = descriptions.restrictions.reload_all_vehicles},
+	loadHome = 				{description = descriptions.restrictions.loadHome},
+	saveHome = 				{description = descriptions.restrictions.saveHome},
+	dropPlayerAtCamera = 	{description = descriptions.restrictions.dropPlayerAtCamera},
+	dropPlayerAtCameraNoReset = {description = descriptions.restrictions.dropPlayerAtCameraNoReset},
+	goto_checkpoint = 		{description = descriptions.restrictions.goto_checkpoint},
+	toggleConsoleNG = 		{description = descriptions.restrictions.toggleConsoleNG},
+	editorToggle = 			{description = descriptions.restrictions.editorToggle},
+	editorSafeModeToggle = 	{description = descriptions.restrictions.editorSafeModeToggle},
+	objectEditorToggle = 	{description = descriptions.restrictions.objectEditorToggle},
+	nodegrabberRender = 	{description = descriptions.restrictions.nodegrabberRender},
+	
 	defaultState = 			{description = descriptions.interface.defaultState},
 	playerPermissions = 	{description = descriptions.interface.playerPermissions},
 	playerPermissionsPlus = {description = descriptions.interface.playerPermissionsPlus},
@@ -367,14 +421,32 @@ local defaultDescriptions = {
 
 local restrictionsJson = CobaltDB.new("restrictions")
 local defaultRestrictions = {
-	control = 			{value = config.restrictions.control_default},
-	messageDuration = 	{value = config.restrictions.messageDuration_default},
-	enabled = 			{value = config.restrictions.enabled_default},
-	timeout = 			{value = config.restrictions.timeout_default},
-	title = 			{value = config.restrictions.title_default},
-	elapsedMessage = 	{value = config.restrictions.elapsedMessage_default},
-	message = 			{value = config.restrictions.message_default},
-	disabledMessage = 	{value = config.restrictions.disabledMessage_default}
+	control = 			{value = config.restrictions.reset.control_default},
+	messageDuration = 	{value = config.restrictions.reset.messageDuration_default},
+	enabled = 			{value = config.restrictions.reset.enabled_default},
+	timeout = 			{value = config.restrictions.reset.timeout_default},
+	title = 			{value = config.restrictions.reset.title_default},
+	elapsedMessage = 	{value = config.restrictions.reset.elapsedMessage_default},
+	message = 			{value = config.restrictions.reset.message_default},
+	disabledMessage = 	{value = config.restrictions.reset.disabledMessage_default},
+	
+	reset_physics = 		{value = config.restrictions.reset.reset_physics_default},
+	reset_all_physics = 	{value = config.restrictions.reset.reset_all_physics_default},
+	recover_vehicle = 		{value = config.restrictions.reset.recover_vehicle_default},
+	recover_vehicle_alt = 	{value = config.restrictions.reset.recover_vehicle_alt_default},
+	recover_to_last_road = 	{value = config.restrictions.reset.recover_to_last_road_default},
+	reload_vehicle = 		{value = config.restrictions.reset.reload_vehicle_default},
+	reload_all_vehicles = 	{value = config.restrictions.reset.reload_all_vehicles_default},
+	loadHome = 				{value = config.restrictions.reset.loadHome_default},
+	saveHome = 				{value = config.restrictions.reset.saveHome_default},
+	dropPlayerAtCamera = 	{value = config.restrictions.reset.dropPlayerAtCamera_default},
+	dropPlayerAtCameraNoReset = {value = config.restrictions.reset.dropPlayerAtCameraNoReset_default},
+	goto_checkpoint = 		{value = config.restrictions.reset.goto_checkpoint_default},
+	toggleConsoleNG = 		{value = config.restrictions.CEN.toggleConsoleNG_default},
+	editorToggle = 			{value = config.restrictions.CEN.editorToggle_default},
+	editorSafeModeToggle = 	{value = config.restrictions.CEN.editorSafeModeToggle_default},
+	objectEditorToggle = 	{value = config.restrictions.CEN.objectEditorToggle_default},
+	nodegrabberRender = 	{value = config.restrictions.CEN.nodegrabberRender_default},
 }
 
 local vehiclesJson = CobaltDB.new("vehicles")
@@ -397,6 +469,7 @@ local defaultVehicles = {
 	cannon = { level = 1 },
 	caravan = { level = 1 },
 	cardboard_box = { level = 1 },
+	cargotrailer = { level = 1 },
 	chair = { level = 1 },
 	christmas_tree = { level = 1 },
 	citybus = { level = 1, ["partlevel:citybus_ramplow"] = 1, ["partlevel:citybus_jato_R"] = 1 },
@@ -461,6 +534,7 @@ local defaultVehicles = {
 	suspensionbridge = { level = 1 },
 	tanker = { level = 1 },
 	testroller = { level = 1 },
+	tiltdeck = { level = 1 },
 	tirestacks = { level = 1 },
 	tirewall = { level = 1 },
 	trafficbarrel = { level = 1 },
@@ -469,6 +543,7 @@ local defaultVehicles = {
 	tube = { level = 1 },
 	tv = { level = 1 },
 	unicycle = { level = 1 },
+	utv = { level = 1 },
 	van = { level = 1 },
 	vivace = { level = 1 },
 	wall = { level = 1 },
@@ -620,6 +695,7 @@ local function onInit()
 	MP.RegisterEvent("CEIStop","CEIStop")
 	MP.RegisterEvent("CEISetInterface","CEISetInterface")
 	MP.RegisterEvent("CEISetRestrictions","CEISetRestrictions")
+	MP.RegisterEvent("CEISetCNE","CEISetCNE")
 	MP.RegisterEvent("CEISetEnv","CEISetEnv")
 	MP.RegisterEvent("CEISetTempBan","CEISetTempBan")
 	MP.RegisterEvent("CEISetTeleportPerm","CEISetTeleportPerm")
@@ -706,14 +782,33 @@ local function onInit()
 	config.cobalt.interface.database = CobaltDB.query("interface", "database", "value")
 	config.cobalt.interface.race = CobaltDB.query("interface", "race", "value")
 	
-	config.restrictions.control = CobaltDB.query("restrictions", "control", "value")
-	config.restrictions.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
-	config.restrictions.enabled = CobaltDB.query("restrictions", "enabled", "value")
-	config.restrictions.timeout = CobaltDB.query("restrictions", "timeout", "value")
-	config.restrictions.title = CobaltDB.query("restrictions", "title", "value")
-	config.restrictions.elapsedMessage = CobaltDB.query("restrictions", "elapsedMessage", "value")
-	config.restrictions.message = CobaltDB.query("restrictions", "message", "value")
-	config.restrictions.disabledMessage = CobaltDB.query("restrictions", "disabledMessage", "value")
+	config.restrictions.reset.control = CobaltDB.query("restrictions", "control", "value")
+	config.restrictions.reset.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
+	config.restrictions.reset.enabled = CobaltDB.query("restrictions", "enabled", "value")
+	config.restrictions.reset.timeout = CobaltDB.query("restrictions", "timeout", "value")
+	config.restrictions.reset.title = CobaltDB.query("restrictions", "title", "value")
+	config.restrictions.reset.elapsedMessage = CobaltDB.query("restrictions", "elapsedMessage", "value")
+	config.restrictions.reset.message = CobaltDB.query("restrictions", "message", "value")
+	config.restrictions.reset.disabledMessage = CobaltDB.query("restrictions", "disabledMessage", "value")
+	
+	config.restrictions.reset.reset_physics = CobaltDB.query("restrictions", "reset_physics", "value")
+	config.restrictions.reset.reset_all_physics = CobaltDB.query("restrictions", "reset_all_physics", "value")
+	config.restrictions.reset.recover_vehicle = CobaltDB.query("restrictions", "recover_vehicle", "value")
+	config.restrictions.reset.recover_vehicle_alt = CobaltDB.query("restrictions", "recover_vehicle_alt", "value")
+	config.restrictions.reset.recover_to_last_road = CobaltDB.query("restrictions", "recover_to_last_road", "value")
+	config.restrictions.reset.reload_vehicle = CobaltDB.query("restrictions", "reload_vehicle", "value")
+	config.restrictions.reset.reload_all_vehicles = CobaltDB.query("restrictions", "reload_all_vehicles", "value")
+	config.restrictions.reset.loadHome = CobaltDB.query("restrictions", "loadHome", "value")
+	config.restrictions.reset.saveHome = CobaltDB.query("restrictions", "saveHome", "value")
+	config.restrictions.reset.dropPlayerAtCamera = CobaltDB.query("restrictions", "dropPlayerAtCamera", "value")
+	config.restrictions.reset.dropPlayerAtCameraNoReset = CobaltDB.query("restrictions", "dropPlayerAtCameraNoReset", "value")
+	config.restrictions.reset.goto_checkpoint = CobaltDB.query("restrictions", "goto_checkpoint", "value")
+	
+	config.restrictions.CEN.toggleConsoleNG = CobaltDB.query("restrictions", "toggleConsoleNG", "value")
+	config.restrictions.CEN.editorToggle = CobaltDB.query("restrictions", "editorToggle", "value")
+	config.restrictions.CEN.editorSafeModeToggle = CobaltDB.query("restrictions", "editorSafeModeToggle", "value")
+	config.restrictions.CEN.objectEditorToggle = CobaltDB.query("restrictions", "objectEditorToggle", "value")
+	config.restrictions.CEN.nodegrabberRender = CobaltDB.query("restrictions", "nodegrabberRender", "value")
 	
 	config.nametags.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
 	config.nametags.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
@@ -1169,7 +1264,7 @@ function CEISetInterface(senderID, data)
 	if players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.interface then
 		data = Util.JsonDecode(data)
 		local key = data[1]
-		local value = data[2]
+		local value = tonumber(data[2])
 		if key == "all" then
 			for k in pairs(config.cobalt.interface) do
 				if not string.find(k, "default") then
@@ -1200,20 +1295,41 @@ function CEISetRestrictions(senderID, data)
 		data = Util.JsonDecode(data)
 		local key = data[1]
 		local value = data[2]
-		if key == "all" then
-			for k in pairs(config.restrictions) do
-				if not string.find(k, "default") then
-					config.restrictions[k] = config.restrictions[k .. "_default"]
-					CobaltDB.set("restrictions", k, "value", config.restrictions[k .. "_default"])
+		local tag = data[3]
+		
+		if tag == "reset" then
+			if key == "all" then
+				for k in pairs(config.restrictions.reset) do
+					if not string.find(k, "default") then
+						config.restrictions.reset[k] = config.restrictions.reset[k .. "_default"]
+						CobaltDB.set("restrictions", k, "value", config.restrictions.reset[k .. "_default"])
+					end
 				end
+			elseif value == "default" then
+				config.restrictions.reset[key] = config.restrictions.reset[key .. "_default"]
+				CobaltDB.set("restrictions", key, "value", config.restrictions.reset[key .. "_default"])
+			else
+				config.restrictions.reset[key] = value
+				CobaltDB.set("restrictions", key, "value", value)
 			end
-		elseif value == "default" then
-			config.restrictions[key] = config.restrictions[key .. "_default"]
-			CobaltDB.set("restrictions", key, "value", config.restrictions[key .. "_default"])
-		else
-			config.restrictions[key] = value
-			CobaltDB.set("restrictions", key, "value", value)
 		end
+		if tag == "CEN" then
+			if key == "all" then
+				for k in pairs(config.restrictions.CEN) do
+					if not string.find(k, "default") then
+						config.restrictions.CEN[k] = config.restrictions.CEN[k .. "_default"]
+						CobaltDB.set("restrictions", k, "value", config.restrictions.CEN[k .. "_default"])
+					end
+				end
+			elseif value == "default" then
+				config.restrictions.CEN[key] = config.restrictions.CEN[key .. "_default"]
+				CobaltDB.set("restrictions", key, "value", config.restrictions.CEN[key .. "_default"])
+			else
+				config.restrictions.CEN[key] = value
+				CobaltDB.set("restrictions", key, "value", value)
+			end
+		end
+		
 		for playerID, player in pairs(players) do
 			if type(playerID) == "number" then
 				if player.connectStage == "connected" then
@@ -1918,6 +2034,7 @@ function CEIRaceInclude(senderID, data)
 		MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
 	else
 		tempPlayers[playerName].includeInRace = data[1]
+		MP.TriggerClientEventJson(MP.GetPlayerIDByName(playerName), "rxCEIrace", { data[1] } )
 	end
 end
 
