@@ -584,8 +584,8 @@ local defaultInterfaceSettings = {
 }
 
 local CEICommands = {
-	CEI = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
-	cei = {orginModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
+	CEI = {originModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
+	cei = {originModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
 }
 
 local function writeCfg(path, key, value)
