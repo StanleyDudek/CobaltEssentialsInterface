@@ -23,26 +23,8 @@ local isFrozen = {}
 local firstReset = false
 local firstTeleport = false
 local resetsBlockedInputActions = {}
-local allResetsBlockedInputActions = {
-	"reset_physics",
-	"reset_all_physics",
-	"recover_vehicle",
-	"recover_vehicle_alt",
-	"recover_to_last_road",
-	"reload_vehicle",
-	"reload_all_vehicles",
-	"loadHome",
-	"dropPlayerAtCamera",
-	"dropPlayerAtCameraNoReset",
-	"goto_checkpoint"
-}
-local editorBlocked = {
-	--"toggleConsoleNG",
-	--"editorToggle",
-	--"editorSafeModeToggle",
-	--"objectEditorToggle",
-	--"nodegrabberRender"
-}
+local allResetsBlockedInputActions = {}
+local editorBlocked = {}
 local descriptions = {}
 local environmentValsSet = false
 local environmentVals = {}
@@ -196,11 +178,28 @@ end
 
 local function rxConfigData(data)
 	config = jsonDecode(data)
-	if tonumber(config.restrictions.timeout) > 0 then
+	
+	allResetsBlockedInputActions = {}
+	for k, v in pairs(config.restrictions.reset) do
+		if v == true then
+			table.insert(allResetsBlockedInputActions, k)
+		end
+	end
+	editorBlocked = {}
+	for k, v in pairs(config.restrictions.CEN) do
+		if v == true then
+			table.insert(editorBlocked, k)
+		end
+	end
+	if tonumber(config.restrictions.reset.timeout) > 0 then
 		resetsBlockedInputActions = allResetsBlockedInputActions
 	else
 		resetsBlockedInputActions = {}
 	end
+	
+	extensions.core_input_actionFilter.setGroup('cei2', editorBlocked)
+	extensions.core_input_actionFilter.addAction(0, 'cei2', true)
+	
 	if configValsSet == false then
 		configVals.server = {}
 		configVals.cobalt = {}
@@ -209,7 +208,9 @@ local function rxConfigData(data)
 		configVals.cobalt.permissions.vehicleCap = {}
 		configVals.cobalt.permissions.vehiclePerm = {}
 		configVals.cobalt.interface = {}
-		configVals.resets = {}
+		configVals.restrictions = {}
+		configVals.restrictions.reset = {}
+		configVals.restrictions.CEN = {}
 		configVals.nametags = {}
 		configVals.nametags.settings = {}
 		configVals.cobalt.interface.playerPermissions = im.IntPtr(tonumber(config.cobalt.interface.playerPermissions))
@@ -229,12 +230,12 @@ local function rxConfigData(data)
 		configVals.cobalt.interface.temperature = im.IntPtr(tonumber(config.cobalt.interface.temperature))
 		configVals.cobalt.interface.database = im.IntPtr(tonumber(config.cobalt.interface.database))
 		configVals.cobalt.interface.race = im.IntPtr(tonumber(config.cobalt.interface.race))
-		configVals.resets.messageDuration = im.IntPtr(tonumber(config.restrictions.messageDuration))
-		configVals.resets.timeout = im.IntPtr(tonumber(config.restrictions.timeout))
-		configVals.resets.title = im.ArrayChar(128)
-		configVals.resets.elapsedMessage = im.ArrayChar(256)
-		configVals.resets.message = im.ArrayChar(256)
-		configVals.resets.disabledMessage = im.ArrayChar(256)
+		configVals.restrictions.reset.messageDuration = im.IntPtr(tonumber(config.restrictions.reset.messageDuration))
+		configVals.restrictions.reset.timeout = im.IntPtr(tonumber(config.restrictions.reset.timeout))
+		configVals.restrictions.reset.title = im.ArrayChar(128)
+		configVals.restrictions.reset.elapsedMessage = im.ArrayChar(256)
+		configVals.restrictions.reset.message = im.ArrayChar(256)
+		configVals.restrictions.reset.disabledMessage = im.ArrayChar(256)
 		configVals.server.nameInput = im.ArrayChar(128)
 		configVals.server.mapInput = im.ArrayChar(128)
 		configVals.server.descriptionInput = im.ArrayChar(256)
@@ -433,8 +434,8 @@ local function drawCEI()
 	end
 	if config.restrictions then
 		if firstReset then
-			if not config.restrictions.enabled then
-				if config.restrictions.control then
+			if not config.restrictions.reset.enabled then
+				if config.restrictions.reset.control then
 					im.SameLine()
 					im.Text("| Vehicle resetting")
 					im.SameLine()
@@ -446,13 +447,13 @@ local function drawCEI()
 					im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 				end
 				
-			elseif config.restrictions.timeout - resetsTimerElapsedReset > 0 then
+			elseif config.restrictions.reset.timeout - resetsTimerElapsedReset > 0 then
 				im.SameLine()
 				im.Text("| Vehicle reset")
 				im.SameLine()
 				im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
 				im.SameLine()
-				im.Text(string.format("%.2f",config.restrictions.timeout - resetsTimerElapsedReset) .. "s")
+				im.Text(string.format("%.2f",config.restrictions.reset.timeout - resetsTimerElapsedReset) .. "s")
 			else
 				im.SameLine()
 				im.Text("| Vehicle reset")
@@ -2377,23 +2378,215 @@ local function drawCEI()
 						if im.TreeNode1("Resets") then
 							im.SameLine()
 							if im.SmallButton("Reset##RST") then
-								local data = jsonEncode( { "all", "default" } )
+								local data = jsonEncode( { "all", "default", "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Indent()
 							im.Text("Reset Control: ")
-							if config.restrictions.control then
+							if config.restrictions.reset.control then
 								im.SameLine()
 								if im.SmallButton("Enabled##control") then
-									local data = jsonEncode( { "control", false } )
+									local data = jsonEncode( { "control", false, "reset" } )
 									TriggerServerEvent("CEISetRestrictions", data)
 									log('W', logTag, "CEISetRestrictions Called: " .. data)
 								end
 							else
 								im.SameLine()
 								if im.SmallButton("Disabled##control") then
-									local data = jsonEncode( { "control", true } )
+									local data = jsonEncode( { "control", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Reset Physics: ")
+							if config.restrictions.reset.reset_physics then
+								im.SameLine()
+								if im.SmallButton("Blocked##PHYS") then
+									local data = jsonEncode( { "reset_physics", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##PHYS") then
+									local data = jsonEncode( { "reset_physics", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Reset All Physics: ")
+							if config.restrictions.reset.reset_all_physics then
+								im.SameLine()
+								if im.SmallButton("Blocked##ALLPHYS") then
+									local data = jsonEncode( { "reset_all_physics", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##ALLPHYS") then
+									local data = jsonEncode( { "reset_all_physics", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Recover Vehicle: ")
+							if config.restrictions.reset.recover_vehicle then
+								im.SameLine()
+								if im.SmallButton("Blocked##RECVEH") then
+									local data = jsonEncode( { "recover_vehicle", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##RECVEH") then
+									local data = jsonEncode( { "recover_vehicle", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Recover Vehicle Alternate: ")
+							if config.restrictions.reset.recover_vehicle_alt then
+								im.SameLine()
+								if im.SmallButton("Blocked##RECVEHALT") then
+									local data = jsonEncode( { "recover_vehicle_alt", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##RECVEHALT") then
+									local data = jsonEncode( { "recover_vehicle_alt", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Recover to Last Road: ")
+							if config.restrictions.reset.recover_to_last_road then
+								im.SameLine()
+								if im.SmallButton("Blocked##RECRD") then
+									local data = jsonEncode( { "recover_to_last_road", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##RECRD") then
+									local data = jsonEncode( { "recover_to_last_road", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Reload Vehicle: ")
+							if config.restrictions.reset.reload_vehicle then
+								im.SameLine()
+								if im.SmallButton("Blocked##RELVEH") then
+									local data = jsonEncode( { "reload_vehicle", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##RELVEH") then
+									local data = jsonEncode( { "reload_vehicle", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Reload All Vehicles: ")
+							if config.restrictions.reset.reload_all_vehicles then
+								im.SameLine()
+								if im.SmallButton("Blocked##RELALLVEH") then
+									local data = jsonEncode( { "reload_all_vehicles", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##RELALLVEH") then
+									local data = jsonEncode( { "reload_all_vehicles", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Load Home: ")
+							if config.restrictions.reset.loadHome then
+								im.SameLine()
+								if im.SmallButton("Blocked##LDHOME") then
+									local data = jsonEncode( { "loadHome", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##LDHOME") then
+									local data = jsonEncode( { "loadHome", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Save Home: ")
+							if config.restrictions.reset.saveHome then
+								im.SameLine()
+								if im.SmallButton("Blocked##SVHOME") then
+									local data = jsonEncode( { "saveHome", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##SVHOME") then
+									local data = jsonEncode( { "saveHome", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Drop Player at Camera: ")
+							if config.restrictions.reset.dropPlayerAtCamera then
+								im.SameLine()
+								if im.SmallButton("Blocked##DPAC") then
+									local data = jsonEncode( { "dropPlayerAtCamera", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##DPAC") then
+									local data = jsonEncode( { "dropPlayerAtCamera", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Drop Player at Camera, No Reset: ")
+							if config.restrictions.reset.dropPlayerAtCameraNoReset then
+								im.SameLine()
+								if im.SmallButton("Blocked##DPACNR") then
+									local data = jsonEncode( { "dropPlayerAtCameraNoReset", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##DPACNR") then
+									local data = jsonEncode( { "dropPlayerAtCameraNoReset", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Go To Checkpoint: ")
+							if config.restrictions.reset.goto_checkpoint then
+								im.SameLine()
+								if im.SmallButton("Blocked##GTCP") then
+									local data = jsonEncode( { "goto_checkpoint", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##GTCP") then
+									local data = jsonEncode( { "goto_checkpoint", true, "reset" } )
 									TriggerServerEvent("CEISetRestrictions", data)
 									log('W', logTag, "CEISetRestrictions Called: " .. data)
 								end
@@ -2401,13 +2594,13 @@ local function drawCEI()
 							im.Text("Notification Message Duration: ")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("##messageDuration", configVals.resets.messageDuration, 1, 1) then
-								if configVals.resets.messageDuration[0] < 0 then
-									configVals.resets.messageDuration = im.IntPtr(0)
-								elseif configVals.resets.messageDuration[0] > 60 then
-									configVals.resets.messageDuration = im.IntPtr(60)
+							if im.InputInt("##messageDuration", configVals.restrictions.reset.messageDuration, 1, 1) then
+								if configVals.restrictions.reset.messageDuration[0] < 0 then
+									configVals.restrictions.reset.messageDuration = im.IntPtr(0)
+								elseif configVals.restrictions.reset.messageDuration[0] > 60 then
+									configVals.restrictions.reset.messageDuration = im.IntPtr(60)
 								end
-								local data = jsonEncode( { "messageDuration", tostring(configVals.resets.messageDuration[0]) } )
+								local data = jsonEncode( { "messageDuration", tostring(configVals.restrictions.reset.messageDuration[0]), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
@@ -2415,62 +2608,46 @@ local function drawCEI()
 							im.Text("Reset Timeout: ")
 							im.SameLine()
 							im.PushItemWidth(100)
-							if im.InputInt("##timeout", configVals.resets.timeout, 1, 1) then
-								if configVals.resets.timeout[0] < 0 then
-									configVals.resets.timeout = im.IntPtr(0)
-								elseif configVals.resets.timeout[0] > 600 then
-									configVals.resets.timeout = im.IntPtr(600)
+							if im.InputInt("##timeout", configVals.restrictions.reset.timeout, 1, 1) then
+								if configVals.restrictions.reset.timeout[0] < 0 then
+									configVals.restrictions.reset.timeout = im.IntPtr(0)
+								elseif configVals.restrictions.reset.timeout[0] > 600 then
+									configVals.restrictions.reset.timeout = im.IntPtr(600)
 								end
-								local data = jsonEncode( { "timeout", tostring(configVals.resets.timeout[0]) } )
+								local data = jsonEncode( { "timeout", tostring(configVals.restrictions.reset.timeout[0]), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.PopItemWidth()
-							im.Text("Vehicle Resets: ")
-							if config.restrictions.enabled then
-								im.SameLine()
-								if im.SmallButton("Enabled##RST") then
-									local data = jsonEncode( { "enabled", false } )
-									TriggerServerEvent("CEISetRestrictions", data)
-									log('W', logTag, "CEISetRestrictions Called: " .. data)
-								end
-							else
-								im.SameLine()
-								if im.SmallButton("Disabled##RST") then
-									local data = jsonEncode( { "enabled", true } )
-									TriggerServerEvent("CEISetRestrictions", data)
-									log('W', logTag, "CEISetRestrictions Called: " .. data)
-								end
-							end
-							im.Text("Notification Title: " .. config.restrictions.title)
-							if im.InputTextWithHint("##title", "Toast notification title", configVals.resets.title, 128) then
+							im.Text("Notification Title: " .. config.restrictions.reset.title)
+							if im.InputTextWithHint("##title", "Toast notification title", configVals.restrictions.reset.title, 128) then
 							end
 							if im.SmallButton("Apply##title") then
-								local data = jsonEncode( { "title", ffi.string(configVals.resets.title) } )
+								local data = jsonEncode( { "title", ffi.string(configVals.restrictions.reset.title), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-							im.Text("Timeout Elapsed Message: " .. config.restrictions.elapsedMessage)
-							if im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.resets.elapsedMessage, 256) then
+							im.Text("Timeout Elapsed Message: " .. config.restrictions.reset.elapsedMessage)
+							if im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.restrictions.reset.elapsedMessage, 256) then
 							end
 							if im.SmallButton("Apply##elapsedMessage") then
-								local data = jsonEncode( { "elapsedMessage", ffi.string(configVals.resets.elapsedMessage) } )
+								local data = jsonEncode( { "elapsedMessage", ffi.string(configVals.restrictions.reset.elapsedMessage), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-							im.Text("Timeout Started Message: " .. config.restrictions.message)
-							if im.InputTextWithHint("##message", "Message", configVals.resets.message, 256) then
+							im.Text("Timeout Started Message: " .. config.restrictions.reset.message)
+							if im.InputTextWithHint("##message", "Message", configVals.restrictions.reset.message, 256) then
 							end
 							if im.SmallButton("Apply##message") then
-								local data = jsonEncode( { "message", ffi.string(configVals.resets.message) } )
+								local data = jsonEncode( { "message", ffi.string(configVals.restrictions.reset.message), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
-							im.Text("Resets Disabled Message: " .. config.restrictions.disabledMessage)
-							if im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.resets.disabledMessage, 256) then
+							im.Text("Resets Disabled Message: " .. config.restrictions.reset.disabledMessage)
+							if im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.restrictions.reset.disabledMessage, 256) then
 							end
 							if im.SmallButton("Apply##disabledMessage") then
-								local data = jsonEncode( { "disabledMessage", ffi.string(configVals.resets.disabledMessage) } )
+								local data = jsonEncode( { "disabledMessage", ffi.string(configVals.restrictions.reset.disabledMessage), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
@@ -2479,7 +2656,85 @@ local function drawCEI()
 						else
 							im.SameLine()
 							if im.SmallButton("Reset##RST") then
-								local data = jsonEncode( { "all", "default" } )
+								local data = jsonEncode( { "all", "default", "reset" } )
+								TriggerServerEvent("CEISetRestrictions", data)
+								log('W', logTag, "CEISetRestrictions Called: " .. data)
+							end
+						end
+						if im.TreeNode1("Console, Editor, Nodegrabber") then
+							im.SameLine()
+							if im.SmallButton("Reset##CEN") then
+								local data = jsonEncode( { "all", "default", "CEN" } )
+								TriggerServerEvent("CEISetRestrictions", data)
+								log('W', logTag, "CEISetRestrictions Called: " .. data)
+							end
+							im.Indent()
+							im.Text("Console Control: ")
+							if config.restrictions.CEN.toggleConsoleNG then
+								im.SameLine()
+								if im.SmallButton("Blocked##CONSOLE") then
+									local data = jsonEncode( { "toggleConsoleNG", false, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##CONSOLE") then
+									local data = jsonEncode( { "toggleConsoleNG", true, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Editor Control: ")
+							if config.restrictions.CEN.editorToggle then
+								im.SameLine()
+								if im.SmallButton("Blocked##EDITOR") then
+									local data = jsonEncode( { "editorToggle", false, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+									data = jsonEncode( { "editorSafeModeToggle", false, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+									data = jsonEncode( { "objectEditorToggle", false, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##EDITOR") then
+									local data = jsonEncode( { "editorToggle", true, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+									data = jsonEncode( { "editorSafeModeToggle", true, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+									data = jsonEncode( { "objectEditorToggle", true, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.Text("Nodegrabber Control: ")
+							if config.restrictions.CEN.nodegrabberRender then
+								im.SameLine()
+								if im.SmallButton("Blocked##NODE") then
+									local data = jsonEncode( { "nodegrabberRender", false, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Allowed##NODE") then
+									local data = jsonEncode( { "nodegrabberRender", true, "CEN" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
+							im.TreePop()
+							im.Unindent()
+						else
+							im.SameLine()
+							if im.SmallButton("Reset##CEN") then
+								local data = jsonEncode( { "all", "default", "CEN" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
@@ -4440,15 +4695,15 @@ end
 local function resetsNotify(vehicleID)
 	if not resetExempt then
 		if MPVehicleGE.isOwn(vehicleID) then
-			if not config.restrictions.enabled then
-				guihooks.trigger('toastrMsg', {type="error", title = config.restrictions.title, msg = config.restrictions.disabledMessage, config = {timeOut = config.restrictions.messageDuration * 1000}})
+			if not config.restrictions.reset.enabled then
+				guihooks.trigger('toastrMsg', {type="error", title = config.restrictions.reset.title, msg = config.restrictions.reset.disabledMessage, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
 				return
 			else
 				if #resetsBlockedInputActions > 0 then
 					resetsPlayerNotified = false
 					resetsTimerElapsedReset = 0
-					local message = config.restrictions.message:gsub("{secondsLeft}", math.floor(config.restrictions.timeout - resetsTimerElapsedReset))
-					guihooks.trigger('toastrMsg', {type="warning", title = config.restrictions.title, msg = message, config = {timeOut = config.restrictions.messageDuration * 1000}})
+					local message = config.restrictions.reset.message:gsub("{secondsLeft}", math.floor(config.restrictions.reset.timeout - resetsTimerElapsedReset))
+					guihooks.trigger('toastrMsg', {type="warning", title = config.restrictions.reset.title, msg = message, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
 				end
 			end
 		end
@@ -5142,9 +5397,6 @@ local function onWorldReadyState(state)
 		defaults.dropMinSpeed = onDropMinSpeedDefault()
 		defaults.dropMaxSpeed = onDropMaxSpeedDefault()
 		
-		extensions.core_input_actionFilter.setGroup('cei2', editorBlocked)
-		extensions.core_input_actionFilter.addAction(0, 'cei2', true)
-		
 		if not syncRequested then
 			if MPConfig then
 				TriggerServerEvent("requestCEISync", "")
@@ -5287,12 +5539,12 @@ local function checkResetState(dt)
 	if not resetExempt then
 		if config then
 			if config.restrictions then
-				if config.restrictions.control then
-					if not config.restrictions.enabled then
+				if config.restrictions.reset.control then
+					if not config.restrictions.reset.enabled then
 						extensions.core_input_actionFilter.setGroup('cei', allResetsBlockedInputActions)
 						extensions.core_input_actionFilter.addAction(0, 'cei', true)
 					else
-						if resetsTimerElapsedReset <= tonumber(config.restrictions.timeout) then
+						if resetsTimerElapsedReset <= tonumber(config.restrictions.reset.timeout) then
 							extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
 							extensions.core_input_actionFilter.addAction(0, 'cei', true)
 						else
@@ -5300,7 +5552,7 @@ local function checkResetState(dt)
 								extensions.core_input_actionFilter.setGroup('cei', resetsBlockedInputActions)
 								extensions.core_input_actionFilter.addAction(0, 'cei', false)
 							elseif resetsPlayerNotified == false then
-								guihooks.trigger('toastrMsg', {type="info", title = config.restrictions.title, msg = config.restrictions.elapsedMessage, config = {timeOut = config.restrictions.messageDuration * 1000 }})
+								guihooks.trigger('toastrMsg', {type="info", title = config.restrictions.reset.title, msg = config.restrictions.reset.elapsedMessage, config = {timeOut = config.restrictions.reset.messageDuration * 1000 }})
 								resetsPlayerNotified = true
 							end
 						end
@@ -5345,7 +5597,7 @@ local function dropPlayerAtCamera()
 		end
 	end
 	if config.restrictions then
-		if config.restrictions.control then
+		if config.restrictions.reset.control then
 			resetsNotify(gameVehicleID)
 		end
 	end
@@ -5379,7 +5631,7 @@ local function dropPlayerAtCameraNoReset()
 		end
 	end
 	if config.restrictions then
-		if config.restrictions.control then
+		if config.restrictions.reset.control then
 			resetsNotify(gameVehicleID)
 		end
 	end
@@ -5424,7 +5676,7 @@ local function onVehicleResetted(gameVehicleID)
 			end
 		end
 		if config.restrictions then
-			if config.restrictions.control then
+			if config.restrictions.reset.control then
 				resetsNotify(gameVehicleID)
 			end
 		end
