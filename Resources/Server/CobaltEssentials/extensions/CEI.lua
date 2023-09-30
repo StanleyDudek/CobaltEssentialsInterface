@@ -2,9 +2,9 @@
 
 local M = {}
 
-M.COBALT_VERSION = "1.7.4"
+M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.7.91"
+local CEI_VERSION = "0.7.93"
 
 utils.setLogType("CEI",93)
 
@@ -95,11 +95,11 @@ config.restrictions.reset.elapsedMessage_default = "You can now reset your vehic
 config.restrictions.reset.message_default = "You can reset your vehicle in {secondsLeft} seconds."
 config.restrictions.reset.disabledMessage_default = "Vehicle resetting is disabled on this server."
 config.restrictions.CEN = {}
-config.restrictions.CEN.toggleConsoleNG_default = true
-config.restrictions.CEN.editorToggle_default = true
-config.restrictions.CEN.editorSafeModeToggle_default = true
-config.restrictions.CEN.objectEditorToggle_default = true
-config.restrictions.CEN.nodegrabberRender_default = true
+config.restrictions.CEN.toggleConsoleNG_default = false
+config.restrictions.CEN.editorToggle_default = false
+config.restrictions.CEN.editorSafeModeToggle_default = false
+config.restrictions.CEN.objectEditorToggle_default = false
+config.restrictions.CEN.nodegrabberRender_default = false
 
 local environmentDefaults = {
 	controlSun = false,
