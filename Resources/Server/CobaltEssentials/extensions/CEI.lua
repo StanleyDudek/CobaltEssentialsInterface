@@ -2435,6 +2435,4 @@ M.onVehicleSpawn = onVehicleSpawn
 M.CEI = CEI
 M.cei = CEI
 
-M.tempPCV = tempPCV
-
 return M
