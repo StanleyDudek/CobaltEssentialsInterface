@@ -2051,7 +2051,7 @@ function CEIRaceInclude(senderID, data)
 	if data[2] then
 		local includee = players.getPlayerByName(data[2])
 		if player.permissions.level < players[includee.playerID].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect" ..  data[2] .. "!")
+			MP.SendChatMessage(senderID, "You cannot affect " ..  data[2] .. "!")
 		else
 			tempPlayers[data[2]].includeInRace = data[1]
 			MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
