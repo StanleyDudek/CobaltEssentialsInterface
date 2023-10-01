@@ -203,6 +203,8 @@ local function rxConfigData(data)
 	if configValsSet == false then
 		configVals.server = {}
 		configVals.cobalt = {}
+		configVals.cobalt.votekick = {}
+		configVals.cobalt.votekick.kickPercent = im.FloatPtr(tonumber(config.cobalt.voteKick.kickPercent))
 		configVals.cobalt.groups = {}
 		configVals.cobalt.permissions = {}
 		configVals.cobalt.permissions.vehicleCap = {}
@@ -2866,6 +2868,7 @@ local function drawCEI()
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.PopItemWidth()
+							im.Unindent()
 							im.TreePop()
 						else
 							im.SameLine()
@@ -2873,6 +2876,41 @@ local function drawCEI()
 								local data = jsonEncode( { "teleportTimeout", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
+							end
+						end
+						im.Separator()
+						if im.TreeNode1("voteKick Threshold Percentage:") then
+							im.SameLine()
+							im.Text(string.format("%.2f", config.cobalt.voteKick.kickPercent))
+							im.SameLine()
+							if im.SmallButton("Reset##VK") then
+								local data = jsonEncode( { "voteKick", "default" } )
+								TriggerServerEvent("CEISetCfg", data)
+								log('W', logTag, "CEISetCfg Called: " .. data)
+							end
+							im.Indent()
+							im.PushItemWidth(100)
+							if im.InputFloat("##voteKickPercent", configVals.cobalt.votekick.kickPercent, 0.01, 0.1) then
+								if configVals.cobalt.votekick.kickPercent[0] < 0.01 then
+									configVals.cobalt.votekick.kickPercent = im.FloatPtr(0.01)
+								elseif configVals.cobalt.votekick.kickPercent[0] > 1 then
+									configVals.cobalt.votekick.kickPercent = im.FloatPtr(1)
+								end
+								local data = jsonEncode( { "voteKick", string.format("%.2f", tostring(configVals.cobalt.votekick.kickPercent[0])) } )
+								TriggerServerEvent("CEISetCfg", data)
+								log('W', logTag, "CEISetCfg Called: " .. data)
+							end
+							im.PopItemWidth()
+							im.Unindent()
+							im.TreePop()
+						else
+							im.SameLine()
+							im.Text(string.format("%.2f", config.cobalt.voteKick.kickPercent))
+							im.SameLine()
+							if im.SmallButton("Reset##VK") then
+								local data = jsonEncode( { "voteKick", "default" } )
+								TriggerServerEvent("CEISetCfg", data)
+								log('W', logTag, "CEISetCfg Called: " .. data)
 							end
 						end
 						im.Unindent()
