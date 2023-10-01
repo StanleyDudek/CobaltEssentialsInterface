@@ -27,8 +27,6 @@ local playersTable = {}
 local tempPlayers = {}
 local tempPCV = {}
 
-local kickThresh
-
 local logTimer = 0
 local logInterval = 30
 
@@ -37,6 +35,10 @@ local config = {}
 config.server = {}
 
 config.cobalt = {}
+
+config.cobalt.voteKick = {}
+config.cobalt.voteKick.kickPercent_default = 0.66
+config.cobalt.voteKick.kickThresh = ""
 
 config.cobalt.whitelistedPlayers = {}
 
@@ -583,6 +585,11 @@ local defaultInterfaceSettings = {
 	race = 					{value = config.cobalt.interface.race_default}
 }
 
+local voteKickJson = CobaltDB.new("voteKick")
+local defaultVoteKickSettings = {
+	kickPercent = 			{value = config.cobalt.voteKick.kickPercent_default}
+}
+
 local CEICommands = {
 	CEI = {originModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Toggles Cobalt Essentials Interface"},
 	cei = {originModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
@@ -732,6 +739,7 @@ local function onInit()
 	applyStuff(vehiclesJson, defaultVehicles)
 	applyStuff(nametagsJson, defaultNametagsSettings)
 	applyStuff(interfaceJson, defaultInterfaceSettings)
+	applyStuff(voteKickJson, defaultVoteKickSettings)
 	applyStuff(restrictionsJson, defaultRestrictions)
 	applyStuff(commands, CEICommands)
 
@@ -762,6 +770,8 @@ local function onInit()
 			end
 		end
 	end
+	
+	config.cobalt.voteKick.kickPercent = CobaltDB.query("voteKick", "kickPercent", "value")
 	
 	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultState", "value")
 	config.cobalt.interface.config = CobaltDB.query("interface", "config", "value")
@@ -1766,6 +1776,14 @@ function CEISetCfg(senderID, data)
 			MP.Set(6, value)
 			config.server.description = value
 			writeCfg("ServerConfig.toml", key, value)
+		elseif key == "voteKick" then
+			if value == "default" then
+				config.cobalt.voteKick.kickPercent = config.cobalt.voteKick.kickPercent_default
+				CobaltDB.set("voteKick", "kickPercent", "value", config.cobalt.voteKick.kickPercent_default)
+			else
+				config.cobalt.voteKick.kickPercent = value
+				CobaltDB.set("voteKick", "kickPercent", "value", value)
+			end
 		else
 			return nil
 		end
@@ -2029,9 +2047,15 @@ end
 function CEIRaceInclude(senderID, data)
 	data = Util.JsonDecode(data)
 	local playerName = players[senderID].name
+	local player = players.getPlayerByName(playerName)
 	if data[2] then
-		tempPlayers[data[2]].includeInRace = data[1]
-		MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
+		local includee = players.getPlayerByName(data[2])
+		if player.permissions.level < players[includee.playerID].permissions.level then
+			MP.SendChatMessage(senderID, "You cannot affect " ..  data[2] .. "!")
+		else
+			tempPlayers[data[2]].includeInRace = data[1]
+			MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
+		end
 	else
 		tempPlayers[playerName].includeInRace = data[1]
 		MP.TriggerClientEventJson(MP.GetPlayerIDByName(playerName), "rxCEIrace", { data[1] } )
@@ -2188,12 +2212,12 @@ function playTime()
 end
 
 function checkVoteKick()
-	kickThresh = (MP.GetPlayerCount() - MP.GetPlayerCount() / 3)
+	config.cobalt.voteKick.kickThresh = (MP.GetPlayerCount() * config.cobalt.voteKick.kickPercent)
 	for playerID, player in pairs(players) do 
 		if player.connectStage == "connected" then
 			if playersTable[tonumber(player.playerID)] then
 				if tempPlayers[player.name].kickVotes then
-					if tempPlayers[player.name].kickVotes > kickThresh then
+					if tempPlayers[player.name].kickVotes > config.cobalt.voteKick.kickThresh then
 						MP.SendChatMessage(-1, player.name .. " was VoteKicked with " .. tempPlayers[player.name].kickVotes .. " votes")
 						for k in pairs(tempPlayers) do
 							if tempPlayers[k].votedFor then
@@ -2373,6 +2397,12 @@ end
 
 local function onPlayerDisconnect(player)
 	if player then
+		local checkName = player.name
+		for playerID, player in pairs(players) do
+			if tempPlayers[checkName].votedFor[player.name] then
+				tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+			end
+		end
 		playersTable[player.playerID] = nil
 		tempPlayers[player.name] = nil
 		tempPCV[player.name] = nil
