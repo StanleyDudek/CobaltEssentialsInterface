@@ -2,7 +2,7 @@
 
 local M = {}
 
-local CEI_VERSION = "0.7.94"
+local CEI_VERSION = "0.7.95"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -209,6 +209,8 @@ local function rxConfigData(data)
 		configVals.cobalt.permissions = {}
 		configVals.cobalt.permissions.vehicleCap = {}
 		configVals.cobalt.permissions.vehiclePerm = {}
+		configVals.cobalt.permissions.spawnVehicles = {}
+		configVals.cobalt.permissions.sendMessage = {}
 		configVals.cobalt.interface = {}
 		configVals.restrictions = {}
 		configVals.restrictions.reset = {}
@@ -250,6 +252,8 @@ local function rxConfigData(data)
 		configVals.cobalt.whitelistNameInput = im.ArrayChar(128)
 		configVals.cobalt.maxActivePlayersInt = im.IntPtr(tonumber(config.cobalt.maxActivePlayers))
 		configVals.cobalt.permissions.newLevelInput = im.ArrayChar(128)
+		configVals.cobalt.permissions.newSpawnVehiclesLevelInput = im.ArrayChar(128)
+		configVals.cobalt.permissions.newSendMessageLevelInput = im.ArrayChar(128)
 		configVals.cobalt.permissions.newVehicleInput = im.ArrayChar(128)
 		local tempFilterTable = {}
 		for k in pairs(config.cobalt.permissions.vehiclePerm) do
@@ -1208,6 +1212,158 @@ local function drawCEI()
 							vehiclePermsCounter = vehiclePermsCounter + 1
 						end
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.config then
+							local spawnVehicles = config.cobalt.permissions.spawnVehicles
+							local spawnVehiclesCounter = 0
+							for _ in pairs(spawnVehicles) do
+								spawnVehiclesCounter = spawnVehiclesCounter + 1
+							end
+							if im.TreeNode1("spawnVehicles:") then
+								im.SameLine()
+								im.Text(tostring(spawnVehiclesCounter))
+								for k in pairs(spawnVehicles) do
+									im.Text("level: " .. config.cobalt.permissions.spawnVehicles[k].level .. " =")
+									im.SameLine()
+									im.Text(tostring(config.cobalt.permissions.spawnVehicles[k].value))
+									im.SameLine()
+									if im.SmallButton("Toggle##spawnVehicles"..tostring(k)) then
+										local data = jsonEncode( { config.cobalt.permissions.spawnVehicles[k].level, not config.cobalt.permissions.spawnVehicles[k].value } )
+										TriggerServerEvent("CEISetSpawnPerm", data)
+										log('W', logTag, "CEISetSpawnPerm Called: " .. data)
+									end
+									im.SameLine()
+									if im.SmallButton("Remove##spawnVehicles"..tostring(k)) then
+										local data = jsonEncode( { config.cobalt.permissions.spawnVehicles[k].level } )
+										TriggerServerEvent("CEIRemoveSpawnPerm", data)
+										log('W', logTag, "CEIRemoveVehiclePermsLevel Called: " .. data)
+									end
+									im.SameLine()
+									im.ShowHelpMarker("Toggle spawn permissions for level or Remove level entry")
+								end
+								im.Text("		Add level: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputTextWithHint("##newSpawnLevel", "New Level", configVals.cobalt.permissions.newSpawnVehiclesLevelInput, 128) then
+								end
+								im.PopItemWidth()
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##newSpawnLevel") then
+									local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newSpawnVehiclesLevelInput) } )
+									TriggerServerEvent("CEISetNewSpawnPerm", data)
+									log('W', logTag, "CEISetNewSpawnPerm Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter new level and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(spawnVehiclesCounter))
+							end
+							im.Separator()
+							local sendMessage = config.cobalt.permissions.sendMessage
+							local sendMessageCounter = 0
+							for _ in pairs(sendMessage) do
+								sendMessageCounter = sendMessageCounter + 1
+							end
+							if im.TreeNode1("sendMessage:") then
+								im.SameLine()
+								im.Text(tostring(sendMessageCounter))
+								for k in pairs(sendMessage) do
+									im.Text("level: " .. config.cobalt.permissions.sendMessage[k].level .. " =")
+									im.SameLine()
+									im.Text(tostring(config.cobalt.permissions.sendMessage[k].value))
+									im.SameLine()
+									if im.SmallButton("Toggle##sendMessage"..tostring(k)) then
+										local data = jsonEncode( { config.cobalt.permissions.sendMessage[k].level, not config.cobalt.permissions.sendMessage[k].value } )
+										TriggerServerEvent("CEISetSendMessagePerm", data)
+										log('W', logTag, "CEISetSendMessagePerm Called: " .. data)
+									end
+									im.SameLine()
+									if im.SmallButton("Remove##sendMessage"..tostring(k)) then
+										local data = jsonEncode( { config.cobalt.permissions.sendMessage[k].level } )
+										TriggerServerEvent("CEIRemoveSendMessagePerm", data)
+										log('W', logTag, "CEIRemoveSendMessagePerm Called: " .. data)
+									end
+									im.SameLine()
+									im.ShowHelpMarker("Toggle chat permissions for level or Remove level entry")
+								end
+								im.Text("		Add level: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputTextWithHint("##newSendMessageLevel", "New Level", configVals.cobalt.permissions.newSendMessageLevelInput, 128) then
+								end
+								im.PopItemWidth()
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##newSendMessageLevel") then
+									local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newSendMessageLevelInput) } )
+									TriggerServerEvent("CEISetNewSendMessagePerm", data)
+									log('W', logTag, "CEISetNewSendMessagePerm Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter new level and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(sendMessageCounter))
+							end
+							im.Separator()
+							local vehicleCaps = config.cobalt.permissions.vehicleCap
+							local vehicleCapsCounter = 0
+							for _ in pairs(vehicleCaps) do
+								vehicleCapsCounter = vehicleCapsCounter + 1
+							end
+							if im.TreeNode1("vehicleCaps:") then
+								im.SameLine()
+								im.Text(tostring(vehicleCapsCounter))
+								for k in pairs(vehicleCaps) do
+									if im.TreeNode1("level: " .. config.cobalt.permissions.vehicleCap[k].level .. " =") then
+										im.SameLine()
+										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
+										im.Text("		")
+										im.SameLine()
+										im.PushItemWidth(100)
+										if im.InputInt("##levelVehicleCap"..tostring(k), configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
+											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
+											TriggerServerEvent("CEISetVehiclePerms", data)
+											log('W', logTag, "CEISetVehiclePerms Called: " .. data)
+										end
+										im.PopItemWidth()
+										im.SameLine()
+										if im.SmallButton("Remove##"..tostring(k)) then
+											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level } )
+											TriggerServerEvent("CEIRemoveVehiclePermsLevel", data)
+											log('W', logTag, "CEIRemoveVehiclePermsLevel Called: " .. data)
+										end
+										im.SameLine()
+										im.ShowHelpMarker("In-/Decrease vehicles for level or Remove level entry")
+										im.TreePop()
+									else
+										im.SameLine()
+										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
+									end
+								end
+								im.Text("		Add level: ")
+								im.SameLine()
+								im.PushItemWidth(100)
+								if im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128) then
+								end
+								im.PopItemWidth()
+								im.Text("		")
+								im.SameLine()
+								if im.SmallButton("Apply##newLevel") then
+									local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newLevelInput) } )
+									TriggerServerEvent("CEISetNewVehiclePermsLevel", data)
+									log('W', logTag, "CEISetNewVehiclePermsLevel Called: " .. data)
+								end
+								im.SameLine()
+								im.ShowHelpMarker("Enter new level and press Apply")
+								im.TreePop()
+							else
+								im.SameLine()
+								im.Text(tostring(vehicleCapsCounter))
+							end
+							im.Separator()
 							if im.TreeNode1("vehiclePerms:") then
 								im.SameLine()
 								im.Text(tostring(vehiclePermsCounter))
@@ -1306,62 +1462,6 @@ local function drawCEI()
 							else
 								im.SameLine()
 								im.Text(tostring(vehiclePermsCounter))
-							end
-							im.Separator()
-							local vehicleCaps = config.cobalt.permissions.vehicleCap
-							local vehicleCapsCounter = 0
-							for _ in pairs(vehicleCaps) do
-								vehicleCapsCounter = vehicleCapsCounter + 1
-							end
-							if im.TreeNode1("vehicleCaps:") then
-								im.SameLine()
-								im.Text(tostring(vehicleCapsCounter))
-								for k in pairs(vehicleCaps) do
-									if im.TreeNode1("level: " .. config.cobalt.permissions.vehicleCap[k].level .. " =") then
-										im.SameLine()
-										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
-										im.Text("		")
-										im.SameLine()
-										im.PushItemWidth(100)
-										if im.InputInt("##levelVehicleCap"..tostring(k), configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
-											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
-											TriggerServerEvent("CEISetVehiclePerms", data)
-											log('W', logTag, "CEISetVehiclePerms Called: " .. data)
-										end
-										im.PopItemWidth()
-										im.SameLine()
-										if im.SmallButton("Remove##"..tostring(k)) then
-											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level } )
-											TriggerServerEvent("CEIRemoveVehiclePermsLevel", data)
-											log('W', logTag, "CEIRemoveVehiclePermsLevel Called: " .. data)
-										end
-										im.SameLine()
-										im.ShowHelpMarker("In-/Decrease vehicles for level or Remove level entry")
-										im.TreePop()
-									else
-										im.SameLine()
-										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
-									end
-								end
-								im.Text("		Add level: ")
-								im.SameLine()
-								im.PushItemWidth(100)
-								if im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128) then
-								end
-								im.PopItemWidth()
-								im.Text("		")
-								im.SameLine()
-								if im.SmallButton("Apply##newLevel") then
-									local data = jsonEncode( { ffi.string(configVals.cobalt.permissions.newLevelInput) } )
-									TriggerServerEvent("CEISetNewVehiclePermsLevel", data)
-									log('W', logTag, "CEISetNewVehiclePermsLevel Called: " .. data)
-								end
-								im.SameLine()
-								im.ShowHelpMarker("Enter new level and press Apply")
-								im.TreePop()
-							else
-								im.SameLine()
-								im.Text(tostring(vehicleCapsCounter))
 							end
 							im.Separator()
 							if im.TreeNode1("maxActivePlayers:") then
