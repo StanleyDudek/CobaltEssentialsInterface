@@ -44,6 +44,8 @@ config.cobalt.whitelistedPlayers = {}
 
 config.cobalt.permissions = {}
 config.cobalt.permissions.vehiclePerm = {}
+config.cobalt.permissions.tempSpawnPerms = {}
+config.cobalt.permissions.tempSpawnToggle = false
 
 config.cobalt.interface = {}
 config.cobalt.interface.defaultState_default = true
@@ -666,6 +668,7 @@ local function onInit()
 	MP.RegisterEvent("CEIToggleIgnition","CEIToggleIgnition")
 	MP.RegisterEvent("CEIToggleLock","CEIToggleLock")
 	MP.RegisterEvent("CEIToggleRaceLock","CEIToggleRaceLock")
+	MP.RegisterEvent("CEIToggleSpawn","CEIToggleSpawn")
 	MP.RegisterEvent("CEISetSpawnPerm","CEISetSpawnPerm")
 	MP.RegisterEvent("CEISetNewSpawnPerm","CEISetNewSpawnPerm")
 	MP.RegisterEvent("CEIRemoveSpawnPerm","CEIRemoveSpawnPerm")
@@ -1484,6 +1487,31 @@ function CEIToggleRaceLock(senderID, data)
 	end
 end
 
+function CEIToggleSpawn(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		config.cobalt.permissions.tempSpawnToggle = not config.cobalt.permissions.tempSpawnToggle
+		local spawnVehicles = CobaltDB.getTable("permissions","spawnVehicles")
+		local spawnVehiclesLength = 0
+		for k in pairs(spawnVehicles) do
+			if not string.find(k, "description") then
+				spawnVehiclesLength = spawnVehiclesLength + 1
+				if config.cobalt.permissions.tempSpawnToggle then
+					config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength] = {}
+					config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength].level = k
+					local spawnVehiclesValue = CobaltDB.query("permissions","spawnVehicles",k)
+					config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength].value = spawnVehiclesValue
+					config.cobalt.permissions.spawnVehicles[spawnVehiclesLength].value = false
+					CobaltDB.set("permissions", "spawnVehicles", k, false)
+				else
+					config.cobalt.permissions.spawnVehicles[spawnVehiclesLength] = config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength]
+					CobaltDB.set("permissions", "spawnVehicles", k, config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength].value)
+				end
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
 function CEISetSpawnPerm(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		local tempData = Util.JsonDecode(data)
@@ -1499,6 +1527,7 @@ function CEIRemoveSpawnPerm(senderID, data)
 		local tempData = Util.JsonDecode(data)
 		local targetLevel = tostring(tempData[1])
 		CobaltDB.set("permissions", "spawnVehicles", targetLevel, nil)
+		config.cobalt.permissions.tempSpawnPerms[targetLevel] = nil
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
