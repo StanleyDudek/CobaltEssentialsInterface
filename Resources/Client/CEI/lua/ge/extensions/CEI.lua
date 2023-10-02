@@ -609,6 +609,28 @@ local function drawCEI()
 					end
 				end
 				im.PopStyleColor(3)
+				im.SameLine()
+				if config.cobalt.permissions.tempSpawnToggle then
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 1.0, 1.0, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 1.0, 1.0, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(1.0, 1.0, 1.0, 0.999))
+					if im.SmallButton("Enable Spawning") then
+						local data = jsonEncode( { "spawnVehicles" } )
+						TriggerServerEvent("CEIToggleSpawn", data)
+						log('W', logTag, "CEIToggleSpawn Called: " .. data)
+					end
+					im.PopStyleColor(3)
+				else
+					im.PushStyleColor2(im.Col_Button, im.ImVec4(0.0, 0.0, 0.0, 0.333))
+					im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.0, 0.0, 0.0, 0.5))
+					im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.0, 0.0, 0.999))
+					if im.SmallButton("Disable Spawning") then
+						local data = jsonEncode( { "spawnVehicles" } )
+						TriggerServerEvent("CEIToggleSpawn", data)
+						log('W', logTag, "CEIToggleSpawn Called: " .. data)
+					end
+					im.PopStyleColor(3)
+				end
 				im.PushStyleColor2(im.Col_Button, im.ImVec4(0.1, 1.0, 0.1, 0.333))
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.2, 1.0, 0.2, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.0, 0.9, 0.0, 0.999))
