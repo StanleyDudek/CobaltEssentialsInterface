@@ -4,7 +4,7 @@ local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.7.94"
+local CEI_VERSION = "0.7.95"
 
 utils.setLogType("CEI",93)
 
@@ -44,6 +44,8 @@ config.cobalt.whitelistedPlayers = {}
 
 config.cobalt.permissions = {}
 config.cobalt.permissions.vehiclePerm = {}
+config.cobalt.permissions.tempSpawnPerms = {}
+config.cobalt.permissions.tempSpawnToggle = false
 
 config.cobalt.interface = {}
 config.cobalt.interface.defaultState_default = true
@@ -666,6 +668,13 @@ local function onInit()
 	MP.RegisterEvent("CEIToggleIgnition","CEIToggleIgnition")
 	MP.RegisterEvent("CEIToggleLock","CEIToggleLock")
 	MP.RegisterEvent("CEIToggleRaceLock","CEIToggleRaceLock")
+	MP.RegisterEvent("CEIToggleSpawn","CEIToggleSpawn")
+	MP.RegisterEvent("CEISetSpawnPerm","CEISetSpawnPerm")
+	MP.RegisterEvent("CEISetNewSpawnPerm","CEISetNewSpawnPerm")
+	MP.RegisterEvent("CEIRemoveSpawnPerm","CEIRemoveSpawnPerm")
+	MP.RegisterEvent("CEISetSendMessagePerm","CEISetSendMessagePerm")
+	MP.RegisterEvent("CEIRemoveSendMessagePerm","CEIRemoveSendMessagePerm")
+	MP.RegisterEvent("CEISetNewSendMessagePerm","CEISetNewSendMessagePerm")
 	MP.RegisterEvent("CEISetNewGroup","CEISetNewGroup")
 	MP.RegisterEvent("CEIRemoveGroup","CEIRemoveGroup")
 	MP.RegisterEvent("CEISetGroupLevel","CEISetGroupLevel")
@@ -1079,6 +1088,30 @@ local function theConfigData()
 			end
 		end
 	end
+	local spawnVehicles = CobaltDB.getTable("permissions","spawnVehicles")
+	local spawnVehiclesLength = 0
+	config.cobalt.permissions.spawnVehicles = {}
+	for k in pairs(spawnVehicles) do
+		if not string.find(k, "description") then
+			spawnVehiclesLength = spawnVehiclesLength + 1
+			config.cobalt.permissions.spawnVehicles[spawnVehiclesLength] = {}
+			config.cobalt.permissions.spawnVehicles[spawnVehiclesLength].level = k
+			local spawnVehiclesValue = CobaltDB.query("permissions","spawnVehicles",k)
+			config.cobalt.permissions.spawnVehicles[spawnVehiclesLength].value = spawnVehiclesValue
+		end
+	end
+	local sendMessage = CobaltDB.getTable("permissions","sendMessage")
+	local sendMessageLength = 0
+	config.cobalt.permissions.sendMessage = {}
+	for k in pairs(sendMessage) do
+		if not string.find(k, "description") then
+			sendMessageLength = sendMessageLength + 1
+			config.cobalt.permissions.sendMessage[sendMessageLength] = {}
+			config.cobalt.permissions.sendMessage[sendMessageLength].level = k
+			local spawnVehiclesValue = CobaltDB.query("permissions","sendMessage",k)
+			config.cobalt.permissions.sendMessage[sendMessageLength].value = spawnVehiclesValue
+		end
+	end
 	local vehiclePerms = CobaltDB.getTables("vehicles")
 	local vehiclePermsLength = 0
 	local vehiclePermsPartLevelsLength = 0
@@ -1142,9 +1175,11 @@ local function txData()
 	txConfigData()
 	for player_id, player_name in pairs(MP.GetPlayers()) do
 		local player = players.getPlayerByName(player_name)
-		if player.connectStage == "connected" then
-			txPlayersGroup(player)
-			txPlayersUIPerm(player)
+		if player then
+			if player.connectStage == "connected" then
+				txPlayersGroup(player)
+				txPlayersUIPerm(player)
+			end
 		end
 	end
 end
@@ -1306,7 +1341,6 @@ function CEISetRestrictions(senderID, data)
 		local key = data[1]
 		local value = data[2]
 		local tag = data[3]
-		
 		if tag == "reset" then
 			if key == "all" then
 				for k in pairs(config.restrictions.reset) do
@@ -1339,7 +1373,6 @@ function CEISetRestrictions(senderID, data)
 				CobaltDB.set("restrictions", key, "value", value)
 			end
 		end
-		
 		for playerID, player in pairs(players) do
 			if type(playerID) == "number" then
 				if player.connectStage == "connected" then
@@ -1451,6 +1484,104 @@ end
 function CEIToggleRaceLock(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
 		MP.TriggerClientEvent(-1, "CEIToggleLock", data)
+	end
+end
+
+function CEIToggleSpawn(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		config.cobalt.permissions.tempSpawnToggle = not config.cobalt.permissions.tempSpawnToggle
+		local spawnVehicles = CobaltDB.getTable("permissions","spawnVehicles")
+		local spawnVehiclesLength = 0
+		for k in pairs(spawnVehicles) do
+			if not string.find(k, "description") then
+				spawnVehiclesLength = spawnVehiclesLength + 1
+				if config.cobalt.permissions.tempSpawnToggle then
+					config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength] = {}
+					config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength].level = k
+					local spawnVehiclesValue = CobaltDB.query("permissions","spawnVehicles",k)
+					config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength].value = spawnVehiclesValue
+					config.cobalt.permissions.spawnVehicles[spawnVehiclesLength].value = false
+					CobaltDB.set("permissions", "spawnVehicles", k, false)
+				else
+					config.cobalt.permissions.spawnVehicles[spawnVehiclesLength] = config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength]
+					CobaltDB.set("permissions", "spawnVehicles", k, config.cobalt.permissions.tempSpawnPerms[spawnVehiclesLength].value)
+				end
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEISetSpawnPerm(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		local tempData = Util.JsonDecode(data)
+		local key = tempData[1]
+		local value = tempData[2]
+		CobaltDB.set("permissions", "spawnVehicles", key, value)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEIRemoveSpawnPerm(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		local tempData = Util.JsonDecode(data)
+		local targetLevel = tostring(tempData[1])
+		CobaltDB.set("permissions", "spawnVehicles", targetLevel, nil)
+		config.cobalt.permissions.tempSpawnPerms[targetLevel] = nil
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEISetNewSpawnPerm(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
+		data = Util.JsonDecode(data)
+		local targetLevel = data[1]
+		if targetLevel == nil or targetLevel == "" then
+			MP.SendChatMessage(senderID, "Level cannot be blank!")
+		else
+			if CobaltDB.query("permissions", "spawnVehicles", targetLevel) then
+				return
+			else
+				CobaltDB.set("permissions", "spawnVehicles", targetLevel, true)
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEISetSendMessagePerm(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		local tempData = Util.JsonDecode(data)
+		local key = tempData[1]
+		local value = tempData[2]
+		CobaltDB.set("permissions", "sendMessage", key, value)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEIRemoveSendMessagePerm(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissionsPlus then
+		local tempData = Util.JsonDecode(data)
+		local targetLevel = tostring(tempData[1])
+		CobaltDB.set("permissions", "sendMessage", targetLevel, nil)
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+	end
+end
+
+function CEISetNewSendMessagePerm(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
+		data = Util.JsonDecode(data)
+		local targetLevel = data[1]
+		if targetLevel == nil or targetLevel == "" then
+			MP.SendChatMessage(senderID, "Level cannot be blank!")
+		else
+			if CobaltDB.query("permissions", "sendMessage", targetLevel) then
+				return
+			else
+				CobaltDB.set("permissions", "sendMessage", targetLevel, true)
+			end
+		end
+		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
 
@@ -2298,9 +2429,7 @@ end
 
 local function onPlayerJoining(player)
 	if player then
-	
 		local identifiers = MP.GetPlayerIdentifiers(player.playerID)
-	
 		if CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == 0 then
 		elseif CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") > os.time() then
 			return false
