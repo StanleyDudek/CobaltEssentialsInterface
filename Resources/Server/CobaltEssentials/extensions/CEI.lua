@@ -2527,9 +2527,11 @@ end
 local function onPlayerDisconnect(player)
 	if player then
 		local checkName = player.name
-		for playerID, player in pairs(players) do
-			if tempPlayers[checkName].votedFor[player.name] then
-				tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+		if tempPlayers[checkName] then
+			for playerID, player in pairs(players) do
+				if tempPlayers[checkName].votedFor[player.name] then
+					tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+				end
 			end
 		end
 		playersTable[player.playerID] = nil
