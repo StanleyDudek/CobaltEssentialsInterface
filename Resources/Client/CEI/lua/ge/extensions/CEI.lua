@@ -2523,6 +2523,22 @@ local function drawCEI()
 									log('W', logTag, "CEISetRestrictions Called: " .. data)
 								end
 							end
+							im.Text("Resets: ")
+							if config.restrictions.reset.enabled then
+								im.SameLine()
+								if im.SmallButton("Enabled##RST") then
+									local data = jsonEncode( { "enabled", false, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							else
+								im.SameLine()
+								if im.SmallButton("Disabled##RST") then
+									local data = jsonEncode( { "enabled", true, "reset" } )
+									TriggerServerEvent("CEISetRestrictions", data)
+									log('W', logTag, "CEISetRestrictions Called: " .. data)
+								end
+							end
 							im.Text("Reset Physics: ")
 							if config.restrictions.reset.reset_physics then
 								im.SameLine()
