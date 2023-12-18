@@ -5929,8 +5929,6 @@ end
 
 local function onExtensionLoaded()
 	if MPConfig then
-		AddEventHandler("rxFloodInfo", rxFloodInfo)
-		AddEventHandler("rxFloodOptions", rxFloodOptions)
 		AddEventHandler("rxPlayersData", rxPlayersData)
 		AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
 		AddEventHandler("rxPlayerGroup", rxPlayerGroup)
@@ -5967,6 +5965,7 @@ M.onUpdate = onUpdate
 M.onPreRender = onPreRender
 M.onWorldReadyState = onWorldReadyState
 
+M.onInit = function() setExtensionUnloadMode(M, "manual") end
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 
