@@ -1,1 +1,2 @@
-setExtensionUnloadMode('CEI', 'auto')
+load('CEI')
+setExtensionUnloadMode('CEI', 'manual')
