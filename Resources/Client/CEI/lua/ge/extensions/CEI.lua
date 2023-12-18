@@ -2,7 +2,7 @@
 
 local M = {}
 
-local CEI_VERSION = "0.7.95"
+local CEI_VERSION = "0.7.96"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -5929,8 +5929,6 @@ end
 
 local function onExtensionLoaded()
 	if MPConfig then
-		AddEventHandler("rxFloodInfo", rxFloodInfo)
-		AddEventHandler("rxFloodOptions", rxFloodOptions)
 		AddEventHandler("rxPlayersData", rxPlayersData)
 		AddEventHandler("rxPlayersDatabase", rxPlayersDatabase)
 		AddEventHandler("rxPlayerGroup", rxPlayerGroup)
@@ -5967,6 +5965,7 @@ M.onUpdate = onUpdate
 M.onPreRender = onPreRender
 M.onWorldReadyState = onWorldReadyState
 
+M.onInit = function() setExtensionUnloadMode(M, "manual") end
 M.onExtensionLoaded = onExtensionLoaded
 M.onExtensionUnloaded = onExtensionUnloaded
 

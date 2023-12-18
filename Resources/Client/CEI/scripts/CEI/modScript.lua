@@ -1,1 +1,2 @@
-queueExtensionToLoad('CEI')
+load('CEI')
+setExtensionUnloadMode('CEI', 'manual')
