@@ -4,7 +4,7 @@ local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.7.96"
+local CEI_VERSION = "0.7.97"
 
 utils.setLogType("CEI",93)
 
@@ -976,6 +976,7 @@ function txPlayersDatabase(now)
 							end
 						end
 						MP.TriggerClientEventJson(playerID, "rxPlayersDatabase", playersDatabase[k])
+						MP.TriggerClientEvent(playerID, "rxInputUpdate", "playersDatabase")
 					end
 					playersDatabaseCount[player.name] = playersDatabaseCompare
 				end
@@ -1187,6 +1188,7 @@ local function txData()
 	txPlayersData()
 	txEnvironment()
 	txConfigData()
+	txPlayersDatabase(true)
 	for player_id, player_name in pairs(MP.GetPlayers()) do
 		local player = players.getPlayerByName(player_name)
 		if player then
@@ -2540,8 +2542,10 @@ local function onPlayerDisconnect(player)
 		local checkName = player.name
 		if tempPlayers[checkName] then
 			for playerID, player in pairs(players) do
-				if tempPlayers[checkName].votedFor[player.name] then
-					tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+				if tempPlayers[checkName].votedFor then
+					if tempPlayers[checkName].votedFor[player.name] then
+						tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+					end
 				end
 			end
 		end
