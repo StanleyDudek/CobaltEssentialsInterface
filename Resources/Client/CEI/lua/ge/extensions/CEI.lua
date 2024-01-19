@@ -4438,15 +4438,15 @@ local function drawCEI()
 				im.PopItemWidth()
 				im.EndChild()
 				im.BeginChild1("Database2")
-				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
-					if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
+				--im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+				--for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
+					--if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
 						for k in pairs(playersDatabase) do
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								local playerBeammp = playersDatabase[k].beammp
 								if playerName ~= playerBeammp then
-									if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
+									--if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
 										if im.TreeNode1("##"..playerName) then
 											im.SameLine()
 											if playerBeammp then
@@ -4759,12 +4759,12 @@ local function drawCEI()
 											end
 											im.Separator()
 										end
-									end
+									--end
 								end
 							end
 						end
-					end
-				end
+					--end
+				--end
 				im.Unindent()
 				im.EndChild()
 				im.EndTabItem()
