@@ -1,8 +1,8 @@
---CEI (CLIENT) by Dudekahedron, 2023
+--CEI (CLIENT) by Dudekahedron, 2024
 
 local M = {}
 
-local CEI_VERSION = "0.7.96"
+local CEI_VERSION = "0.7.97"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -17,7 +17,6 @@ local includeInRace = false
 local nametagWhitelisted = false
 local nametagBlockerActive = false
 local nametagBlockerTimeout
-local nametagsValsSet = {}
 local ignitionEnabled = {}
 local isFrozen = {}
 local firstReset = false
@@ -109,8 +108,6 @@ local function rxInputUpdate(data)
 		configValsSet = false
 	elseif data == "environment" then
 		environmentValsSet = false
-	elseif data == "nametags" then
-		nametagsValsSet = false
 	elseif data == "players" then
 		playersValsSet = {}
 	elseif data == "playersDatabase" then
@@ -165,7 +162,7 @@ local function rxEnvironment(data)
 		environmentVals.dropMaxSpeedVal = im.FloatPtr(tonumber(environment.dropMaxSpeed))
 		environmentVals.teleportTimeoutInt = im.IntPtr(tonumber(environment.teleportTimeout))
 		environmentVals.simSpeedVal = im.FloatPtr(tonumber(environment.simSpeed))
-		environmentVals.gravityVal = im.FloatPtr(tonumber(environment.gravity))
+		environmentVals.gravityRateVal = im.FloatPtr(tonumber(environment.gravityRate))
 		environmentVals.tempCurveNoonInt = im.IntPtr(tonumber(environment.tempCurveNoon))
 		environmentVals.tempCurveDuskInt = im.IntPtr(tonumber(environment.tempCurveDusk))
 		environmentVals.tempCurveMidnightInt = im.IntPtr(tonumber(environment.tempCurveMidnight))
@@ -337,7 +334,7 @@ local function rxPlayersDatabase(data)
 		local i = playersDatabase[k].playerName
 		tempFilterTable[k] = i
 	end
-	playersDatabaseVals.lines = im.ArrayCharPtrByTbl(tempFilterTable)
+	playersDatabaseFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 end
 
 local function rxPlayersData(data)
@@ -830,8 +827,7 @@ local function drawCEI()
 						im.SameLine()
 						im.Text("Reason:")
 						im.SameLine()
-						if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", playersVals[k].kickBanMuteReason, 128) then
-						end
+						im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", playersVals[k].kickBanMuteReason, 128)
 					end
 					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 						im.Text("		")
@@ -863,8 +859,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("Reason:")
 								im.SameLine()
-								if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", playersVals[k].vehDeleteReason, 128) then
-								end
+								im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", playersVals[k].vehDeleteReason, 128)
 							end
 							for x in pairs(players[k].vehicles) do
 								if players[k].currentVehicle == tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID) then
@@ -1052,8 +1047,7 @@ local function drawCEI()
 									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 										im.Text("		")
 										im.SameLine()
-										if im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersVals[k].permissions.groupInput, 128) then
-										end
+										im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersVals[k].permissions.groupInput, 128)
 										im.Text("		")
 										im.SameLine()
 										if im.SmallButton("Apply##"..tostring(k)) then
@@ -1312,8 +1306,7 @@ local function drawCEI()
 								im.Text("		Add level: ")
 								im.SameLine()
 								im.PushItemWidth(100)
-								if im.InputTextWithHint("##newSendMessageLevel", "New Level", configVals.cobalt.permissions.newSendMessageLevelInput, 128) then
-								end
+								im.InputTextWithHint("##newSendMessageLevel", "New Level", configVals.cobalt.permissions.newSendMessageLevelInput, 128)
 								im.PopItemWidth()
 								im.Text("		")
 								im.SameLine()
@@ -1368,8 +1361,7 @@ local function drawCEI()
 								im.Text("		Add level: ")
 								im.SameLine()
 								im.PushItemWidth(100)
-								if im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128) then
-								end
+								im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128)
 								im.PopItemWidth()
 								im.Text("		")
 								im.SameLine()
@@ -1391,8 +1383,7 @@ local function drawCEI()
 								im.Text(tostring(vehiclePermsCounter))
 								im.Text("	Add vehicle: ")
 								im.SameLine()
-								if im.InputTextWithHint("##newVehicle", "New Vehicle", configVals.cobalt.permissions.newVehicleInput, 128) then
-								end
+								im.InputTextWithHint("##newVehicle", "New Vehicle", configVals.cobalt.permissions.newVehicleInput, 128)
 								im.Text("	")
 								im.SameLine()
 								if im.SmallButton("Apply##newVehPerm") then
@@ -1430,8 +1421,7 @@ local function drawCEI()
 													im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
 													im.Text("	Add part: ")
 													im.SameLine()
-													if im.InputTextWithHint("##newPart"..tostring(k), "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128) then
-													end
+													im.InputTextWithHint("##newPart"..tostring(k), "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128)
 													im.Text("	")
 													im.SameLine()
 													if im.SmallButton("Apply##newVehPart"..tostring(k)) then
@@ -1547,8 +1537,7 @@ local function drawCEI()
 												im.Text("		Add Player to Group: ")
 												im.Text("		")
 												im.SameLine()
-												if im.InputTextWithHint("##groupPlayerName"..tostring(k), "Player Name", configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput, 128) then
-												end
+												im.InputTextWithHint("##groupPlayerName"..tostring(k), "Player Name", configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput, 128)
 												im.Text("		")
 												im.SameLine()
 												if im.SmallButton("Add##groupPlayerName"..tostring(k)) then
@@ -1718,8 +1707,7 @@ local function drawCEI()
 											im.Text("		banReason: " .. config.cobalt.groups[k].groupPerms.banReason)
 											im.Text("		")
 											im.SameLine()
-											if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
-											end
+											im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128)
 											im.Text("		")
 											im.SameLine()
 											if im.SmallButton("Apply##"..tostring(k)) then
@@ -1739,8 +1727,7 @@ local function drawCEI()
 											im.Text("		banReason: null")
 											im.Text("		")
 											im.SameLine()
-											if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
-											end
+											im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128)
 											im.Text("		")
 											im.SameLine()
 											if im.SmallButton("Apply##"..tostring(k)) then
@@ -1756,8 +1743,7 @@ local function drawCEI()
 										im.Text("		Add New Permission to Group: ")
 										im.Text("		")
 										im.SameLine()
-										if im.InputTextWithHint("##groupPermission"..tostring(k), "Permission Name", configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput, 128) then
-										end
+										im.InputTextWithHint("##groupPermission"..tostring(k), "Permission Name", configVals.cobalt.groups[k].groupPerms.newGroupPermissionInput, 128)
 										im.Text("		")
 										im.SameLine()
 										if im.SmallButton("Add##groupPermission"..tostring(k)) then
@@ -1799,8 +1785,7 @@ local function drawCEI()
 								im.Separator()
 								im.Text("		Add Group: ")
 								im.SameLine()
-								if im.InputTextWithHint("##groupName", "Group Name", configVals.cobalt.newGroupInput, 128) then
-								end
+								im.InputTextWithHint("##groupName", "Group Name", configVals.cobalt.newGroupInput, 128)
 								im.Indent()
 								im.Indent()
 								im.Indent()
@@ -1808,7 +1793,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("		")
 								im.SameLine()
-								if im.SmallButton("Apply##"..tostring(k)) then
+								if im.SmallButton("Apply##newGroup") then
 									local data = jsonEncode( { ffi.string(configVals.cobalt.newGroupInput) } )
 									TriggerServerEvent("CEISetNewGroup", data)
 									log('W', logTag, "CEISetNewGroup Called: " .. data)
@@ -1860,8 +1845,7 @@ local function drawCEI()
 								im.Text("		Add Name to Whitelist: ")
 								im.Text("		")
 								im.SameLine()
-								if im.InputTextWithHint("##whitelistName", "Player Name", configVals.cobalt.whitelistNameInput, 128) then
-								end
+								im.InputTextWithHint("##whitelistName", "Player Name", configVals.cobalt.whitelistNameInput, 128)
 								im.Text("		")
 								im.SameLine()
 								if im.SmallButton("Add##whitelistName") then
@@ -1879,13 +1863,13 @@ local function drawCEI()
 							im.Text("		")
 							im.SameLine()
 							if config.cobalt.enableWhitelist == false then
-								if im.SmallButton("Enable Whitelist##"..tostring(k)) then
+								if im.SmallButton("Enable Whitelist") then
 									local data = jsonEncode( { "enable" } )
 									TriggerServerEvent("CEIWhitelist", data)
 									log('W', logTag, "CEIWhitelist Called: " .. data)
 								end
 							elseif config.cobalt.enableWhitelist == true then
-								if im.SmallButton("Disable Whitelist##"..tostring(k)) then
+								if im.SmallButton("Disable Whitelist") then
 									local data = jsonEncode( { "disable" } )
 									TriggerServerEvent("CEIWhitelist", data)
 									log('W', logTag, "CEIWhitelist Called: " .. data)
@@ -1922,11 +1906,10 @@ local function drawCEI()
 							im.Text(config.server.name)
 							im.Text("		")
 							im.SameLine()
-							if im.InputTextWithHint("##name", "Server Name", configVals.server.nameInput, 128) then
-							end
+							im.InputTextWithHint("##name", "Server Name", configVals.server.nameInput, 128)
 							im.Text("		")
 							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
+							if im.SmallButton("Apply##name") then
 								local data = jsonEncode( { "Name", ffi.string(configVals.server.nameInput) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -1980,11 +1963,10 @@ local function drawCEI()
 							im.Text(config.server.map)
 							im.Text("		")
 							im.SameLine()
-							if im.InputTextWithHint("##map", "Map Path", configVals.server.mapInput, 128) then
-							end
+							im.InputTextWithHint("##map", "Map Path", configVals.server.mapInput, 128)
 							im.Text("		")
 							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
+							if im.SmallButton("Apply##map") then
 								local data = jsonEncode( { "Map", ffi.string(configVals.server.mapInput) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -2002,11 +1984,10 @@ local function drawCEI()
 							im.Text(config.server.description)
 							im.Text("		")
 							im.SameLine()
-							if im.InputTextWithHint("##description", "Server Description", configVals.server.descriptionInput, 256) then
-							end
+							im.InputTextWithHint("##description", "Server Description", configVals.server.descriptionInput, 256)
 							im.Text("		")
 							im.SameLine()
-							if im.SmallButton("Apply##"..tostring(k)) then
+							if im.SmallButton("Apply##description") then
 								local data = jsonEncode( { "Description", ffi.string(configVals.server.descriptionInput) } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -2022,13 +2003,13 @@ local function drawCEI()
 						im.Text("		debug: " .. tostring(config.server.debug))
 						im.SameLine()
 						if config.server.debug == false then
-							if im.SmallButton("Enable Debug##"..tostring(k)) then
+							if im.SmallButton("Enable Debug") then
 								local data = jsonEncode( { "Debug", true } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
 							end
 						elseif config.server.debug == true then
-							if im.SmallButton("Disable Debug##"..tostring(k)) then
+							if im.SmallButton("Disable Debug") then
 								local data = jsonEncode( { "Debug", false } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -2038,13 +2019,13 @@ local function drawCEI()
 						im.Text("		private: " .. tostring(config.server.private))
 						im.SameLine()
 						if config.server.private == false then
-							if im.SmallButton("Set Private##"..tostring(k)) then
+							if im.SmallButton("Set Private") then
 								local data = jsonEncode( { "Private", true } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
 							end
 						elseif config.server.private == true then
-							if im.SmallButton("Set Public##"..tostring(k)) then
+							if im.SmallButton("Set Public") then
 								local data = jsonEncode( { "Private", false } )
 								TriggerServerEvent("CEISetCfg", data)
 								log('W', logTag, "CEISetCfg Called: " .. data)
@@ -2056,7 +2037,7 @@ local function drawCEI()
 						im.PushStyleColor2(im.Col_Button, im.ImVec4(0.95, 0.15, 0.15, 0.666))
 						im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.95, 0.15, 0.15, 0.777))
 						im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.95, 0.15, 0.15, 0.888))
-						if im.SmallButton("Stop/Restart##"..tostring(k)) then
+						if im.SmallButton("Stop/Restart") then
 							local data = jsonEncode( { "Good-bye!" } )
 							TriggerServerEvent("CEIStop", data)
 							log('W', logTag, "CEIStop Called: " .. data)
@@ -2476,8 +2457,7 @@ local function drawCEI()
 							end
 							im.Text("		")
 							im.SameLine()
-							if im.InputTextWithHint("##whitelistName", "Whitelist Name", configVals.nametags.whitelistNameInput, 128) then
-							end
+							im.InputTextWithHint("##whitelistName", "Whitelist Name", configVals.nametags.whitelistNameInput, 128)
 							im.Text("		")
 							im.SameLine()
 							if im.SmallButton("Apply##nametagWhitelist") then
@@ -2760,32 +2740,28 @@ local function drawCEI()
 							end
 							im.PopItemWidth()
 							im.Text("Notification Title: " .. config.restrictions.reset.title)
-							if im.InputTextWithHint("##title", "Toast notification title", configVals.restrictions.reset.title, 128) then
-							end
+							im.InputTextWithHint("##title", "Toast notification title", configVals.restrictions.reset.title, 128)
 							if im.SmallButton("Apply##title") then
 								local data = jsonEncode( { "title", ffi.string(configVals.restrictions.reset.title), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Text("Timeout Elapsed Message: " .. config.restrictions.reset.elapsedMessage)
-							if im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.restrictions.reset.elapsedMessage, 256) then
-							end
+							im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.restrictions.reset.elapsedMessage, 256)
 							if im.SmallButton("Apply##elapsedMessage") then
 								local data = jsonEncode( { "elapsedMessage", ffi.string(configVals.restrictions.reset.elapsedMessage), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Text("Timeout Started Message: " .. config.restrictions.reset.message)
-							if im.InputTextWithHint("##message", "Message", configVals.restrictions.reset.message, 256) then
-							end
+							im.InputTextWithHint("##message", "Message", configVals.restrictions.reset.message, 256)
 							if im.SmallButton("Apply##message") then
 								local data = jsonEncode( { "message", ffi.string(configVals.restrictions.reset.message), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Text("Resets Disabled Message: " .. config.restrictions.reset.disabledMessage)
-							if im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.restrictions.reset.disabledMessage, 256) then
-							end
+							im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.restrictions.reset.disabledMessage, 256)
 							if im.SmallButton("Apply##disabledMessage") then
 								local data = jsonEncode( { "disabledMessage", ffi.string(configVals.restrictions.reset.disabledMessage), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
@@ -4121,13 +4097,13 @@ local function drawCEI()
 							im.Text("		")
 							im.SameLine()
 							im.PushItemWidth(130)
-							if im.InputFloat("##gravity", environmentVals.gravityVal, 0.001, 0.1) then
-								if environmentVals.gravityVal[0] < -280 then
-									environmentVals.gravityVal = im.FloatPtr(-280)
-								elseif environmentVals.gravityVal[0] > 10 then
-									environmentVals.gravityVal = im.FloatPtr(10)
+							if im.InputFloat("##gravity", environmentVals.gravityRateVal, 0.001, 0.1) then
+								if environmentVals.gravityRateVal[0] < -280 then
+									environmentVals.gravityRateVal = im.FloatPtr(-280)
+								elseif environmentVals.gravityRateVal[0] > 10 then
+									environmentVals.gravityRateVal = im.FloatPtr(10)
 								end
-								local data = jsonEncode( { "gravity", tostring(environmentVals.gravityVal[0]) } )
+								local data = jsonEncode( { "gravity", tostring(environmentVals.gravityRateVal[0]) } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4446,8 +4422,7 @@ local function drawCEI()
 				im.Indent()
 				im.Text("Reason:")
 				im.SameLine()
-				if im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128) then
-				end
+				im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128)
 				im.Text("tempBan:")
 				im.SameLine()
 				im.PushItemWidth(120)
@@ -4463,15 +4438,15 @@ local function drawCEI()
 				im.PopItemWidth()
 				im.EndChild()
 				im.BeginChild1("Database2")
-				--im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				--for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
-					--if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
+				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+				for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
+					if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
 						for k in pairs(playersDatabase) do
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								local playerBeammp = playersDatabase[k].beammp
 								if playerName ~= playerBeammp then
-									--if playerName == ffi.string(playersDatabaseVals.lines[i]) then
+									if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
 										if im.TreeNode1("##"..playerName) then
 											im.SameLine()
 											if playerBeammp then
@@ -4715,8 +4690,7 @@ local function drawCEI()
 															end
 															im.Text("		")
 															im.SameLine()
-															if im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersDatabaseVals[k].permissions.groupInput, 128) then
-															end
+															im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersDatabaseVals[k].permissions.groupInput, 128)
 															im.Text("		")
 															im.SameLine()
 															if im.SmallButton("Apply##"..tostring(k)) then
@@ -4785,12 +4759,12 @@ local function drawCEI()
 											end
 											im.Separator()
 										end
-									--end
+									end
 								end
 							end
 						end
-					--end
-				--end
+					end
+				end
 				im.Unindent()
 				im.EndChild()
 				im.EndTabItem()
@@ -5701,7 +5675,7 @@ local function runEnvironment(dt)
 			end
 			onSimSpeed(environment.simSpeed)
 			onTempCurve()
-			onGravity(environment.gravity)
+			onGravity(environment.gravityRate)
 			core_environment.reset()
 			lastEnvReport = 0
 		else
@@ -5754,14 +5728,19 @@ local function onUpdate(dt)
 end
 
 local function dropPlayerAtCamera()
-
 	local playerVehicle = be:getPlayerVehicle(0)
 	if not playerVehicle then return end
-	local transform = playerVehicle:getTransform()
-	commands.setFreeCamera()
-	local freeCamera = commands.getFreeCamera()
-	if not freeCamera then return end
-	freeCamera:setTransform(transform)
+	local pos = core_camera.getPosition()
+	local camDir = core_camera.getForward()
+	camDir.z = 0
+	local camRot = quatFromDir(camDir, vec3(0,0,1))
+	local rot =  quat(0, 0, 1, 0) * camRot -- vehicles' forward is inverted
+	playerVehicle:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w)
+	setGameCamera()
+	if core_camera.getActiveCamName(0) == "bigMap" then
+		core_camera.setByName(0, "orbit", false)
+	end
+	core_camera.resetCamera(0)
 
 	local gameVehicleID = be:getPlayerVehicleID(0)
 	if MPVehicleGE.isOwn(gameVehicleID) then
@@ -5779,25 +5758,28 @@ local function dropPlayerAtCamera()
 	end
 
 end
-
+  
 local function dropPlayerAtCameraNoReset()
-
 	local playerVehicle = be:getPlayerVehicle(0)
 	if not playerVehicle then return end
-	local pos = getCameraPosition()
-	local camDir = getCameraForward()
+	local pos = core_camera.getPosition()
+	local camDir = core_camera.getForward()
 	camDir.z = 0
 	local camRot = quatFromDir(camDir, vec3(0,0,1))
-	local rot =  quat(0, 0, 1, 0) * camRot -- vehicles' forward is inverted
-	playerVehicle:setPositionRotation(pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, rot.w)
-	commands.setGameCamera()
+	camRot = quat(0, 0, 1, 0) * camRot -- vehicles' forward is inverted
+
+	local vehRot = quat(playerVehicle:getClusterRotationSlow(playerVehicle:getRefNodeId()))
+	local diffRot = vehRot:inversed() * camRot
+	playerVehicle:setClusterPosRelRot(playerVehicle:getRefNodeId(), pos.x, pos.y, pos.z, diffRot.x, diffRot.y, diffRot.z, diffRot.w)
+	playerVehicle:applyClusterVelocityScaleAdd(playerVehicle:getRefNodeId(), 0, 0, 0, 0)
+	core_camera.setGlobalCameraByName(nil)
 	if core_camera.getActiveCamName(0) == "bigMap" then
 		core_camera.setByName(0, "orbit", false)
 	end
 	core_camera.resetCamera(0)
+	playerVehicle:setOriginalTransform(pos.x, pos.y, pos.z, camRot.x, camRot.y, camRot.z, camRot.w)
 
 	local gameVehicleID = be:getPlayerVehicleID(0)
-	
 	if MPVehicleGE.isOwn(gameVehicleID) then
 		if not firstReset then
 			firstReset = true
