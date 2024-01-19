@@ -4055,7 +4055,7 @@ local function drawCEI()
 					if im.TreeNode1("Gravity") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(descriptions.environment.gravity)
+							im.ShowHelpMarker(descriptions.environment.gravityRate)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -4218,7 +4218,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(descriptions.environment.gravity)
+							im.ShowHelpMarker(descriptions.environment.gravityRate)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
