@@ -1,8 +1,8 @@
---CEI (CLIENT) by Dudekahedron, 2023
+--CEI (CLIENT) by Dudekahedron, 2024
 
 local M = {}
 
-local CEI_VERSION = "0.7.96"
+local CEI_VERSION = "0.7.97"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -334,7 +334,7 @@ local function rxPlayersDatabase(data)
 		local i = playersDatabase[k].playerName
 		tempFilterTable[k] = i
 	end
-	playersDatabaseVals.lines = im.ArrayCharPtrByTbl(tempFilterTable)
+	playersDatabaseFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
 end
 
 local function rxPlayersData(data)
@@ -827,8 +827,7 @@ local function drawCEI()
 						im.SameLine()
 						im.Text("Reason:")
 						im.SameLine()
-						if im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", playersVals[k].kickBanMuteReason, 128) then
-						end
+						im.InputTextWithHint("##"..tostring(k), "Kick or (temp)Ban or Mute Reason", playersVals[k].kickBanMuteReason, 128)
 					end
 					if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 						im.Text("		")
@@ -860,8 +859,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("Reason:")
 								im.SameLine()
-								if im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", playersVals[k].vehDeleteReason, 128) then
-								end
+								im.InputTextWithHint("##vehReason"..tostring(k), "Vehicle Delete Reason", playersVals[k].vehDeleteReason, 128)
 							end
 							for x in pairs(players[k].vehicles) do
 								if players[k].currentVehicle == tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID) then
@@ -1049,8 +1047,7 @@ local function drawCEI()
 									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 										im.Text("		")
 										im.SameLine()
-										if im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersVals[k].permissions.groupInput, 128) then
-										end
+										im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersVals[k].permissions.groupInput, 128)
 										im.Text("		")
 										im.SameLine()
 										if im.SmallButton("Apply##"..tostring(k)) then
@@ -1309,8 +1306,7 @@ local function drawCEI()
 								im.Text("		Add level: ")
 								im.SameLine()
 								im.PushItemWidth(100)
-								if im.InputTextWithHint("##newSendMessageLevel", "New Level", configVals.cobalt.permissions.newSendMessageLevelInput, 128) then
-								end
+								im.InputTextWithHint("##newSendMessageLevel", "New Level", configVals.cobalt.permissions.newSendMessageLevelInput, 128)
 								im.PopItemWidth()
 								im.Text("		")
 								im.SameLine()
@@ -1387,8 +1383,7 @@ local function drawCEI()
 								im.Text(tostring(vehiclePermsCounter))
 								im.Text("	Add vehicle: ")
 								im.SameLine()
-								if im.InputTextWithHint("##newVehicle", "New Vehicle", configVals.cobalt.permissions.newVehicleInput, 128) then
-								end
+								im.InputTextWithHint("##newVehicle", "New Vehicle", configVals.cobalt.permissions.newVehicleInput, 128)
 								im.Text("	")
 								im.SameLine()
 								if im.SmallButton("Apply##newVehPerm") then
@@ -1426,8 +1421,7 @@ local function drawCEI()
 													im.ShowHelpMarker("In-/Decrease vehicle permission level requirement or Remove vehicle entry")
 													im.Text("	Add part: ")
 													im.SameLine()
-													if im.InputTextWithHint("##newPart"..tostring(k), "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128) then
-													end
+													im.InputTextWithHint("##newPart"..tostring(k), "New Part", configVals.cobalt.permissions.vehiclePerm[k].partLevelnameInput, 128)
 													im.Text("	")
 													im.SameLine()
 													if im.SmallButton("Apply##newVehPart"..tostring(k)) then
@@ -1543,8 +1537,7 @@ local function drawCEI()
 												im.Text("		Add Player to Group: ")
 												im.Text("		")
 												im.SameLine()
-												if im.InputTextWithHint("##groupPlayerName"..tostring(k), "Player Name", configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput, 128) then
-												end
+												im.InputTextWithHint("##groupPlayerName"..tostring(k), "Player Name", configVals.cobalt.groups[k].groupPerms.newGroupPlayerInput, 128)
 												im.Text("		")
 												im.SameLine()
 												if im.SmallButton("Add##groupPlayerName"..tostring(k)) then
@@ -1714,8 +1707,7 @@ local function drawCEI()
 											im.Text("		banReason: " .. config.cobalt.groups[k].groupPerms.banReason)
 											im.Text("		")
 											im.SameLine()
-											if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
-											end
+											im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128)
 											im.Text("		")
 											im.SameLine()
 											if im.SmallButton("Apply##"..tostring(k)) then
@@ -1735,8 +1727,7 @@ local function drawCEI()
 											im.Text("		banReason: null")
 											im.Text("		")
 											im.SameLine()
-											if im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128) then
-											end
+											im.InputTextWithHint("##banReason"..tostring(k), "Ban Reason", configVals.cobalt.groups[k].groupPerms.groupBanReasonInput, 128)
 											im.Text("		")
 											im.SameLine()
 											if im.SmallButton("Apply##"..tostring(k)) then
@@ -2466,8 +2457,7 @@ local function drawCEI()
 							end
 							im.Text("		")
 							im.SameLine()
-							if im.InputTextWithHint("##whitelistName", "Whitelist Name", configVals.nametags.whitelistNameInput, 128) then
-							end
+							im.InputTextWithHint("##whitelistName", "Whitelist Name", configVals.nametags.whitelistNameInput, 128)
 							im.Text("		")
 							im.SameLine()
 							if im.SmallButton("Apply##nametagWhitelist") then
@@ -2750,32 +2740,28 @@ local function drawCEI()
 							end
 							im.PopItemWidth()
 							im.Text("Notification Title: " .. config.restrictions.reset.title)
-							if im.InputTextWithHint("##title", "Toast notification title", configVals.restrictions.reset.title, 128) then
-							end
+							im.InputTextWithHint("##title", "Toast notification title", configVals.restrictions.reset.title, 128)
 							if im.SmallButton("Apply##title") then
 								local data = jsonEncode( { "title", ffi.string(configVals.restrictions.reset.title), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Text("Timeout Elapsed Message: " .. config.restrictions.reset.elapsedMessage)
-							if im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.restrictions.reset.elapsedMessage, 256) then
-							end
+							im.InputTextWithHint("##elapsedMessage", "Elapsed Message", configVals.restrictions.reset.elapsedMessage, 256)
 							if im.SmallButton("Apply##elapsedMessage") then
 								local data = jsonEncode( { "elapsedMessage", ffi.string(configVals.restrictions.reset.elapsedMessage), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Text("Timeout Started Message: " .. config.restrictions.reset.message)
-							if im.InputTextWithHint("##message", "Message", configVals.restrictions.reset.message, 256) then
-							end
+							im.InputTextWithHint("##message", "Message", configVals.restrictions.reset.message, 256)
 							if im.SmallButton("Apply##message") then
 								local data = jsonEncode( { "message", ffi.string(configVals.restrictions.reset.message), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
 								log('W', logTag, "CEISetRestrictions Called: " .. data)
 							end
 							im.Text("Resets Disabled Message: " .. config.restrictions.reset.disabledMessage)
-							if im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.restrictions.reset.disabledMessage, 256) then
-							end
+							im.InputTextWithHint("##disabledMessage", "Disabled Message", configVals.restrictions.reset.disabledMessage, 256)
 							if im.SmallButton("Apply##disabledMessage") then
 								local data = jsonEncode( { "disabledMessage", ffi.string(configVals.restrictions.reset.disabledMessage), "reset" } )
 								TriggerServerEvent("CEISetRestrictions", data)
@@ -4436,8 +4422,7 @@ local function drawCEI()
 				im.Indent()
 				im.Text("Reason:")
 				im.SameLine()
-				if im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128) then
-				end
+				im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128)
 				im.Text("tempBan:")
 				im.SameLine()
 				im.PushItemWidth(120)
@@ -4453,15 +4438,15 @@ local function drawCEI()
 				im.PopItemWidth()
 				im.EndChild()
 				im.BeginChild1("Database2")
-				--im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				--for i = 0, im.GetLengthArrayCharPtr(playersDatabaseVals.lines) - 1 do
-					--if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseVals.lines[i]) then
+				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+				for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
+					if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
 						for k in pairs(playersDatabase) do
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								local playerBeammp = playersDatabase[k].beammp
 								if playerName ~= playerBeammp then
-									--if playerName == ffi.string(playersDatabaseVals.lines[i]) then
+									if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
 										if im.TreeNode1("##"..playerName) then
 											im.SameLine()
 											if playerBeammp then
@@ -4705,8 +4690,7 @@ local function drawCEI()
 															end
 															im.Text("		")
 															im.SameLine()
-															if im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersDatabaseVals[k].permissions.groupInput, 128) then
-															end
+															im.InputTextWithHint("##newGroup"..tostring(k), "Group Name", playersDatabaseVals[k].permissions.groupInput, 128)
 															im.Text("		")
 															im.SameLine()
 															if im.SmallButton("Apply##"..tostring(k)) then
@@ -4775,12 +4759,12 @@ local function drawCEI()
 											end
 											im.Separator()
 										end
-									--end
+									end
 								end
 							end
 						end
-					--end
-				--end
+					end
+				end
 				im.Unindent()
 				im.EndChild()
 				im.EndTabItem()
