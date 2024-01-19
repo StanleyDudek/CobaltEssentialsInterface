@@ -976,7 +976,6 @@ function txPlayersDatabase(now)
 							end
 						end
 						MP.TriggerClientEventJson(playerID, "rxPlayersDatabase", playersDatabase[k])
-						MP.TriggerClientEvent(playerID, "rxInputUpdate", "playersDatabase")
 					end
 					playersDatabaseCount[player.name] = playersDatabaseCompare
 				end
@@ -1188,7 +1187,6 @@ local function txData()
 	txPlayersData()
 	txEnvironment()
 	txConfigData()
-	txPlayersDatabase(true)
 	for player_id, player_name in pairs(MP.GetPlayers()) do
 		local player = players.getPlayerByName(player_name)
 		if player then
