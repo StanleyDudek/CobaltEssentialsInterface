@@ -149,7 +149,7 @@ local environmentDefaults = {
 	teleportTimeout = 5,
 	simSpeed = 1,
 	controlSimSpeed = false,
-	gravity = -9.81,
+	gravityRate = -9.81,
 	controlGravity = false,
 	tempCurveNoon = 38,
 	tempCurveDusk = 12,
@@ -252,7 +252,7 @@ local descriptions = {
 		teleportTimeout = "How long between telports?",
 		simSpeed = "At what rate does the simulation run?",
 		controlSimSpeed = "Do we control everyone's sim speed?",
-		gravity = "At what rate do objects fall towards the ground?",
+		gravityRate = "At what rate do objects fall towards the ground?",
 		controlGravity = "Do we control everyone's gravity?",
 		tempCurveNoon = "What is the custom temperature in C at noon?",
 		tempCurveDusk = "What is the custom temperature in C at dusk?",
@@ -312,7 +312,7 @@ local defaultEnvironmentValues = {
 	teleportTimeout = 		{value = environmentDefaults.teleportTimeout},
 	simSpeed = 				{value = environmentDefaults.simSpeed},
 	controlSimSpeed = 		{value = environmentDefaults.controlSimSpeed},
-	gravity = 				{value = environmentDefaults.gravity},
+	gravityRate = 			{value = environmentDefaults.gravityRate},
 	controlGravity = 		{value = environmentDefaults.controlGravity},
 	tempCurveNoon = 		{value = environmentDefaults.tempCurveNoon},
 	tempCurveDusk = 		{value = environmentDefaults.tempCurveDusk},
@@ -367,7 +367,7 @@ local defaultDescriptions = {
 	teleportTimeout =		{description = descriptions.environment.teleportTimeout},
 	simSpeed =				{description = descriptions.environment.simSpeed},
 	controlSimSpeed =		{description = descriptions.environment.controlSimSpeed},
-	gravity =				{description = descriptions.environment.gravity},
+	gravityRate =			{description = descriptions.environment.gravityRate},
 	controlGravity =		{description = descriptions.environment.controlGravity},
 	tempCurveNoon =			{description = descriptions.environment.tempCurveNoon},
 	tempCurveDusk =			{description = descriptions.environment.tempCurveDusk},
@@ -601,18 +601,28 @@ local CEICommands = {
 
 local function writeCfg(path, key, value)
 	local tomlFile, error = io.open(path, 'r')
-	if error then return nil, error end
-	local tomlText = tomlFile:read("*a")
-	local cfg = tomlParser.parse(tomlText)
-	if cfg.General then
-		cfg.General[key] = value
-		tomlText = tomlParser.encode(cfg)
-		tomlText = tomlText:gsub( '\\', '')
-		tomlFile, error = io.open(path, 'w')
-		if error then return nil, error end
-		tomlFile:write(tomlText)
+	if error then
+		return nil, error
 	end
-	tomlFile:close()
+	if tomlFile then
+		local tomlText = tomlFile:read("*a")
+		local cfg = tomlParser.parse(tomlText)
+		if cfg.General then
+			cfg.General[key] = value
+			tomlText = tomlParser.encode(cfg)
+			tomlText = tomlText:gsub( '\\', '')
+			tomlFile, error = io.open(path, 'w')
+			if error then
+				return nil, error
+			end
+			if tomlFile then
+				tomlFile:write(tomlText)
+			end
+		end
+		if tomlFile then
+			tomlFile:close()
+		end
+	end
 end
 
 local function pairsByKeys(t, f)
@@ -877,7 +887,7 @@ local function onInit()
 	environment.teleportTimeout = CobaltDB.query("environment", "teleportTimeout", "value")
 	environment.simSpeed = CobaltDB.query("environment", "simSpeed", "value")
 	environment.controlSimSpeed = CobaltDB.query("environment", "controlSimSpeed", "value")
-	environment.gravity = CobaltDB.query("environment", "gravity", "value")
+	environment.gravityRate = CobaltDB.query("environment", "gravityRate", "value")
 	environment.controlGravity = CobaltDB.query("environment", "controlGravity", "value")
 	environment.tempCurveNoon = CobaltDB.query("environment", "tempCurveNoon", "value")
 	environment.tempCurveDusk = CobaltDB.query("environment", "tempCurveDusk", "value")
@@ -957,7 +967,7 @@ function txPlayersDatabase(now)
 						if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
 							playersDatabase[k].banReason = players.database[playerName].banReason
 						else
-							CobaltDB.query("playersDB/" .. playerName, "banReason", "value", "No reason specified")
+							CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
 						end
 						if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
 							playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
@@ -1152,10 +1162,12 @@ function txNametagWhitelisted(player)
 	local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 	local nametagWhitelistIterator = 0
 	config.nametags.whitelist = {}
-	for k in pairs(nametagsBlockingWhitelist) do
-		if k ~= "description" then
-			nametagWhitelistIterator = nametagWhitelistIterator + 1
-			config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+	if nametagsBlockingWhitelist then
+		for k in pairs(nametagsBlockingWhitelist) do
+			if k ~= "description" then
+				nametagWhitelistIterator = nametagWhitelistIterator + 1
+				config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+			end
 		end
 	end
 	MP.TriggerClientEventJson(player.playerID, "rxNametagWhitelisted", { isWhitelisted } )
@@ -1326,13 +1338,7 @@ function CEISetInterface(senderID, data)
 			config.cobalt.interface[key] = value
 			CobaltDB.set("interface", key, "value", value)
 		end
-		for playerID, player in pairs(players) do
-			if type(playerID) == "number" then
-				if player.connectStage == "connected" then
-					txConfigData(player)
-				end
-			end
-		end
+		txConfigData()
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
@@ -1375,13 +1381,9 @@ function CEISetRestrictions(senderID, data)
 				CobaltDB.set("restrictions", key, "value", value)
 			end
 		end
-		for playerID, player in pairs(players) do
-			if type(playerID) == "number" then
-				if player.connectStage == "connected" then
-					txConfigData(player)
-				end
-			end
-		end
+
+		txConfigData()
+
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 	end
 end
@@ -1957,21 +1959,23 @@ function CEIVoteKick(senderID, data)
 	local targetName = data[1]
 	local player = players.getPlayerByName(targetName)
 	local voter = players[tonumber(senderID)].name
-	if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
-		MP.SendChatMessage(senderID, "You cannot vote for " ..  targetName .. "!")
-	else
-		if tempPlayers[voter].votedFor[targetName] == false or tempPlayers[voter].votedFor[targetName] == nil then
-			if tempPlayers[targetName].kickVotes == nil then
-				tempPlayers[targetName].kickVotes = 1
-			else
-				tempPlayers[targetName].kickVotes = tempPlayers[targetName].kickVotes + 1
-			end
-			tempPlayers[voter].votedFor[targetName] = true
-			MP.SendChatMessage(-1, voter .. " voted to kick " .. targetName)
+	if player then
+		if players[tonumber(senderID)].permissions.level < players[player.playerID].permissions.level then
+			MP.SendChatMessage(senderID, "You cannot vote for " ..  targetName .. "!")
 		else
-			MP.SendChatMessage(senderID, "You cannot vote for " ..  targetName .. " more than once!")
+			if tempPlayers[voter].votedFor[targetName] == false or tempPlayers[voter].votedFor[targetName] == nil then
+				if tempPlayers[targetName].kickVotes == nil then
+					tempPlayers[targetName].kickVotes = 1
+				else
+					tempPlayers[targetName].kickVotes = tempPlayers[targetName].kickVotes + 1
+				end
+				tempPlayers[voter].votedFor[targetName] = true
+				MP.SendChatMessage(-1, voter .. " voted to kick " .. targetName)
+			else
+				MP.SendChatMessage(senderID, "You cannot vote for " ..  targetName .. " more than once!")
+			end
+			MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		end
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -1983,13 +1987,15 @@ function CEIKick(senderID, data)
 		if reason == "" or reason == nil then
 			reason = "No reason specified"
 		end
-		if players[tonumber(senderID)].permissions.level < target.permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  target.name .. "!")
-		else
-			target:kick(reason)
-			MP.SendChatMessage(-1, target.name .. " was kicked for: " .. reason)
+		if target then
+			if players[tonumber(senderID)].permissions.level < target.permissions.level then
+				MP.SendChatMessage(senderID, "You cannot affect " ..  target.name .. "!")
+			else
+				target:kick(reason)
+				MP.SendChatMessage(-1, target.name .. " was kicked for: " .. reason)
+			end
+			MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		end
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 	end
 end
 
@@ -2181,17 +2187,21 @@ function CEIRaceInclude(senderID, data)
 	data = Util.JsonDecode(data)
 	local playerName = players[senderID].name
 	local player = players.getPlayerByName(playerName)
-	if data[2] then
-		local includee = players.getPlayerByName(data[2])
-		if player.permissions.level < players[includee.playerID].permissions.level then
-			MP.SendChatMessage(senderID, "You cannot affect " ..  data[2] .. "!")
+	if player then
+		if data[2] then
+			local includee = players.getPlayerByName(data[2])
+			if includee then
+				if player.permissions.level < players[includee.playerID].permissions.level then
+					MP.SendChatMessage(senderID, "You cannot affect " ..  data[2] .. "!")
+				else
+					tempPlayers[data[2]].includeInRace = data[1]
+					MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
+				end
+			end
 		else
-			tempPlayers[data[2]].includeInRace = data[1]
-			MP.TriggerClientEventJson(MP.GetPlayerIDByName(data[2]), "rxCEIrace", { data[1] } )
+			tempPlayers[playerName].includeInRace = data[1]
+			MP.TriggerClientEventJson(MP.GetPlayerIDByName(playerName), "rxCEIrace", { data[1] } )
 		end
-	else
-		tempPlayers[playerName].includeInRace = data[1]
-		MP.TriggerClientEventJson(MP.GetPlayerIDByName(playerName), "rxCEIrace", { data[1] } )
 	end
 end
 
@@ -2206,10 +2216,12 @@ function CEISetNametagWhitelist(senderID, data)
 			local nametagsBlockingWhitelist = CobaltDB.getTable("nametags", "nametagsWhitelist")
 			local nametagWhitelistIterator = 0
 			config.nametags.whitelist = {}
-			for k in pairs(nametagsBlockingWhitelist) do
-				if k ~= "description" then
-					nametagWhitelistIterator = nametagWhitelistIterator + 1
-					config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+			if nametagsBlockingWhitelist then
+				for k in pairs(nametagsBlockingWhitelist) do
+					if k ~= "description" then
+						nametagWhitelistIterator = nametagWhitelistIterator + 1
+						config.nametags.whitelist[nametagWhitelistIterator] = nametagsBlockingWhitelist[k]
+					end
 				end
 			end
 		end
@@ -2217,7 +2229,6 @@ function CEISetNametagWhitelist(senderID, data)
 		if player then
 			txNametagWhitelisted(player)
 		end
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
 
@@ -2241,7 +2252,6 @@ function CEIRemoveNametagWhitelist(senderID, data)
 		if player then
 			txNametagWhitelisted(player)
 		end
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
 
@@ -2258,7 +2268,6 @@ function CEINametagSetting(senderID, data)
 				txNametagBlockerActive(player)
 			end
 		end
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "nametags")
 	end
 end
 
@@ -2443,7 +2452,7 @@ local function onPlayerJoining(player)
 		tempPlayers[player.name].includeInRace = false
 		tempPlayers[player.name].votedFor = {}
 		tempPCV[player.name] = "none"
-		if isGuest then
+		if player.isGuest then
 			identifiers.beammp = tonumber(player.name:sub(6)) * -1
 		end
 		if identifiers.beammp then
