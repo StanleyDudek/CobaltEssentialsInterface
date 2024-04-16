@@ -2,7 +2,7 @@
 
 local M = {}
 
-local CEI_VERSION = "0.7.97"
+local CEI_VERSION = "0.7.98"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
