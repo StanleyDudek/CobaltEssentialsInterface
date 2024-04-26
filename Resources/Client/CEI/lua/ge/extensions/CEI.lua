@@ -2,13 +2,14 @@
 
 local M = {}
 
-local CEI_VERSION = "0.7.98"
+local CEI_VERSION = "0.7.99"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
 local im = ui_imgui
 local windowOpen = im.BoolPtr(true)
 local ffi = require('ffi')
+local CEIScale = im.FloatPtr(1)
 local resetExempt
 local currentGroup
 local currentUIPerm
@@ -303,7 +304,9 @@ local function rxPlayerGroup(data)
 end
 
 local function rxPlayersUIPerm(data)
-	currentUIPerm = tonumber(data)
+	data = jsonDecode(data)
+	currentUIPerm = tonumber(data.currentUIPerm)
+	CEIScale = im.FloatPtr(tonumber(data.CEIScale))
 end
 
 local function rxPlayersDatabase(data)
@@ -420,8 +423,10 @@ local function drawCEI()
 	im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.1, 0.69, 0.5))
 	im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.55, 0.999))
 	im.SetNextWindowBgAlpha(0.666)
+----------------------------------------------------------------------------------STYLE
 	im.Begin("Cobalt Essentials Interface v" .. CEI_VERSION)
-	im.BeginChild1("QuickInfo", im.ImVec2(0, 55), true )
+	im.SetWindowFontScale(CEIScale[0])
+	im.BeginChild1("QuickInfo", im.ImVec2(0, (55*CEIScale[0])), true )
 	im.Text("Nametags")
 	if nametagBlockerTimeout ~= nil then
 		im.SameLine()
@@ -449,7 +454,6 @@ local function drawCEI()
 					im.SameLine()
 					im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
 				end
-				
 			elseif config.restrictions.reset.timeout - resetsTimerElapsedReset > 0 then
 				im.SameLine()
 				im.Text("| Vehicle reset")
@@ -519,14 +523,36 @@ local function drawCEI()
 		im.Text("Current temp: " .. currentTempCString .. " °C / " .. currentTempFString .. " °F")
 	end
 	im.EndChild()
+	im.PushItemWidth(120*CEIScale[0])
+	if im.InputFloat("##CEIScale", CEIScale, 0.01, 1) then
+		if CEIScale[0] < 0.75 then
+			CEIScale = im.FloatPtr(0.75)
+		elseif CEIScale[0] > 1.5 then
+			CEIScale = im.FloatPtr(1.5)
+		end
+		local data = tostring(CEIScale[0])
+		TriggerServerEvent("CEISetUserUIScale", data)
+		log('W', logTag, "CEISetUserUIScale Called: " .. data)
+	end
+	im.PopItemWidth()
+	im.SameLine()
+	if im.SmallButton("Reset UI Scale") then
+		CEIScale = im.FloatPtr(1)
+		local data = 1
+		TriggerServerEvent("CEISetUserUIScale", data)
+		log('W', logTag, "CEISetUserUIScale Called: " .. data)
+	end
+	im.SetWindowFontScale(CEIScale[0])
 	im.BeginChild1("Tabs")
 ----------------------------------------------------------------------------------TAB BAR
+	im.SetWindowFontScale(CEIScale[0])
 	if im.BeginTabBar("CobaltTabBar") then
 ----------------------------------------------------------------------------------PLAYERS TAB
 		local playersCounter = 0
 		for _ in pairs(players) do
 			playersCounter = playersCounter + 1
 		end
+		im.SetWindowFontScale(CEIScale[0])
 		if im.BeginTabItem("Players") then
 			im.Text("Current Players:")
 			im.SameLine()
@@ -576,9 +602,10 @@ local function drawCEI()
 				end
 				im.PopStyleColor(3)
 			end
+			im.SetWindowFontScale(CEIScale[0])
 			im.Separator()
+			im.SetWindowFontScale(CEIScale[0])
 			if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
-				im.BeginChild1("Players1", im.ImVec2(0, 50))
 				im.PushStyleColor2(im.Col_Button, im.ImVec4(1.0, 0.0, 0.1, 0.333))
 				im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(1.0, 0.2, 0.0, 0.5))
 				im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.9, 0.0, 0.0, 0.999))
@@ -656,9 +683,9 @@ local function drawCEI()
 				end
 				im.PopStyleColor(3)
 				im.Separator()
-				im.EndChild()
 			end
-			im.BeginChild1("Players2")
+			im.BeginChild1("Players3")
+			im.SetWindowFontScale(CEIScale[0])
 ----------------------------------------------------------------------------------PLAYER HEADER
 			for k in pairs(players) do
 				local vehiclesCounter = 0
@@ -834,7 +861,7 @@ local function drawCEI()
 						im.SameLine()
 						im.Text("tempBan:")
 						im.SameLine()
-						im.PushItemWidth(120)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputFloat("##tempBanLength"..tostring(k), playersVals[k].tempBanLength, 0.001, 1) then
 							if playersVals[k].tempBanLength[0] < 0.001 then
 								playersVals[k].tempBanLength = im.FloatPtr(0.001)
@@ -851,6 +878,7 @@ local function drawCEI()
 					end
 					if vehiclesCounter > 0 then
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("vehicles:##"..tostring(k)) then
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
@@ -941,10 +969,12 @@ local function drawCEI()
 							end
 							im.TreePop()
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 						else
 							im.SameLine()
 							im.Text(tostring(vehiclesCounter))
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 						end
 					end
 					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
@@ -956,6 +986,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("| connectedTime: " .. string.format("%.2f",players[k].connectedTime))
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							if im.TreeNode1("permissions##"..tostring(k)) then
 								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 									if players[k].teleport == false then
@@ -993,7 +1024,7 @@ local function drawCEI()
 									if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
 										im.Text("		")
 										im.SameLine()
-										im.PushItemWidth(100)
+										im.PushItemWidth(120*CEIScale[0])
 										if im.InputInt("##UILevel"..tostring(k), playersVals[k].permissions.UILevelInt, 1) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.UILevelInt[0]) } )
 											TriggerServerEvent("CEISetTempUIPerm", data)
@@ -1018,7 +1049,7 @@ local function drawCEI()
 									if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.playerPermissionsPlus then
 										im.Text("		")
 										im.SameLine()
-										im.PushItemWidth(100)
+										im.PushItemWidth(120*CEIScale[0])
 										if im.InputInt("##levelPlayer"..tostring(k), playersVals[k].permissions.levelInt, 1) then
 											local data = jsonEncode( { players[k].playerName, tostring(playersVals[k].permissions.levelInt[0]) } )
 											TriggerServerEvent("CEISetTempPerm", data)
@@ -1076,6 +1107,7 @@ local function drawCEI()
 								im.TreePop()
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							if im.TreeNode1("gamemode##"..tostring(k)) then
 								im.Text("		mode: " .. players[k].gamemode.mode)
 								im.Text("		source: " .. players[k].gamemode.source)
@@ -1218,6 +1250,7 @@ local function drawCEI()
 		if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.config then
 			if im.BeginTabItem("Config") then
 				im.BeginChild1("ConfigTab")
+				im.SetWindowFontScale(CEIScale[0])
 ----------------------------------------------------------------------------------COBALT HEADER
 				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.cobaltEssentials then
 					if im.CollapsingHeader1("Cobalt Essentials") then
@@ -1257,7 +1290,7 @@ local function drawCEI()
 								end
 								im.Text("		Add level: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								if im.InputTextWithHint("##newSpawnLevel", "New Level", configVals.cobalt.permissions.newSpawnVehiclesLevelInput, 128) then
 								end
 								im.PopItemWidth()
@@ -1276,6 +1309,7 @@ local function drawCEI()
 								im.Text(tostring(spawnVehiclesCounter))
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							local sendMessage = config.cobalt.permissions.sendMessage
 							local sendMessageCounter = 0
 							for _ in pairs(sendMessage) do
@@ -1305,7 +1339,7 @@ local function drawCEI()
 								end
 								im.Text("		Add level: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								im.InputTextWithHint("##newSendMessageLevel", "New Level", configVals.cobalt.permissions.newSendMessageLevelInput, 128)
 								im.PopItemWidth()
 								im.Text("		")
@@ -1323,6 +1357,7 @@ local function drawCEI()
 								im.Text(tostring(sendMessageCounter))
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							local vehicleCaps = config.cobalt.permissions.vehicleCap
 							local vehicleCapsCounter = 0
 							for _ in pairs(vehicleCaps) do
@@ -1337,7 +1372,7 @@ local function drawCEI()
 										im.Text(config.cobalt.permissions.vehicleCap[k].vehicles .. " vehicles")
 										im.Text("		")
 										im.SameLine()
-										im.PushItemWidth(100)
+										im.PushItemWidth(120*CEIScale[0])
 										if im.InputInt("##levelVehicleCap"..tostring(k), configVals.cobalt.permissions.vehicleCap[k].vehiclesInt, 1) then
 											local data = jsonEncode( { config.cobalt.permissions.vehicleCap[k].level, tostring(configVals.cobalt.permissions.vehicleCap[k].vehiclesInt[0]) } )
 											TriggerServerEvent("CEISetVehiclePerms", data)
@@ -1360,7 +1395,7 @@ local function drawCEI()
 								end
 								im.Text("		Add level: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								im.InputTextWithHint("##newLevel", "New Level", configVals.cobalt.permissions.newLevelInput, 128)
 								im.PopItemWidth()
 								im.Text("		")
@@ -1378,6 +1413,7 @@ local function drawCEI()
 								im.Text(tostring(vehicleCapsCounter))
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							if im.TreeNode1("vehiclePerms:") then
 								im.SameLine()
 								im.Text(tostring(vehiclePermsCounter))
@@ -1404,7 +1440,7 @@ local function drawCEI()
 													im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].level)
 													im.Text("	")
 													im.SameLine()
-													im.PushItemWidth(100)
+													im.PushItemWidth(120*CEIScale[0])
 													if im.InputInt("##levelVehicle"..tostring(k), configVals.cobalt.permissions.vehiclePerm[k].levelInt, 1) then
 														local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, tostring(configVals.cobalt.permissions.vehiclePerm[k].levelInt[0]) } )
 														TriggerServerEvent("CEISetVehiclePermLevel", data)
@@ -1439,7 +1475,7 @@ local function drawCEI()
 																im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].partLevel[a].level)
 																im.Text("	")
 																im.SameLine()
-																im.PushItemWidth(100)
+																im.PushItemWidth(120*CEIScale[0])
 																if im.InputInt("##levelVehiclePart"..tostring(k), configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt, 1) then
 																	local data = jsonEncode( { config.cobalt.permissions.vehiclePerm[k].name, partName, tostring(configVals.cobalt.permissions.vehiclePerm[k].partLevel[a].levelInt[0]) } )
 																	TriggerServerEvent("CEISetVehiclePartLevel", data)
@@ -1476,12 +1512,13 @@ local function drawCEI()
 								im.Text(tostring(vehiclePermsCounter))
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							if im.TreeNode1("maxActivePlayers:") then
 								im.SameLine()
 								im.Text(config.cobalt.maxActivePlayers)
 								im.Text("		")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								if im.InputInt("##maxActivePlayers", configVals.cobalt.maxActivePlayersInt, 1) then
 									local data = jsonEncode( { tostring(configVals.cobalt.maxActivePlayersInt[0]) } )
 									TriggerServerEvent("CEISetMaxActivePlayers", data)
@@ -1494,6 +1531,7 @@ local function drawCEI()
 								im.Text(config.cobalt.maxActivePlayers)
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 							local groupCounter = 0
 							for _ in pairs(config.cobalt.groups) do
 								groupCounter = groupCounter + 1
@@ -1503,6 +1541,7 @@ local function drawCEI()
 								im.Text(tostring(groupCounter))
 								for k in pairs(config.cobalt.groups) do
 									im.Separator()
+									im.SetWindowFontScale(CEIScale[0])
 									local groupName = ( string.gsub(config.cobalt.groups[k].groupName, "group:", "") .. ":")
 									if im.TreeNode1(groupName) then
 										local groupPlayers = config.cobalt.groups[k].groupPlayers
@@ -1517,6 +1556,7 @@ local function drawCEI()
 										if config.cobalt.groups[k].groupPerms.level then
 											if im.TreeNode1("group players:") then
 												im.Separator()
+												im.SetWindowFontScale(CEIScale[0])
 												if groupPlayers then
 													for w in pairs(groupPlayers) do
 														im.Text("		")
@@ -1548,11 +1588,12 @@ local function drawCEI()
 												im.SameLine()
 												im.ShowHelpMarker("Enter Player Name to Add to Group and press Apply")
 												im.Separator()
+												im.SetWindowFontScale(CEIScale[0])
 												im.TreePop()
 											end
 											im.Text("		level: ")
 											im.SameLine()
-											im.PushItemWidth(100)
+											im.PushItemWidth(120*CEIScale[0])
 											if im.InputInt("##levelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
@@ -1561,7 +1602,7 @@ local function drawCEI()
 											im.PopItemWidth()
 											im.Text("		UI: ")
 											im.SameLine()
-											im.PushItemWidth(100)
+											im.PushItemWidth(120*CEIScale[0])
 											if im.InputInt("##UILevelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
@@ -1571,7 +1612,7 @@ local function drawCEI()
 										else
 											im.Text("		level: ")
 											im.SameLine()
-											im.PushItemWidth(100)
+											im.PushItemWidth(120*CEIScale[0])
 											if im.InputInt("##levelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupLevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "level", tostring(configVals.cobalt.groups[k].groupPerms.groupLevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
@@ -1580,7 +1621,7 @@ local function drawCEI()
 											im.PopItemWidth()
 											im.Text("		UI: ")
 											im.SameLine()
-											im.PushItemWidth(100)
+											im.PushItemWidth(120*CEIScale[0])
 											if im.InputInt("##UILevelGroup"..tostring(k), configVals.cobalt.groups[k].groupPerms.groupUILevelInt, 1) then
 												local data = jsonEncode( { config.cobalt.groups[k].groupName, "UI", tostring(configVals.cobalt.groups[k].groupPerms.groupUILevelInt[0]) } )
 												TriggerServerEvent("CEISetGroupPerms", data)
@@ -1783,6 +1824,7 @@ local function drawCEI()
 									end
 								end
 								im.Separator()
+								im.SetWindowFontScale(CEIScale[0])
 								im.Text("		Add Group: ")
 								im.SameLine()
 								im.InputTextWithHint("##groupName", "Group Name", configVals.cobalt.newGroupInput, 128)
@@ -1809,6 +1851,7 @@ local function drawCEI()
 								im.Text(tostring(groupCounter))
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 						end
 						if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.config then
 							local whitelistPlayersCounter = 0
@@ -1876,6 +1919,7 @@ local function drawCEI()
 								end
 							end
 							im.Separator()
+							im.SetWindowFontScale(CEIScale[0])
 						end
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.config then
 							im.Text('		Default CEI State:')
@@ -1922,12 +1966,13 @@ local function drawCEI()
 							im.Text(config.server.name)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("maxCars:") then
 							im.SameLine()
 							im.Text(tostring(config.server.maxCars))
 							im.Text("		")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##maxCars", configVals.server.maxCarsInt, 1) then
 								local data = jsonEncode( { "MaxCars", tostring(configVals.server.maxCarsInt[0]) } )
 								TriggerServerEvent("CEISetCfg", data)
@@ -1940,12 +1985,13 @@ local function drawCEI()
 							im.Text(tostring(config.server.maxCars))
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("maxPlayers:") then
 							im.SameLine()
 							im.Text(tostring(config.server.maxPlayers))
 							im.Text("		")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##maxPlayers", configVals.server.maxPlayersInt, 1) then
 								local data = jsonEncode( { "MaxPlayers", tostring(configVals.server.maxPlayersInt[0]) } )
 								TriggerServerEvent("CEISetCfg", data)
@@ -1958,6 +2004,7 @@ local function drawCEI()
 							im.Text(tostring(config.server.maxPlayers))
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("map:") then
 							im.SameLine()
 							im.Text(config.server.map)
@@ -1979,6 +2026,7 @@ local function drawCEI()
 							im.Text(config.server.map)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("description:") then
 							im.SameLine()
 							im.Text(config.server.description)
@@ -2000,6 +2048,7 @@ local function drawCEI()
 							im.Text(config.server.description)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.Text("		debug: " .. tostring(config.server.debug))
 						im.SameLine()
 						if config.server.debug == false then
@@ -2016,6 +2065,7 @@ local function drawCEI()
 							end
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.Text("		private: " .. tostring(config.server.private))
 						im.SameLine()
 						if config.server.private == false then
@@ -2061,7 +2111,7 @@ local function drawCEI()
 						im.SameLine()
 						im.Text("playerPermissions: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##playerPermissions", configVals.cobalt.interface.playerPermissions, 1) then
 							local data = jsonEncode( { "playerPermissions", tostring(configVals.cobalt.interface.playerPermissions[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2075,11 +2125,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.playerPermissionsPlus)
 						im.SameLine()
 						im.Text("playerPermissionsPlus: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##playerPermissionsPlus", configVals.cobalt.interface.playerPermissionsPlus, 1) then
 							local data = jsonEncode( { "playerPermissionsPlus", tostring(configVals.cobalt.interface.playerPermissionsPlus[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2093,11 +2144,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.config)
 						im.SameLine()
 						im.Text("config: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##config", configVals.cobalt.interface.config, 1) then
 							local data = jsonEncode( { "config", tostring(configVals.cobalt.interface.config[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2111,11 +2163,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.cobaltEssentials)
 						im.SameLine()
 						im.Text("cobaltEssentials: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##cobaltEssentials", configVals.cobalt.interface.cobaltEssentials, 1) then
 							local data = jsonEncode( { "cobaltEssentials", tostring(configVals.cobalt.interface.cobaltEssentials[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2129,11 +2182,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.server)
 						im.SameLine()
 						im.Text("server: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##server", configVals.cobalt.interface.server, 1) then
 							local data = jsonEncode( { "server", tostring(configVals.cobalt.interface.server[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2147,11 +2201,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.interface)
 						im.SameLine()
 						im.Text("interface: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##interface", configVals.cobalt.interface.interface, 1) then
 							local data = jsonEncode( { "interface", tostring(configVals.cobalt.interface.interface[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2165,11 +2220,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.nametags)
 						im.SameLine()
 						im.Text("nametags: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##nametags", configVals.cobalt.interface.nametags, 1) then
 							local data = jsonEncode( { "nametags", tostring(configVals.cobalt.interface.nametags[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2183,11 +2239,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.restrictions)
 						im.SameLine()
 						im.Text("restrictions: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##restrictions", configVals.cobalt.interface.restrictions, 1) then
 							local data = jsonEncode( { "restrictions", tostring(configVals.cobalt.interface.restrictions[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2201,11 +2258,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.extras)
 						im.SameLine()
 						im.Text("extras: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##extras", configVals.cobalt.interface.extras, 1) then
 							local data = jsonEncode( { "extras", tostring(configVals.cobalt.interface.extras[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2219,11 +2277,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.environmentAdmin)
 						im.SameLine()
 						im.Text("environmentAdmin: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##environmentAdmin", configVals.cobalt.interface.environmentAdmin, 1) then
 							local data = jsonEncode( { "environmentAdmin", tostring(configVals.cobalt.interface.environmentAdmin[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2237,11 +2296,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.environment)
 						im.SameLine()
 						im.Text("environment: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##environment", configVals.cobalt.interface.environment, 1) then
 							local data = jsonEncode( { "environment", tostring(configVals.cobalt.interface.environment[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2255,11 +2315,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.sun)
 						im.SameLine()
 						im.Text("sun: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##sun", configVals.cobalt.interface.sun, 1) then
 							local data = jsonEncode( { "sun", tostring(configVals.cobalt.interface.sun[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2273,11 +2334,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.weather)
 						im.SameLine()
 						im.Text("weather: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##weather", configVals.cobalt.interface.weather, 1) then
 							local data = jsonEncode( { "weather", tostring(configVals.cobalt.interface.weather[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2291,11 +2353,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.gravity)
 						im.SameLine()
 						im.Text("gravity: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##gravity", configVals.cobalt.interface.gravity, 1) then
 							local data = jsonEncode( { "gravity", tostring(configVals.cobalt.interface.gravity[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2309,11 +2372,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.temperature)
 						im.SameLine()
 						im.Text("temperature: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##temperature", configVals.cobalt.interface.temperature, 1) then
 							local data = jsonEncode( { "temperature", tostring(configVals.cobalt.interface.temperature[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2327,11 +2391,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.database)
 						im.SameLine()
 						im.Text("database: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##database", configVals.cobalt.interface.database, 1) then
 							local data = jsonEncode( { "database", tostring(configVals.cobalt.interface.database[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2345,11 +2410,12 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.ShowHelpMarker(descriptions.interface.race)
 						im.SameLine()
 						im.Text("race: ")
 						im.SameLine()
-						im.PushItemWidth(100)
+						im.PushItemWidth(120*CEIScale[0])
 						if im.InputInt("##race", configVals.cobalt.interface.race, 1) then
 							local data = jsonEncode( { "race", tostring(configVals.cobalt.interface.race[0]) } )
 							TriggerServerEvent("CEISetInterface", data)
@@ -2363,6 +2429,7 @@ local function drawCEI()
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						im.Unindent()
 					end
 				end
@@ -2411,7 +2478,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Blocking Timeout: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##nametagBlockingTimeout", configVals.nametags.settings.blockingTimeoutInt, 1) then
 								if configVals.nametags.settings.blockingTimeoutInt[0] < 0 then
 									configVals.nametags.settings.blockingTimeoutInt = im.IntPtr(0)
@@ -2439,6 +2506,7 @@ local function drawCEI()
 						else
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("Nametag Whitelist: ") then
 							im.SameLine()
 							im.Text(tostring(nametagWhitelistCounter))
@@ -2713,7 +2781,7 @@ local function drawCEI()
 							end
 							im.Text("Notification Message Duration: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##messageDuration", configVals.restrictions.reset.messageDuration, 1, 1) then
 								if configVals.restrictions.reset.messageDuration[0] < 0 then
 									configVals.restrictions.reset.messageDuration = im.IntPtr(0)
@@ -2727,7 +2795,7 @@ local function drawCEI()
 							im.PopItemWidth()
 							im.Text("Reset Timeout: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##timeout", configVals.restrictions.reset.timeout, 1, 1) then
 								if configVals.restrictions.reset.timeout[0] < 0 then
 									configVals.restrictions.reset.timeout = im.IntPtr(0)
@@ -2899,7 +2967,7 @@ local function drawCEI()
 							end
 							im.Text("Simulation: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##simSpeed", environmentVals.simSpeedVal, 0.001, 0.1) then
 								if environmentVals.simSpeedVal[0] < 0.01 then
 									environmentVals.simSpeedVal = im.FloatPtr(0.01)
@@ -2960,6 +3028,7 @@ local function drawCEI()
 							end
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("Teleportation") then
 							im.SameLine()
 							if im.SmallButton("Reset##TLPT") then
@@ -2970,7 +3039,7 @@ local function drawCEI()
 							im.Indent()
 							im.Text("Teleport Timeout: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##teleportTimeout", environmentVals.teleportTimeoutInt, 1, 10) then
 								if environmentVals.teleportTimeoutInt[0] < 0 then
 									environmentVals.teleportTimeoutInt = im.IntPtr(0)
@@ -2993,6 +3062,7 @@ local function drawCEI()
 							end
 						end
 						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
 						if im.TreeNode1("voteKick Threshold Percentage:") then
 							im.SameLine()
 							im.Text(string.format("%.2f", config.cobalt.voteKick.kickPercent))
@@ -3003,7 +3073,7 @@ local function drawCEI()
 								log('W', logTag, "CEISetCfg Called: " .. data)
 							end
 							im.Indent()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##voteKickPercent", configVals.cobalt.votekick.kickPercent, 0.01, 0.1) then
 								if configVals.cobalt.votekick.kickPercent[0] < 0.01 then
 									configVals.cobalt.votekick.kickPercent = im.FloatPtr(0.01)
@@ -3111,7 +3181,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Time of Day: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##ToD", environmentVals.ToDVal, 0.001, 0.01) then
 								if environmentVals.ToDVal[0] < 0 then
 									environmentVals.ToDVal = im.FloatPtr(1)
@@ -3135,7 +3205,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Day Length: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##dayLength", environmentVals.dayLengthInt, 1, 10) then
 								if environmentVals.dayLengthInt[0] < 1 then
 									environmentVals.dayLengthInt = im.IntPtr(1)
@@ -3169,7 +3239,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Day Scale: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##dayScale", environmentVals.dayScaleVal, 0.01, 0.1) then
 								if environmentVals.dayScaleVal[0] < 0.01 then
 									environmentVals.dayScaleVal = im.FloatPtr(0.01)
@@ -3191,7 +3261,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Night Scale: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##nightScale", environmentVals.nightScaleVal, 0.01, 0.1) then
 								if environmentVals.nightScaleVal[0] < 0.01 then
 									environmentVals.nightScaleVal = im.FloatPtr(0.01)
@@ -3213,7 +3283,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Sun Azimuth: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##sunAzimuthOverride", environmentVals.sunAzimuthOverrideVal,  0.001, 0.01) then
 								if environmentVals.sunAzimuthOverrideVal[0] < 0 then
 									environmentVals.sunAzimuthOverrideVal = im.FloatPtr(6.25)
@@ -3235,7 +3305,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Sun Size: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##sunSize", environmentVals.sunSizeVal, 0.01, 0.1) then
 								if environmentVals.sunSizeVal[0] < 0 then
 									environmentVals.sunSizeVal = im.FloatPtr(0)
@@ -3257,7 +3327,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Sky Brightness: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##skyBrightness", environmentVals.skyBrightnessVal, 0.1, 1.0) then
 								if environmentVals.skyBrightnessVal[0] < 0 then
 									environmentVals.skyBrightnessVal = im.FloatPtr(0)
@@ -3279,7 +3349,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Sunlight Brightness: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##sunLightBrightness", environmentVals.sunLightBrightnessVal, 0.01, 0.1) then
 								if environmentVals.sunLightBrightnessVal[0] < 0 then
 									environmentVals.sunLightBrightnessVal = im.FloatPtr(0)
@@ -3301,7 +3371,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Rayleigh Scattering: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##rayleighScattering", environmentVals.rayleighScatteringVal, 0.0001, 0.001) then
 								if environmentVals.rayleighScatteringVal[0] < 0.0001 then
 									environmentVals.rayleighScatteringVal = im.FloatPtr(0.0001)
@@ -3323,7 +3393,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Flare Scale: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##flareScale", environmentVals.flareScaleVal, 0.01, 0.1) then
 								if environmentVals.flareScaleVal[0] < 0 then
 									environmentVals.flareScaleVal = im.FloatPtr(0)
@@ -3345,7 +3415,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Occlusion Scale: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##occlusionScale", environmentVals.occlusionScaleVal, 0.001, 0.01) then
 								if environmentVals.occlusionScaleVal[0] < 0 then
 									environmentVals.occlusionScaleVal = im.FloatPtr(0)
@@ -3367,7 +3437,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Exposure: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##exposure", environmentVals.exposureVal, 0.01, 0.1) then
 								if environmentVals.exposureVal[0] < 0 then
 									environmentVals.exposureVal = im.FloatPtr(0)
@@ -3389,7 +3459,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Shadow Distance: ")
 							im.SameLine()
-							im.PushItemWidth(120)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##shadowDistance", environmentVals.shadowDistanceInt, 1) then
 								if environmentVals.shadowDistanceInt[0] < 0 then
 									environmentVals.shadowDistanceInt = im.FloatPtr(0)
@@ -3411,7 +3481,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Shadow Softness: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##shadowSoftness", environmentVals.shadowSoftnessVal, 0.001, 0.01) then
 								if environmentVals.shadowSoftnessVal[0] < -10 then
 									environmentVals.shadowSoftnessVal = im.FloatPtr(-10)
@@ -3433,7 +3503,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Shadow Splits: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##shadowSplits", environmentVals.shadowSplitsInt, 1) then
 								if environmentVals.shadowSplitsInt[0] < 0 then
 									environmentVals.shadowSplitsInt = im.IntPtr(0)
@@ -3455,7 +3525,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Shadow Tex Size: ")
 							im.SameLine()
-							im.PushItemWidth(120)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##shadowTexSize", environmentVals.shadowTexSizeInt, 1) then
 								if environmentVals.shadowTexSizeInt[0] < 32 then
 									environmentVals.shadowTexSizeInt = im.IntPtr(32)
@@ -3481,7 +3551,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Shadow Log Weight: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##shadowLogWeight", environmentVals.shadowLogWeightVal, 0.001, 0.01) then
 								if environmentVals.shadowLogWeightVal[0] < 0.001 then
 									environmentVals.shadowLogWeightVal = im.FloatPtr(0.001)
@@ -3503,7 +3573,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Visibile Distance: ")
 							im.SameLine()
-							im.PushItemWidth(120)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##visibleDistance", environmentVals.visibleDistanceInt, 1) then
 								if environmentVals.visibleDistanceInt[0] < 1000 then
 									environmentVals.visibleDistanceInt = im.IntPtr(1000)
@@ -3525,7 +3595,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Moon Azimuth: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##moonAzimuth", environmentVals.moonAzimuthVal, 0.1, 1) then
 								if environmentVals.moonAzimuthVal[0] < 0 then
 									environmentVals.moonAzimuthVal = im.FloatPtr(360)
@@ -3547,7 +3617,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Moon Elevation: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##moonElevation", environmentVals.moonElevationVal, 0.1, 1) then
 								if environmentVals.moonElevationVal[0] < 0 then
 									environmentVals.moonElevationVal = im.FloatPtr(360)
@@ -3569,7 +3639,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Moon Scale: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##moonScale", environmentVals.moonScaleVal, 0.001, 0.01) then
 								if environmentVals.moonScaleVal[0] < 0.005 then
 									environmentVals.moonScaleVal = im.FloatPtr(0.005)
@@ -3621,6 +3691,7 @@ local function drawCEI()
 						end
 					end
 					im.Separator()
+					im.SetWindowFontScale(CEIScale[0])
 				end
 				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.weather then
 					if im.TreeNode1("Weather") then
@@ -3664,7 +3735,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Fog Density: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##fogDensity", environmentVals.fogDensityVal, 0.00001, 0.0001) then
 								if environmentVals.fogDensityVal[0] < 0.00001 then
 									environmentVals.fogDensityVal = im.FloatPtr(0.00001)
@@ -3686,7 +3757,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Fog Distance: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##fogDensityOffset", environmentVals.fogDensityOffsetVal, 0.001, 0.1) then
 								if environmentVals.fogDensityOffsetVal[0] < 0 then
 									environmentVals.fogDensityOffsetVal = im.FloatPtr(0)
@@ -3708,7 +3779,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Fog Height: ")
 							im.SameLine()
-							im.PushItemWidth(110)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##fogAtmosphereHeight", environmentVals.fogAtmosphereHeightInt, 1) then
 								if environmentVals.fogAtmosphereHeightInt[0] < 0 then
 									environmentVals.fogAtmosphereHeightInt = im.IntPtr(0)
@@ -3730,7 +3801,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 1 Height: ")
 							im.SameLine()
-							im.PushItemWidth(120)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudHeight", environmentVals.cloudHeightVal, 0.01, 0.1) then
 								if environmentVals.cloudHeightVal[0] < 0 then
 									environmentVals.cloudHeightVal = im.FloatPtr(0)
@@ -3752,7 +3823,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 2 Height: ")
 							im.SameLine()
-							im.PushItemWidth(120)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudHeightOne", environmentVals.cloudHeightOneVal, 0.01, 0.1) then
 								if environmentVals.cloudHeightOneVal[0] < 0 then
 									environmentVals.cloudHeightOneVal = im.FloatPtr(0)
@@ -3774,7 +3845,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 1 Cover: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudCover", environmentVals.cloudCoverVal, 0.01, 0.1) then
 								if environmentVals.cloudCoverVal[0] < 0 then
 									environmentVals.cloudCoverVal = im.FloatPtr(0)
@@ -3796,7 +3867,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 2 Cover: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudCoverOne", environmentVals.cloudCoverOneVal, 0.01, 0.1) then
 								if environmentVals.cloudCoverOneVal[0] < 0 then
 									environmentVals.cloudCoverOneVal = im.FloatPtr(0)
@@ -3818,7 +3889,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 1 Speed: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudSpeed", environmentVals.cloudSpeedVal, 0.01, 0.1) then
 								if environmentVals.cloudSpeedVal[0] < 0 then
 									environmentVals.cloudSpeedVal = im.FloatPtr(0)
@@ -3840,7 +3911,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 2 Speed: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudSpeedOne", environmentVals.cloudSpeedOneVal, 0.01, 0.1) then
 								if environmentVals.cloudSpeedOneVal[0] < 0 then
 									environmentVals.cloudSpeedOneVal = im.FloatPtr(0)
@@ -3862,7 +3933,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 1 Exposure: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudExposure", environmentVals.cloudExposureVal, 0.01, 0.1) then
 								if environmentVals.cloudExposureVal[0] < 0 then
 									environmentVals.cloudExposureVal = im.FloatPtr(0)
@@ -3884,7 +3955,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Cloud 2 Exposure: ")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputFloat("##cloudExposureOne", environmentVals.cloudExposureOneVal, 0.01, 0.1) then
 								if environmentVals.cloudExposureOneVal[0] < 0 then
 									environmentVals.cloudExposureOneVal = im.FloatPtr(0)
@@ -3908,7 +3979,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("Rain Drops: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								if im.InputInt("##rainDrops", environmentVals.rainDropsInt, 1, 10) then
 									if environmentVals.rainDropsInt[0] < 0 then
 										environmentVals.rainDropsInt = im.IntPtr(0)
@@ -3930,7 +4001,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("Drop Size: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								if im.InputFloat("##dropSize", environmentVals.dropSizeVal, 0.001, 0.01) then
 									if environmentVals.dropSizeVal[0] < 0 then
 										environmentVals.dropSizeVal = im.FloatPtr(0)
@@ -3952,7 +4023,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("Drop Min Speed: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								if im.InputFloat("##dropMinSpeed", environmentVals.dropMinSpeedVal, 0.001, 0.01) then
 									if environmentVals.dropMinSpeedVal[0] < 0 then
 										environmentVals.dropMinSpeedVal = im.FloatPtr(0)
@@ -3974,7 +4045,7 @@ local function drawCEI()
 								im.SameLine()
 								im.Text("Drop Max Speed: ")
 								im.SameLine()
-								im.PushItemWidth(100)
+								im.PushItemWidth(120*CEIScale[0])
 								if im.InputFloat("##dropMaxSpeed", environmentVals.dropMaxSpeedVal, 0.001, 0.01) then
 									if environmentVals.dropMaxSpeedVal[0] < 0 then
 										environmentVals.dropMaxSpeedVal = im.FloatPtr(0)
@@ -4050,12 +4121,13 @@ local function drawCEI()
 						end
 					end
 					im.Separator()
+					im.SetWindowFontScale(CEIScale[0])
 				end
 				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.gravity then
 					if im.TreeNode1("Gravity") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(descriptions.environment.gravityRate)
+							im.ShowHelpMarker(descriptions.environment.gravity)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -4084,7 +4156,7 @@ local function drawCEI()
 							im.Indent()
 							im.Indent()
 							if im.SmallButton("Reset##GRV") then
-								local data = jsonEncode( { "gravityRate", "default" } )
+								local data = jsonEncode( { "gravity", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
@@ -4096,14 +4168,14 @@ local function drawCEI()
 							im.Unindent()
 							im.Text("		")
 							im.SameLine()
-							im.PushItemWidth(130)
+							im.PushItemWidth(130*CEIScale[0])
 							if im.InputFloat("##gravity", environmentVals.gravityRateVal, 0.001, 0.1) then
 								if environmentVals.gravityRateVal[0] < -280 then
 									environmentVals.gravityRateVal = im.FloatPtr(-280)
 								elseif environmentVals.gravityRateVal[0] > 10 then
 									environmentVals.gravityRateVal = im.FloatPtr(10)
 								end
-								local data = jsonEncode( { "gravityRate", tostring(environmentVals.gravityRateVal[0]) } )
+								local data = jsonEncode( { "gravity", tostring(environmentVals.gravityRateVal[0]) } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4112,7 +4184,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 							if im.SmallButton("Zero") then
-								local data = jsonEncode( { "gravityRate", 0 } )
+								local data = jsonEncode( { "gravity", 0 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4122,7 +4194,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
 							if im.SmallButton("Earth") then
-								local data = jsonEncode( { "gravityRate", "default" } )
+								local data = jsonEncode( { "gravity", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4132,7 +4204,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 							if im.SmallButton("Moon") then
-								local data = jsonEncode( { "gravityRate", -1.62 } )
+								local data = jsonEncode( { "gravity", -1.62 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4141,7 +4213,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
 							if im.SmallButton("Mars") then
-								local data = jsonEncode( { "gravityRate", -3.71 } )
+								local data = jsonEncode( { "gravity", -3.71 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4151,7 +4223,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.75, 0.78, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.85, 0.84, 0.05, 0.999))
 							if im.SmallButton("Sun") then
-								local data = jsonEncode( { "gravityRate", -274 } )
+								local data = jsonEncode( { "gravity", -274 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4161,13 +4233,13 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
 							if im.SmallButton("Jupiter") then
-								local data = jsonEncode( { "gravityRate", -24.92 } )
+								local data = jsonEncode( { "gravity", -24.92 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.PopStyleColor(3)
 							if im.SmallButton("Neptune") then
-								local data = jsonEncode( { "gravityRate", -11.15 } )
+								local data = jsonEncode( { "gravity", -11.15 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4176,14 +4248,14 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
 							if im.SmallButton("Saturn") then
-								local data = jsonEncode( { "gravityRate", -10.44 } )
+								local data = jsonEncode( { "gravity", -10.44 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.PopStyleColor(3)
 							im.SameLine()
 							if im.SmallButton("Uranus") then
-								local data = jsonEncode( { "gravityRate", -8.87 } )
+								local data = jsonEncode( { "gravity", -8.87 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4191,7 +4263,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.66, 0.64, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.74, 0.05, 0.999))
 							if im.SmallButton("Venus") then
-								local data = jsonEncode( { "gravityRate", -8.87 } )
+								local data = jsonEncode( { "gravity", -8.87 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4201,13 +4273,13 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 							if im.SmallButton("Mercury") then
-								local data = jsonEncode( { "gravityRate", -3.7 } )
+								local data = jsonEncode( { "gravity", -3.7 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.SameLine()
 							if im.SmallButton("Pluto") then
-								local data = jsonEncode( { "gravityRate", -0.58 } )
+								local data = jsonEncode( { "gravity", -0.58 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4218,7 +4290,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(descriptions.environment.gravityRate)
+							im.ShowHelpMarker(descriptions.environment.gravity)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -4245,6 +4317,7 @@ local function drawCEI()
 						end
 					end
 					im.Separator()
+					im.SetWindowFontScale(CEIScale[0])
 				end
 				if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.temperature then
 					if im.TreeNode1("Temperature") then
@@ -4318,7 +4391,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Midday")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##tempCurveNoon", environmentVals.tempCurveNoonInt, 1, 2) then
 								if environmentVals.tempCurveNoonInt[0] < -50 then
 									environmentVals.tempCurveNoonInt = im.IntPtr(-50)
@@ -4334,7 +4407,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Dusk")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##tempCurveDusk", environmentVals.tempCurveDuskInt, 1, 2) then
 								if environmentVals.tempCurveDuskInt[0] < -50 then
 									environmentVals.tempCurveDuskInt = im.IntPtr(-50)
@@ -4350,7 +4423,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Midnight")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##tempCurveMidnight", environmentVals.tempCurveMidnightInt, 1, 2) then
 								if environmentVals.tempCurveMidnightInt[0] < -50 then
 									environmentVals.tempCurveMidnightInt = im.IntPtr(-50)
@@ -4366,7 +4439,7 @@ local function drawCEI()
 							im.SameLine()
 							im.Text("Dawn")
 							im.SameLine()
-							im.PushItemWidth(100)
+							im.PushItemWidth(120*CEIScale[0])
 							if im.InputInt("##tempCurveDawn", environmentVals.tempCurveDawnInt, 1, 2) then
 								if environmentVals.tempCurveDawnInt[0] < -50 then
 									environmentVals.tempCurveDawnInt = im.IntPtr(-50)
@@ -4418,14 +4491,16 @@ local function drawCEI()
 ----------------------------------------------------------------------------------DATABASE TAB
 		if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.database then
 			if im.BeginTabItem("Database") then
-				im.BeginChild1("Database1", im.ImVec2(0, 60))
+				im.SetWindowFontScale(CEIScale[0])
+				im.BeginChild1("Database1", im.ImVec2(0, (69*CEIScale[0])))
+				im.SetWindowFontScale(CEIScale[0])
 				im.Indent()
 				im.Text("Reason:")
 				im.SameLine()
 				im.InputTextWithHint("##kickBanMuteReason", "Kick or (temp)Ban or Mute Reason", playersDatabaseVals.kickBanMuteReason, 128)
 				im.Text("tempBan:")
 				im.SameLine()
-				im.PushItemWidth(120)
+				im.PushItemWidth(120*CEIScale[0])
 				if im.InputFloat("##tempBanLength", playersDatabaseVals.tempBanLength, 0.001, 1) then
 					if playersDatabaseVals.tempBanLength[0] < 0.001 then
 						playersDatabaseVals.tempBanLength = im.FloatPtr(0.001)
@@ -4438,15 +4513,15 @@ local function drawCEI()
 				im.PopItemWidth()
 				im.EndChild()
 				im.BeginChild1("Database2")
-				--im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
-				--for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
-					--if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
+				im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+				for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
+					if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
 						for k in pairs(playersDatabase) do
 							if type(k) == "number" then
 								local playerName = playersDatabase[k].playerName
 								local playerBeammp = playersDatabase[k].beammp
 								if playerName ~= playerBeammp then
-									--if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
+									if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
 										if im.TreeNode1("##"..playerName) then
 											im.SameLine()
 											if playerBeammp then
@@ -4614,7 +4689,7 @@ local function drawCEI()
 																if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
 																	im.Text("		")
 																	im.SameLine()
-																	im.PushItemWidth(100)
+																	im.PushItemWidth(120*CEIScale[0])
 																	if im.InputInt("##UILevelDatabase"..tostring(k), playersDatabaseVals[k].permissions.UILevelInt, 1) then
 																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
 																		TriggerServerEvent("CEISetTempUIPerm", data)
@@ -4634,7 +4709,7 @@ local function drawCEI()
 																if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
 																	im.Text("		")
 																	im.SameLine()
-																	im.PushItemWidth(100)
+																	im.PushItemWidth(120*CEIScale[0])
 																	if im.InputInt("##UILevelDatabase"..tostring(k), playersDatabaseVals[k].permissions.UILevelInt, 1) then
 																		local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.UILevelInt[0]) } )
 																		TriggerServerEvent("CEISetTempUIPerm", data)
@@ -4659,7 +4734,7 @@ local function drawCEI()
 															im.Text(tostring(playersDatabase[k].permissions.level))
 															im.Text("		")
 															im.SameLine()
-															im.PushItemWidth(100)
+															im.PushItemWidth(120*CEIScale[0])
 															if im.InputInt("##levelDBPlayer"..tostring(k), playersDatabaseVals[k].permissions.levelInt, 1) then
 																local data = jsonEncode( { playersDatabase[k].playerName, tostring(playersDatabaseVals[k].permissions.levelInt[0]) } )
 																TriggerServerEvent("CEISetTempPerm", data)
@@ -4724,6 +4799,7 @@ local function drawCEI()
 													end
 												end
 												im.Separator()
+												im.SetWindowFontScale(CEIScale[0])
 											end
 											im.TreePop()
 										else
@@ -4758,13 +4834,14 @@ local function drawCEI()
 												im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "> BANNED")
 											end
 											im.Separator()
+											im.SetWindowFontScale(CEIScale[0])
 										end
-									--end
+									end
 								end
 							end
 						end
-					--end
-				--end
+					end
+				end
 				im.Unindent()
 				im.EndChild()
 				im.EndTabItem()
