@@ -4,7 +4,7 @@ local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.7.98"
+local CEI_VERSION = "0.7.99"
 
 utils.setLogType("CEI",93)
 
@@ -733,6 +733,7 @@ local function onInit()
 	MP.RegisterEvent("CEISetResetPerm","CEISetResetPerm")
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
+	MP.RegisterEvent("CEISetUserUIScale","CEISetUserUIScale")
 	
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
 	
@@ -933,7 +934,10 @@ local function txPlayersGroup(player)
 end
 
 local function txPlayersUIPerm(player)
-	MP.TriggerClientEvent(player.playerID, "rxPlayersUIPerm", tostring(player.permissions.UI))
+	local data = {}
+	data.currentUIPerm = tostring(player.permissions.UI)
+	data.CEIScale = tempPlayers[player.name].uiScale
+	MP.TriggerClientEventJson(player.playerID, "rxPlayersUIPerm", data)
 end
 
 function txPlayersDatabase(now)
@@ -1038,11 +1042,13 @@ local function txPlayersData()
 				playersTable[player.playerID].tempPermLevel = tempPlayers[player.name].tempPermLevel
 				playersTable[player.playerID].tempUIPermLevel = tempPlayers[player.name].tempUIPermLevel
 				playersTable[player.playerID].includeInRace = tempPlayers[player.name].includeInRace
+				playersTable[player.playerID].uiScale = tempPlayers[player.name].uiScale
 			else
 				playersTable[player.playerID].tempBanLength = 0
 				playersTable[player.playerID].tempPermLevel = 1
 				playersTable[player.playerID].tempUIPermLevel = 1
 				playersTable[player.playerID].includeInRace = false
+				playersTable[player.playerID].uiScale = 1
 			end
 			for k in pairs(playersTable[player.playerID].vehicles) do
 				playersTable[player.playerID].vehicles[k].vehicleID = k
@@ -2208,6 +2214,15 @@ function CEIRaceInclude(senderID, data)
 	end
 end
 
+function CEISetUserUIScale(senderID, data)
+	local playerName = players[senderID].name
+	local player = players.getPlayerByName(playerName)
+	if player then
+		CobaltDB.set("playersDB/" .. playerName, "uiScale", "value", data)
+		tempPlayers[player.name].uiScale = data
+	end
+end
+
 function CEISetNametagWhitelist(senderID, data)
 	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.group == "mod" or players[senderID].permissions.UI >= config.cobalt.interface.playerPermissions then
 		data = Util.JsonDecode(data)
@@ -2453,6 +2468,7 @@ local function onPlayerJoining(player)
 		tempPlayers[player.name].tempUIPermLevel = 1
 		tempPlayers[player.name].tempBanLength = 1
 		tempPlayers[player.name].includeInRace = false
+		tempPlayers[player.name].uiScale = 1
 		tempPlayers[player.name].votedFor = {}
 		tempPCV[player.name] = "none"
 		if player.isGuest then
@@ -2479,6 +2495,12 @@ local function onPlayerJoining(player)
 				players.database[player.name].banReason = reason
 				return reason
 			end
+		end
+		if CobaltDB.query("playersDB/" .. player.name, "uiScale", "value") == nil then
+			CobaltDB.set("playersDB/" .. player.name, "uiScale", "value", 1)
+			tempPlayers[player.name].uiScale = 1
+		else
+			tempPlayers[player.name].uiScale = CobaltDB.query("playersDB/" .. player.name, "uiScale", "value")
 		end
 		tempPlayers[player.name].tempPermLevel = player.permissions.level
 		if player.permissions.UI then
