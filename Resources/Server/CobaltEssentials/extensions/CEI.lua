@@ -610,6 +610,8 @@ local CEICommands = {
 	cei = {originModule = "CEI", level = 0, arguments = 0, sourceLimited = 1, description = "Alias for CEI"}
 }
 
+local showCEIWelcome = true
+
 local function writeCfg(path, key, value)
 	local tomlFile, error = io.open(path, 'r')
 	if error then
@@ -2569,8 +2571,10 @@ function requestCEISync(player_id)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
-		CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
-		CE.delayExec( 6000 , sendDelayedMessage , { player , "Use /CEI or /cei in chat to toggle." } )
+		if showCEIWelcome then
+			CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
+			CE.delayExec( 6000 , sendDelayedMessage , { player , "Use " .. config.commandPrefix.value .. "CEI or " .. config.commandPrefix.value .. "cei in chat to toggle." } )
+		end
 	end
 end
 
