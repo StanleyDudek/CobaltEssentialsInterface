@@ -935,7 +935,7 @@ end
 
 local function txPlayersUIPerm(player)
 	local data = {}
-	data.currentUIPerm = tostring(player.permissions.UI)
+	data.currentUIPerm = player.permissions.UI
 	data.CEIScale = tempPlayers[player.name].uiScale
 	MP.TriggerClientEventJson(player.playerID, "rxPlayersUIPerm", data)
 end
@@ -1066,7 +1066,7 @@ local function txPlayersData()
 end
 
 local function theConfigData()
-	config.cobalt.maxActivePlayers = tostring(CobaltDB.query("config", "maxActivePlayers", "value"))
+	config.cobalt.maxActivePlayers = CobaltDB.query("config", "maxActivePlayers", "value")
 	config.cobalt.enableWhitelist = CobaltDB.query("config", "enableWhitelist", "value")
 	local playerGroupsLength = 0
 	local whitelistLength = 0
@@ -2456,21 +2456,27 @@ local function sendDelayedMessage(player, message)
 	end
 end
 
+local function onPlayerAuth(player)
+	tempPlayers[player.name] = {}
+	tempPlayers[player.name].tempPermLevel = 0
+	tempPlayers[player.name].tempUIPermLevel = 1
+	tempPlayers[player.name].tempBanLength = 1
+	tempPlayers[player.name].includeInRace = false
+	tempPlayers[player.name].uiScale = 1
+	tempPlayers[player.name].votedFor = {}
+	tempPlayers[player.name].tempPermLevel = player.permissions.level
+	tempPCV[player.name] = "none"
+end
+
 local function onPlayerJoining(player)
 	if player then
+		tempPlayers[player.name].player_id = player.playerID
 		local identifiers = MP.GetPlayerIdentifiers(player.playerID)
 		if CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == 0 then
 		elseif CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") > os.time() then
 			return false
 		end
-		tempPlayers[player.name] = {}
-		tempPlayers[player.name].tempPermLevel = 0
-		tempPlayers[player.name].tempUIPermLevel = 1
-		tempPlayers[player.name].tempBanLength = 1
-		tempPlayers[player.name].includeInRace = false
-		tempPlayers[player.name].uiScale = 1
-		tempPlayers[player.name].votedFor = {}
-		tempPCV[player.name] = "none"
+
 		if player.isGuest then
 			identifiers.beammp = tonumber(player.name:sub(6)) * -1
 		end
@@ -2502,13 +2508,13 @@ local function onPlayerJoining(player)
 		else
 			tempPlayers[player.name].uiScale = CobaltDB.query("playersDB/" .. player.name, "uiScale", "value")
 		end
-		tempPlayers[player.name].tempPermLevel = player.permissions.level
+		
 		if player.permissions.UI then
 			tempPlayers[player.name].tempUIPermLevel = player.permissions.UI
 		else
 			CobaltDB.set("playersDB/" .. player.name, "UI", "value", 1)
 		end
-		tempPlayers[player.name].player_id = player.playerID
+		
 		if CobaltDB.query("playersDB/" .. player.name, "showCEI", "value") == nil then
 			CobaltDB.set("playersDB/" .. player.name, "showCEI", "value", config.cobalt.interface.defaultState)
 			showCEI[player.name] = config.cobalt.interface.defaultState
@@ -2597,6 +2603,7 @@ M.onInit = onInit
 M.onTick = onTick
 
 M.onPlayerJoining = onPlayerJoining
+M.onPlayerAuth = onPlayerAuth
 
 M.onPlayerDisconnect = onPlayerDisconnect
 M.onVehicleSpawn = onVehicleSpawn
