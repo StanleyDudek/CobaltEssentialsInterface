@@ -30,6 +30,8 @@ local tempPCV = {}
 local logTimer = 0
 local logInterval = 30
 
+local commandPrefix = config.commandPrefix.value
+
 local config = {}
 
 config.server = {}
@@ -48,6 +50,7 @@ config.cobalt.permissions.tempSpawnPerms = {}
 config.cobalt.permissions.tempSpawnToggle = false
 
 config.cobalt.interface = {}
+config.cobalt.interface.welcome_default = true
 config.cobalt.interface.defaultState_default = true
 config.cobalt.interface.playerPermissions_default = 2
 config.cobalt.interface.playerPermissionsPlus_default = 3
@@ -162,6 +165,7 @@ local environment = {}
 
 local descriptions = {
 	interface = {
+		welcome = "Do we show a CEI welcome message on server join?",
 		defaultState = "The state of the interface for new players.",
 		playerPermissions = "The level required to access playerPermissions.",
 		playerPermissionsPlus = "The level required to access more advanced playerPermissions.",
@@ -410,6 +414,7 @@ local defaultDescriptions = {
 	objectEditorToggle = 	{description = descriptions.restrictions.objectEditorToggle},
 	nodegrabberRender = 	{description = descriptions.restrictions.nodegrabberRender},
 	
+	welcome = 				{description = descriptions.interface.welcome},
 	defaultState = 			{description = descriptions.interface.defaultState},
 	playerPermissions = 	{description = descriptions.interface.playerPermissions},
 	playerPermissionsPlus = {description = descriptions.interface.playerPermissionsPlus},
@@ -580,6 +585,7 @@ local defaultNametagsSettings = {
 
 local interfaceJson = CobaltDB.new("interface")
 local defaultInterfaceSettings = {
+	welcome = 				{value = config.cobalt.interface.welcome_default},
 	defaultState = 			{value = config.cobalt.interface.defaultState_default},
 	playerPermissions = 	{value = config.cobalt.interface.playerPermissions_default},
 	playerPermissionsPlus = {value = config.cobalt.interface.playerPermissionsPlus_default},
@@ -685,6 +691,7 @@ local function onInit()
 
 	MP.RegisterEvent("requestCEISync","requestCEISync")
 	
+	MP.RegisterEvent("CEISetWelcome","CEISetWelcome")
 	MP.RegisterEvent("CEISetDefaultState","CEISetDefaultState")
 	MP.RegisterEvent("CEISetCurVeh","CEISetCurVeh")
 	MP.RegisterEvent("CEIPreRace","CEIPreRace")
@@ -806,6 +813,7 @@ local function onInit()
 	
 	config.cobalt.voteKick.kickPercent = CobaltDB.query("voteKick", "kickPercent", "value")
 	
+	config.cobalt.interface.welcome = CobaltDB.query("interface", "welcome", "value")
 	config.cobalt.interface.defaultState = CobaltDB.query("interface", "defaultState", "value")
 	config.cobalt.interface.config = CobaltDB.query("interface", "config", "value")
 	config.cobalt.interface.playerPermissions = CobaltDB.query("interface", "playerPermissions", "value")
@@ -1227,6 +1235,14 @@ function CEISetDefaultState(senderID, data)
 		data = Util.JsonDecode(data)
 		CobaltDB.set("interface", "defaultState", "value", data[1])
 		config.cobalt.interface.defaultState = data[1]
+	end
+end
+
+function CEISetWelcome(senderID, data)
+	if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
+		data = Util.JsonDecode(data)
+		CobaltDB.set("interface", "welcome", "value", data[1])
+		config.cobalt.interface.welcome = data[1]
 	end
 end
 
@@ -2569,8 +2585,10 @@ function requestCEISync(player_id)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
-		CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
-		CE.delayExec( 6000 , sendDelayedMessage , { player , "Use /CEI or /cei in chat to toggle." } )
+		if config.cobalt.interface.welcome then
+			CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
+			CE.delayExec( 6000 , sendDelayedMessage , { player , "Use " .. commandPrefix .. "CEI or " .. commandPrefix .. "cei in chat to toggle." } )
+		end
 	end
 end
 
