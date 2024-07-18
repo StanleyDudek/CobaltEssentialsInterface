@@ -12,7 +12,7 @@ local ffi = require('ffi')
 local CEIScale = im.FloatPtr(1)
 local resetExempt
 local currentGroup
-local currentUIPerm
+local currentUIPerm = 0
 local canTeleport
 local includeInRace = false
 local nametagWhitelisted = false
@@ -305,7 +305,7 @@ end
 
 local function rxPlayersUIPerm(data)
 	data = jsonDecode(data)
-	currentUIPerm = tonumber(data.currentUIPerm)
+	currentUIPerm = data.currentUIPerm
 	CEIScale = im.FloatPtr(tonumber(data.CEIScale))
 end
 
