@@ -4127,7 +4127,7 @@ local function drawCEI()
 					if im.TreeNode1("Gravity") then
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(descriptions.environment.gravity)
+							im.ShowHelpMarker(descriptions.environment.controlGravity)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
@@ -4156,7 +4156,7 @@ local function drawCEI()
 							im.Indent()
 							im.Indent()
 							if im.SmallButton("Reset##GRV") then
-								local data = jsonEncode( { "gravity", "default" } )
+								local data = jsonEncode( { "gravityRate", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 								if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
@@ -4175,7 +4175,7 @@ local function drawCEI()
 								elseif environmentVals.gravityRateVal[0] > 10 then
 									environmentVals.gravityRateVal = im.FloatPtr(10)
 								end
-								local data = jsonEncode( { "gravity", tostring(environmentVals.gravityRateVal[0]) } )
+								local data = jsonEncode( { "gravityRate", tostring(environmentVals.gravityRateVal[0]) } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4184,7 +4184,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 							if im.SmallButton("Zero") then
-								local data = jsonEncode( { "gravity", 0 } )
+								local data = jsonEncode( { "gravityRate", 0 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4194,7 +4194,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.1, 0.69, 0.09, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.69, 0.05, 0.999))
 							if im.SmallButton("Earth") then
-								local data = jsonEncode( { "gravity", "default" } )
+								local data = jsonEncode( { "gravityRate", "default" } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4204,7 +4204,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 							if im.SmallButton("Moon") then
-								local data = jsonEncode( { "gravity", -1.62 } )
+								local data = jsonEncode( { "gravityRate", -1.62 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4213,7 +4213,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.69, 0.1, 0.09, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.69, 0.05, 0.05, 0.999))
 							if im.SmallButton("Mars") then
-								local data = jsonEncode( { "gravity", -3.71 } )
+								local data = jsonEncode( { "gravityRate", -3.71 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4223,7 +4223,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.75, 0.78, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.85, 0.84, 0.05, 0.999))
 							if im.SmallButton("Sun") then
-								local data = jsonEncode( { "gravity", -274 } )
+								local data = jsonEncode( { "gravityRate", -274 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4233,13 +4233,13 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
 							if im.SmallButton("Jupiter") then
-								local data = jsonEncode( { "gravity", -24.92 } )
+								local data = jsonEncode( { "gravityRate", -24.92 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.PopStyleColor(3)
 							if im.SmallButton("Neptune") then
-								local data = jsonEncode( { "gravity", -11.15 } )
+								local data = jsonEncode( { "gravityRate", -11.15 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4248,14 +4248,14 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.55, 0.22, 0.15, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.60, 0.23, 0.15, 0.999))
 							if im.SmallButton("Saturn") then
-								local data = jsonEncode( { "gravity", -10.44 } )
+								local data = jsonEncode( { "gravityRate", -10.44 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.PopStyleColor(3)
 							im.SameLine()
 							if im.SmallButton("Uranus") then
-								local data = jsonEncode( { "gravity", -8.87 } )
+								local data = jsonEncode( { "gravityRate", -8.87 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4263,7 +4263,7 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.66, 0.64, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.77, 0.74, 0.05, 0.999))
 							if im.SmallButton("Venus") then
-								local data = jsonEncode( { "gravity", -8.87 } )
+								local data = jsonEncode( { "gravityRate", -8.87 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4273,13 +4273,13 @@ local function drawCEI()
 							im.PushStyleColor2(im.Col_ButtonHovered, im.ImVec4(0.05, 0.05, 0.05, 0.5))
 							im.PushStyleColor2(im.Col_ButtonActive, im.ImVec4(0.05, 0.05, 0.05, 0.999))
 							if im.SmallButton("Mercury") then
-								local data = jsonEncode( { "gravity", -3.7 } )
+								local data = jsonEncode( { "gravityRate", -3.7 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
 							im.SameLine()
 							if im.SmallButton("Pluto") then
-								local data = jsonEncode( { "gravity", -0.58 } )
+								local data = jsonEncode( { "gravityRate", -0.58 } )
 								TriggerServerEvent("CEISetEnv", data)
 								log('W', logTag, "CEISetEnv Called: " .. data)
 							end
@@ -4290,7 +4290,7 @@ local function drawCEI()
 					else
 						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
 							im.SameLine()
-							im.ShowHelpMarker(descriptions.environment.gravity)
+							im.ShowHelpMarker(descriptions.environment.controlGravity)
 							if environment.controlGravity then
 								im.SameLine()
 								im.PushStyleColor2(im.Col_Button, im.ImVec4(0.15, 0.69, 0.05, 0.333))
