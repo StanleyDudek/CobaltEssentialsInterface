@@ -1,7 +1,7 @@
 # CobaltEssentialsInterface
-A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
+## A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
-![image](https://user-images.githubusercontent.com/49531350/198840124-8ed08ef6-7193-42ea-a3b5-54b3adcc4957.png)
+![image](https://github.com/user-attachments/assets/045e716b-6e17-42fb-8688-e08cefd51570)
 
 ## Features:
 
@@ -13,9 +13,9 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 
 ## Pre-requisites:
 
-1. BeamMP Server 3.1.0 or newer (as of CEI v0.7)
-2. [CobaltEssentials](https://github.com/prestonelam2003/CobaltEssentials) 1.7.3 or newer installed.
-3. As owner, have yourself set as owner group in CobaltEssentials (i.e. `ce setgroup yourName owner` in server console)
+1. BeamMP Server 3.4.1 (or newer)
+2. [CobaltEssentials](https://github.com/prestonelam2003/CobaltEssentials) 1.7.6 or newer installed.
+3. As you are the owner, have yourself set as owner group in CobaltEssentials (i.e. `ce setgroup yourName owner` in server console)
 
 ## Installation:
 
@@ -30,7 +30,7 @@ A Dear ImGui based interface for BeamMP Servers running CobaltEssentials
 1. Grab the latest release from [releases](https://github.com/StanleyDudek/CobaltEssentialsInterface/releases).
 2. Unpack it somewhere.
 3. Drag the folder `Resources` into the directory where your server is installed, accept the overwrites.
-4. (Optional) If coming from pre-0.7 CEI, I HIGHLY RECCOMMENDED that you delete `environment.json`, `interface.json`, and `nametags.json` from the CobaltDB folder.
+4. If you have server console errors after updating delete just about everything in the CobaltDB folder aside from playerPermissions.json
 
 ## How it looks:
 
