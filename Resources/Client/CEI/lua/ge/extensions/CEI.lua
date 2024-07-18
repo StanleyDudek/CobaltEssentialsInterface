@@ -1291,8 +1291,7 @@ local function drawCEI()
 								im.Text("		Add level: ")
 								im.SameLine()
 								im.PushItemWidth(120*CEIScale[0])
-								if im.InputTextWithHint("##newSpawnLevel", "New Level", configVals.cobalt.permissions.newSpawnVehiclesLevelInput, 128) then
-								end
+								im.InputTextWithHint("##newSpawnLevel", "New Level", configVals.cobalt.permissions.newSpawnVehiclesLevelInput, 128)
 								im.PopItemWidth()
 								im.Text("		")
 								im.SameLine()
@@ -1515,7 +1514,7 @@ local function drawCEI()
 							im.SetWindowFontScale(CEIScale[0])
 							if im.TreeNode1("maxActivePlayers:") then
 								im.SameLine()
-								im.Text(config.cobalt.maxActivePlayers)
+								im.Text(tostring(config.cobalt.maxActivePlayers))
 								im.Text("		")
 								im.SameLine()
 								im.PushItemWidth(120*CEIScale[0])
@@ -1528,7 +1527,7 @@ local function drawCEI()
 								im.TreePop()
 							else
 								im.SameLine()
-								im.Text(config.cobalt.maxActivePlayers)
+								im.Text(tostring(config.cobalt.maxActivePlayers))
 							end
 							im.Separator()
 							im.SetWindowFontScale(CEIScale[0])
@@ -1925,16 +1924,33 @@ local function drawCEI()
 							im.Text('		Default CEI State:')
 							im.SameLine()
 							if config.cobalt.interface.defaultState == true then
-								if im.SmallButton("Shown##") then
+								if im.SmallButton("Shown##defState") then
 									local data = jsonEncode( { false } )
 									TriggerServerEvent("CEISetDefaultState", data)
 									log('W', logTag, "CEISetDefaultState Called: " .. data)
 								end
 							elseif config.cobalt.interface.defaultState == false then
-								if im.SmallButton("Hidden##") then
+								if im.SmallButton("Hidden##defState") then
 									local data = jsonEncode( { true } )
 									TriggerServerEvent("CEISetDefaultState", data)
 									log('W', logTag, "CEISetDefaultState Called: " .. data)
+								end
+							end
+						end
+						if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.config then
+							im.Text('		CEI Welcome Message:')
+							im.SameLine()
+							if config.cobalt.interface.welcome == true then
+								if im.SmallButton("Shown##welcome") then
+									local data = jsonEncode( { false } )
+									TriggerServerEvent("CEISetWelcome", data)
+									log('W', logTag, "CEISetWelcome Called: " .. data)
+								end
+							elseif config.cobalt.interface.welcome == false then
+								if im.SmallButton("Hidden##welcome") then
+									local data = jsonEncode( { true } )
+									TriggerServerEvent("CEISetWelcome", data)
+									log('W', logTag, "CEISetWelcome Called: " .. data)
 								end
 							end
 						end
