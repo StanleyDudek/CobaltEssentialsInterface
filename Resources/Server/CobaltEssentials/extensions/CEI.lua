@@ -267,7 +267,15 @@ local descriptions = {
 	}
 }
 
-local environmentJson = CobaltDB.new("environment")
+local environmentJson, databaseLoaderInfo = CobaltDB.new("environment")
+
+if databaseLoaderInfo == "error" then
+	CElog("Environment Database corrupted. Resetting Environment!", "CEI")
+	local filePath = pluginPath .. "/CobaltDB/environment.json"
+	utils.writeJson(filePath, {})
+	environmentJson, databaseLoaderInfo = CobaltDB.new("environment")
+end
+
 local defaultEnvironmentValues = {
 	controlSun = 			{value = environmentDefaults.controlSun},
 	ToD = 					{value = environmentDefaults.ToD},
