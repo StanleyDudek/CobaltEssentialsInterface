@@ -3,7 +3,7 @@
         "cat": "cei",
         "order": 0,
         "ctx": "tlua",
-        "onUp": "if CEI.windowOpen[0] == true then CEI.windowOpen[0] = false else CEI.windowOpen[0] = true end",
+        "onUp": "TriggerServerEvent('CEIKeybind', '')",
         "isBasic": true,
         "title": "Toggle CEI",
         "desc": "Show or Hide the CEI Window"
