@@ -6054,4 +6054,6 @@ M.onVehicleResetted = onVehicleResetted
 
 M.setPhysicsSpeed = setPhysicsSpeed
 
+M.windowOpen = windowOpen
+
 return M
