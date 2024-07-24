@@ -739,10 +739,10 @@ local function drawCEI()
 								TriggerServerEvent("CEIVoteKick", data)
 								log('W', logTag, "CEIVoteKick Called: " .. data)
 							end
-							im.SameLine()
 						end
 					end
 					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
+						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIKick", data)
@@ -1132,10 +1132,10 @@ local function drawCEI()
 								TriggerServerEvent("CEIVoteKick", data)
 								log('W', logTag, "CEIVoteKick Called: " .. data)
 							end
-							im.SameLine()
 						end
 					end
 					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
+						im.SameLine()
 						if im.SmallButton("Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
 							TriggerServerEvent("CEIKick", data)
