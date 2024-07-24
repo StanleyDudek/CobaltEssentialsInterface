@@ -749,6 +749,7 @@ local function onInit()
 	MP.RegisterEvent("CEITeleportFrom","CEITeleportFrom")
 	MP.RegisterEvent("CEIRaceInclude","CEIRaceInclude")
 	MP.RegisterEvent("CEISetUserUIScale","CEISetUserUIScale")
+	MP.RegisterEvent("CEIKeybind","CEIKeybind")
 	
 	MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
 	
@@ -939,6 +940,18 @@ local function CEI(player)
 		showCEI[player.name] = false
 	end
 	MP.TriggerClientEventJson(player.playerID, "rxCEIstate", { showCEI[player.name] } )
+end
+
+function CEIKeybind(player_id)
+	local name = MP.GetPlayerName(player_id)
+	if showCEI[name] == false then
+		CobaltDB.set("playersDB/" .. name, "showCEI", "value", true)
+		showCEI[name] = true
+	elseif showCEI[name] == true then
+		CobaltDB.set("playersDB/" .. name, "showCEI", "value", false)
+		showCEI[name] = false
+	end
+	MP.TriggerClientEventJson(player_id, "rxCEIstate", { showCEI[name] } )
 end
 
 local function txPlayersResetExempt(player)

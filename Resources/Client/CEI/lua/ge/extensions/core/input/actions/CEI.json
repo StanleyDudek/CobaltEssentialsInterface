@@ -1,0 +1,11 @@
+{
+    "toggleCEI": {
+        "cat": "cei",
+        "order": 0,
+        "ctx": "tlua",
+        "onUp": "TriggerServerEvent('CEIKeybind', '')",
+        "isBasic": true,
+        "title": "Toggle CEI",
+        "desc": "Show or Hide the CEI Window"
+    }
+}
