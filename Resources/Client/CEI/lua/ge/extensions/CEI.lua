@@ -232,6 +232,7 @@ local function rxConfigData(data)
 		configVals.cobalt.interface.temperature = im.IntPtr(tonumber(config.cobalt.interface.temperature))
 		configVals.cobalt.interface.database = im.IntPtr(tonumber(config.cobalt.interface.database))
 		configVals.cobalt.interface.race = im.IntPtr(tonumber(config.cobalt.interface.race))
+		configVals.cobalt.interface.voteKick = im.IntPtr(tonumber(config.cobalt.interface.voteKick))
 		configVals.restrictions.reset.messageDuration = im.IntPtr(tonumber(config.restrictions.reset.messageDuration))
 		configVals.restrictions.reset.timeout = im.IntPtr(tonumber(config.restrictions.reset.timeout))
 		configVals.restrictions.reset.title = im.ArrayChar(128)
@@ -731,7 +732,7 @@ local function drawCEI()
 				if im.CollapsingHeader1(players[k].playerName) then
 					im.PopStyleColor(4)
 					im.Indent()
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentGroup == "default" or currentUIPerm >= 1 then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.voteKick then
 						if im.SmallButton("Vote Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName } )
 							TriggerServerEvent("CEIVoteKick", data)
@@ -1122,7 +1123,7 @@ local function drawCEI()
 				else
 					im.PopStyleColor(4)
 					im.Indent()
-					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentGroup == "default" or currentUIPerm >= 1 then
+					if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.voteKick then
 						if im.SmallButton("Vote Kick##"..tostring(k)) then
 						local data = jsonEncode( { players[k].playerName } )
 							TriggerServerEvent("CEIVoteKick", data)
@@ -2441,6 +2442,25 @@ local function drawCEI()
 						im.SameLine()
 						if im.SmallButton("Reset##RACE") then
 							local data = jsonEncode( { "race", "default" } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.Separator()
+						im.SetWindowFontScale(CEIScale[0])
+						im.ShowHelpMarker(descriptions.interface.voteKick)
+						im.SameLine()
+						im.Text("voteKick: ")
+						im.SameLine()
+						im.PushItemWidth(120*CEIScale[0])
+						if im.InputInt("##voteKick", configVals.cobalt.interface.voteKick, 1) then
+							local data = jsonEncode( { "voteKick", tostring(configVals.cobalt.interface.voteKick[0]) } )
+							TriggerServerEvent("CEISetInterface", data)
+							log('W', logTag, "CEISetInterface Called: " .. data)
+						end
+						im.PopItemWidth()
+						im.SameLine()
+						if im.SmallButton("Reset##VK") then
+							local data = jsonEncode( { "voteKick", "default" } )
 							TriggerServerEvent("CEISetInterface", data)
 							log('W', logTag, "CEISetInterface Called: " .. data)
 						end
