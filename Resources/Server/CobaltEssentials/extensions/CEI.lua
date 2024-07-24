@@ -69,6 +69,7 @@ config.cobalt.interface.gravity_default = 2
 config.cobalt.interface.temperature_default = 2
 config.cobalt.interface.database_default = 3
 config.cobalt.interface.race_default = 2
+config.cobalt.interface.voteKick_default = 1
 
 config.cobalt.groups = {}
 
@@ -183,7 +184,8 @@ local descriptions = {
 		gravity = "The level required to access gravity settings.",
 		temperature = "The level required to access temperature settings.",
 		database = "The level required to access database settings.",
-		race = "The level required to access race countdown."
+		race = "The level required to access race countdown.",
+		voteKick = "The level required to access votekick button."
 	},
 	restrictions = {
 		control = "Are resets controlled?",
@@ -432,7 +434,8 @@ local defaultDescriptions = {
 	gravity = 				{description = descriptions.interface.gravity},
 	temperature = 			{description = descriptions.interface.temperature},
 	database = 				{description = descriptions.interface.database},
-	race = 					{description = descriptions.interface.race}
+	race = 					{description = descriptions.interface.race},
+	voteKick = 				{description = descriptions.interface.voteKick}
 	
 }
 
@@ -603,7 +606,8 @@ local defaultInterfaceSettings = {
 	gravity = 				{value = config.cobalt.interface.gravity_default},
 	temperature = 			{value = config.cobalt.interface.temperature_default},
 	database = 				{value = config.cobalt.interface.database_default},
-	race = 					{value = config.cobalt.interface.race_default}
+	race = 					{value = config.cobalt.interface.race_default},
+	voteKick = 				{value = config.cobalt.interface.voteKick_default}
 }
 
 local voteKickJson = CobaltDB.new("voteKick")
@@ -833,6 +837,7 @@ local function onInit()
 	config.cobalt.interface.temperature = CobaltDB.query("interface", "temperature", "value")
 	config.cobalt.interface.database = CobaltDB.query("interface", "database", "value")
 	config.cobalt.interface.race = CobaltDB.query("interface", "race", "value")
+	config.cobalt.interface.voteKick = CobaltDB.query("interface", "voteKick", "value")
 	
 	config.restrictions.reset.control = CobaltDB.query("restrictions", "control", "value")
 	config.restrictions.reset.messageDuration = CobaltDB.query("restrictions", "messageDuration", "value")
@@ -2601,6 +2606,7 @@ function requestCEISync(player_id)
 		if config.cobalt.interface.welcome then
 			CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
 			CE.delayExec( 6000 , sendDelayedMessage , { player , "Use " .. commandPrefix .. "CEI or " .. commandPrefix .. "cei in chat to toggle." } )
+            CE.delayExec( 7000 , sendDelayedMessage , { player , "Or set a keybind in Controls." } )
 		end
 	end
 end
