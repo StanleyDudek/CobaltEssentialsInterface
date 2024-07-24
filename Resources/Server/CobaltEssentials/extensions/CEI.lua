@@ -108,6 +108,8 @@ config.restrictions.CEN.editorToggle_default = false
 config.restrictions.CEN.editorSafeModeToggle_default = false
 config.restrictions.CEN.objectEditorToggle_default = false
 config.restrictions.CEN.nodegrabberRender_default = false
+config.restrictions.voteKick = {}
+config.restrictions.voteKick.voteKick_enabled_default = true
 
 local environmentDefaults = {
 	controlSun = false,
@@ -212,7 +214,8 @@ local descriptions = {
 		editorToggle = "While restricted, is editor disabled?",
 		editorSafeModeToggle = "While restricted, is editor safe mode disabled?",
 		objectEditorToggle = "While restricted, is object editor disabled?",
-		nodegrabberRender = "While restricted, is nodegrabber disabled?"
+		nodegrabberRender = "While restricted, is nodegrabber disabled?",
+		voteKick_enabled = "Is votekick allowed?"
 	},
 	environment = {
 		controlSun = "Do we control everyone's sun?",
@@ -415,6 +418,7 @@ local defaultDescriptions = {
 	editorSafeModeToggle = 	{description = descriptions.restrictions.editorSafeModeToggle},
 	objectEditorToggle = 	{description = descriptions.restrictions.objectEditorToggle},
 	nodegrabberRender = 	{description = descriptions.restrictions.nodegrabberRender},
+	voteKick_enabled = 		{description = descriptions.restrictions.voteKick_enabled},
 	
 	welcome = 				{description = descriptions.interface.welcome},
 	defaultState = 			{description = descriptions.interface.defaultState},
@@ -467,6 +471,8 @@ local defaultRestrictions = {
 	editorSafeModeToggle = 	{value = config.restrictions.CEN.editorSafeModeToggle_default},
 	objectEditorToggle = 	{value = config.restrictions.CEN.objectEditorToggle_default},
 	nodegrabberRender = 	{value = config.restrictions.CEN.nodegrabberRender_default},
+
+	voteKick_enabled = 				{value = config.restrictions.voteKick.voteKick_enabled_default}
 }
 
 local vehiclesJson = CobaltDB.new("vehicles")
@@ -866,6 +872,8 @@ local function onInit()
 	config.restrictions.CEN.editorSafeModeToggle = CobaltDB.query("restrictions", "editorSafeModeToggle", "value")
 	config.restrictions.CEN.objectEditorToggle = CobaltDB.query("restrictions", "objectEditorToggle", "value")
 	config.restrictions.CEN.nodegrabberRender = CobaltDB.query("restrictions", "nodegrabberRender", "value")
+
+	config.restrictions.voteKick.voteKick_enabled = CobaltDB.query("restrictions", "voteKick_enabled", "value")
 	
 	config.nametags.settings.blockingEnabled = CobaltDB.query("nametags", "blockingEnabled", "value")
 	config.nametags.settings.blockingTimeout = CobaltDB.query("nametags", "blockingTimeout", "value")
@@ -1431,6 +1439,11 @@ function CEISetRestrictions(senderID, data)
 				config.restrictions.CEN[key] = value
 				CobaltDB.set("restrictions", key, "value", value)
 			end
+		end
+
+		if tag == "voteKick" then
+			config.restrictions.voteKick["voteKick_enabled"] = value
+			CobaltDB.set("restrictions", key, "value", value)
 		end
 
 		txConfigData()
@@ -2544,6 +2557,7 @@ local function onPlayerJoining(player)
 				return reason
 			end
 		end
+
 		if CobaltDB.query("playersDB/" .. player.name, "uiScale", "value") == nil then
 			CobaltDB.set("playersDB/" .. player.name, "uiScale", "value", 1)
 			tempPlayers[player.name].uiScale = 1
