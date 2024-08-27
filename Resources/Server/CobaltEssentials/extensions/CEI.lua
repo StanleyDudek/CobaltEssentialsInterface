@@ -2525,6 +2525,17 @@ end
 
 local function onPlayerJoining(player)
 	if player then
+		if not tempPlayers[player.name] then
+			tempPlayers[player.name] = {}
+			tempPlayers[player.name].tempPermLevel = 0
+			tempPlayers[player.name].tempUIPermLevel = 1
+			tempPlayers[player.name].tempBanLength = 1
+			tempPlayers[player.name].includeInRace = false
+			tempPlayers[player.name].uiScale = 1
+			tempPlayers[player.name].votedFor = {}
+			tempPlayers[player.name].tempPermLevel = player.permissions.level
+			tempPCV[player.name] = "none"
+		end
 		tempPlayers[player.name].player_id = player.playerID
 		local identifiers = MP.GetPlayerIdentifiers(player.playerID)
 		if CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == nil or CobaltDB.query("playersDB/" .. player.name, "tempBan", "value") == 0 then
@@ -2599,6 +2610,7 @@ local function onPlayerJoining(player)
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
 		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+		tempPlayers[player.name].synced = true
 	end
 end
 
@@ -2620,33 +2632,35 @@ function requestCEISync(player_id)
 		if config.cobalt.interface.welcome then
 			CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
 			CE.delayExec( 6000 , sendDelayedMessage , { player , "Use " .. commandPrefix .. "CEI or " .. commandPrefix .. "cei in chat to toggle." } )
-            CE.delayExec( 7000 , sendDelayedMessage , { player , "Or set a keybind in Controls." } )
+			CE.delayExec( 7000 , sendDelayedMessage , { player , "Or set a keybind in Controls." } )
 		end
 	end
 end
 
 local function onPlayerDisconnect(player)
 	if player then
-		local checkName = player.name
-		if tempPlayers[checkName] then
-			for playerID, player in pairs(players) do
-				if tempPlayers[checkName].votedFor then
-					if tempPlayers[checkName].votedFor[player.name] then
-						tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+		if tempPlayers[player.name].synced then
+			local checkName = player.name
+			if tempPlayers[checkName] then
+				for playerID, player in pairs(players) do
+					if tempPlayers[checkName].votedFor then
+						if tempPlayers[checkName].votedFor[player.name] then
+							tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
+						end
 					end
 				end
 			end
+			playersTable[player.playerID] = nil
+			tempPlayers[player.name] = nil
+			tempPCV[player.name] = nil
+			showCEI[player.name] = nil
+			teleport[player.name] = nil
+			resetExempt[player.name] = nil
+			playersDatabaseCount[player.name] = nil
+			MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
+			MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
+			MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 		end
-		playersTable[player.playerID] = nil
-		tempPlayers[player.name] = nil
-		tempPCV[player.name] = nil
-		showCEI[player.name] = nil
-		teleport[player.name] = nil
-		resetExempt[player.name] = nil
-		playersDatabaseCount[player.name] = nil
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
-		MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
 	end
 end
 
