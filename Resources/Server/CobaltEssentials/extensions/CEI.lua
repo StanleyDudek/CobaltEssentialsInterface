@@ -1008,7 +1008,6 @@ function txPlayersDatabase(now)
 						end
 						playersDatabase[k].playerName = playerName
 						playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
-						playersDatabase[k].ip = CobaltDB.query("playersDB/" .. playerName, "ip", "value")
 						if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
 							playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
 						end
@@ -1076,7 +1075,6 @@ local function txPlayersData()
 					vehicles = (player.vehicles or {})
 					}
 			if identifiers.beammp then
-				playersTable[player.playerID].ip = identifiers.ip
 				playersTable[player.playerID].beammp = identifiers.beammp
 			end
 			if tempPlayers[player.name] then
@@ -2538,10 +2536,7 @@ local function onPlayerJoining(player)
 		if identifiers.beammp then
 			CobaltDB.new("playersDB/" .. identifiers.beammp)
 			CobaltDB.set("playersDB/" .. identifiers.beammp, "beammp", "value", identifiers.beammp)
-			CobaltDB.set("playersDB/" .. identifiers.beammp, "ip", "value", identifiers.ip)
-
 			CobaltDB.set("playersDB/" .. player.name, "beammp", "value", identifiers.beammp)
-			CobaltDB.set("playersDB/" .. player.name, "ip", "value", identifiers.ip)
 			if CobaltDB.query("playersDB/" .. player.name, "banned", "value") == true then
 				local reason = CobaltDB.query("playersDB/" .. player.name, "banReason", "value") or "You are banned from this server!"
 				return reason
