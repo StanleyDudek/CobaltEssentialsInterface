@@ -5641,7 +5641,6 @@ end
 
 local function onWorldReadyState(state)
 	worldReadyState = state
-	
 	if worldReadyState == 2 then
 		defaults.timePlay = onTimePlayDefault()
 		defaults.time = onTimeDefault()
@@ -5665,7 +5664,6 @@ local function onWorldReadyState(state)
 		defaults.moonAzimuth = onMoonAzimuthDefault()
 		defaults.moonElevation = onMoonElevationDefault()
 		defaults.moonScale = onMoonScaleDefault()
-		
 		defaults.fogDensity = onFogDensityDefault()
 		defaults.fogDensityOffset = onFogDensityOffsetDefault()
 		defaults.fogAtmosphereHeight = onFogAtmosphereHeightDefault()
@@ -5681,16 +5679,13 @@ local function onWorldReadyState(state)
 		defaults.dropSize = onDropSizeDefault()
 		defaults.dropMinSpeed = onDropMinSpeedDefault()
 		defaults.dropMaxSpeed = onDropMaxSpeedDefault()
-		
 		if not syncRequested then
 			if MPConfig then
 				TriggerServerEvent("requestCEISync", "")
 				syncRequested = true
 			end
 		end
-		
 	end
-	
 end
 
 local function rxTeleportFrom(data)
@@ -5748,28 +5743,6 @@ local function runEnvironment(dt)
 				onMoonElevation(environment.moonElevation)
 				onMoonScale(environment.moonScale)
 			elseif environment.controlSun == false and defaultSunSet == false then
-				onTimePlay(defaults.timePlay, dt)
-				onTime(defaults.time, defaults.dayLength)
-				onDayLength(defaults.dayLength)
-				onDayScale(defaults.dayScale)
-				onNightScale(defaults.nightScale)
-				onSunAzimuthOverride(defaults.sunAzimuthOverride)
-				onSunSize(defaults.sunSize)
-				onSkyBrightness(defaults.skyBrightness)
-				onRayleighScattering(defaults.rayleighScattering)
-				onSunLightBrightness(defaults.sunLightBrightness)
-				onFlareScale(defaults.flareScale)
-				onOcclusionScale(defaults.occlusionScale)
-				onExposure(defaults.exposure)
-				onShadowDistance(defaults.shadowDistance)
-				onShadowSoftness(defaults.shadowSoftness)
-				onShadowSplits(defaults.shadowSplits)
-				onShadowTexSize(defaults.shadowTexSize)
-				onShadowLogWeight(defaults.shadowLogWeight)
-				onVisibleDistance(defaults.visibleDistance)
-				onMoonAzimuth(defaults.moonAzimuth)
-				onMoonElevation(defaults.moonElevation)
-				onMoonScale(defaults.moonScale)
 				defaultSunSet = true
 			end
 			if environment.controlWeather == true and defaultWeatherSet == true then
@@ -5791,21 +5764,6 @@ local function runEnvironment(dt)
 				onDropMinSpeed(environment.dropMinSpeed)
 				onDropMaxSpeed(environment.dropMaxSpeed)
 			elseif environment.controlWeather == false and defaultWeatherSet == false then
-				onFogDensity(defaults.fogDensity)
-				onFogDensityOffset(defaults.fogDensityOffset)
-				onFogAtmosphereHeight(defaults.fogAtmosphereHeight)
-				onCloudHeight(defaults.cloudHeight)
-				onCloudHeightOne(defaults.cloudHeightOne)
-				onCloudCover(defaults.cloudCover)
-				onCloudCoverOne(defaults.cloudCoverOne)
-				onCloudSpeed(defaults.cloudSpeed)
-				onCloudSpeedOne(defaults.cloudSpeedOne)
-				onCloudExposure(defaults.cloudExposure)
-				onCloudExposureOne(defaults.cloudExposureOne)
-				onRainDrops(defaults.rainDrops)
-				onDropSize(defaults.dropSize)
-				onDropMinSpeed(defaults.dropMinSpeed)
-				onDropMaxSpeed(defaults.dropMaxSpeed)
 				defaultWeatherSet = true
 			end
 			onSimSpeed(environment.simSpeed)
@@ -5876,7 +5834,6 @@ local function dropPlayerAtCamera()
 		core_camera.setByName(0, "orbit", false)
 	end
 	core_camera.resetCamera(0)
-
 	local gameVehicleID = be:getPlayerVehicleID(0)
 	if MPVehicleGE.isOwn(gameVehicleID) then
 		if not firstReset then
@@ -5891,9 +5848,8 @@ local function dropPlayerAtCamera()
 			resetsNotify(gameVehicleID)
 		end
 	end
-
 end
-  
+
 local function dropPlayerAtCameraNoReset()
 	local playerVehicle = be:getPlayerVehicle(0)
 	if not playerVehicle then return end
@@ -5902,7 +5858,6 @@ local function dropPlayerAtCameraNoReset()
 	camDir.z = 0
 	local camRot = quatFromDir(camDir, vec3(0,0,1))
 	camRot = quat(0, 0, 1, 0) * camRot -- vehicles' forward is inverted
-
 	local vehRot = quat(playerVehicle:getClusterRotationSlow(playerVehicle:getRefNodeId()))
 	local diffRot = vehRot:inversed() * camRot
 	playerVehicle:setClusterPosRelRot(playerVehicle:getRefNodeId(), pos.x, pos.y, pos.z, diffRot.x, diffRot.y, diffRot.z, diffRot.w)
@@ -5913,7 +5868,6 @@ local function dropPlayerAtCameraNoReset()
 	end
 	core_camera.resetCamera(0)
 	playerVehicle:setOriginalTransform(pos.x, pos.y, pos.z, camRot.x, camRot.y, camRot.z, camRot.w)
-
 	local gameVehicleID = be:getPlayerVehicleID(0)
 	if MPVehicleGE.isOwn(gameVehicleID) then
 		if not firstReset then
@@ -5928,7 +5882,6 @@ local function dropPlayerAtCameraNoReset()
 			resetsNotify(gameVehicleID)
 		end
 	end
-
 end
 
 local function onVehicleSpawned(gameVehicleID)
