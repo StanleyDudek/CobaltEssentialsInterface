@@ -2122,12 +2122,12 @@ local function drawCEI()
 ----------------------------------------------------------------------------------INTERFACE HEADER
                 if currentGroup == "owner" or currentUIPerm >= config.cobalt.interface.interface then
                     if im.CollapsingHeader1("Interface") then
+                        im.Indent()
                         if im.SmallButton("Reset All##INT") then
                             local data = jsonEncode( { "all", "default" } )
                             TriggerServerEvent("CEISetInterface", data)
                             log('W', logTag, "CEISetInterface Called: " .. data)
                         end
-                        im.Indent()
                         im.ShowHelpMarker(descriptions.interface.playerPermissions)
                         im.SameLine()
                         im.Text("playerPermissions: ")
@@ -6050,4 +6050,3 @@ M.onVehicleResetted = onVehicleResetted
 M.setPhysicsSpeed = setPhysicsSpeed
 
 return M
-
