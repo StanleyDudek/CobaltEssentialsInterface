@@ -1,4 +1,5 @@
---CEI (CLIENT) by Dudekahedron, 20245
+--CEI (CLIENT) by Dudekahedron, 2025
+
 local M = {}
 
 local CEI_VERSION = "0.8"
@@ -6049,3 +6050,4 @@ M.onVehicleResetted = onVehicleResetted
 M.setPhysicsSpeed = setPhysicsSpeed
 
 return M
+
