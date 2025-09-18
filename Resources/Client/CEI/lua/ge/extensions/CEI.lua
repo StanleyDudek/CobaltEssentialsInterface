@@ -38,14 +38,14 @@ local playersDatabaseVals = {}
       playersDatabaseVals.tempBanLength = im.FloatPtr(1)
 local playersDatabase = {}
 local playersDatabaseFiltering = {}
-      playersDatabaseFiltering.filter = ffi.new('ImGuiTextFilter[1]')
+      playersDatabaseFiltering.filter = im.ImGuiTextFilter()
 local configValsSet = false
 local configVals = {}
 local config = {}
 local resetsPlayerNotified = true
 local resetsTimerElapsedReset = 0
 local vehiclePermsFiltering = {}
-      vehiclePermsFiltering.filter = ffi.new('ImGuiTextFilter[1]')
+      vehiclePermsFiltering.filter = im.ImGuiTextFilter()
 local physics = {}
       physics.physmult = 1
 local timeUpdateQueued = false
@@ -1433,11 +1433,11 @@ local function drawCEI()
                                 end
                                 im.SameLine()
                                 im.ShowHelpMarker("Enter new vehicle and press Apply")
-                                im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter[0])
+                                im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter)
                                 for k in pairs(vehiclePerms) do
                                     local vehiclePermsPartLevels = config.cobalt.permissions.vehiclePerm[k].partLevel
                                     for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
-                                        if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter[0], vehiclePermsFiltering.lines[i]) then
+                                        if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter, vehiclePermsFiltering.lines[i]) then
                                             if config.cobalt.permissions.vehiclePerm[k].name == ffi.string(vehiclePermsFiltering.lines[i]) then
                                                 if im.TreeNode1(ffi.string(vehiclePermsFiltering.lines[i]) .. ":") then
                                                     im.SameLine()
@@ -4571,9 +4571,9 @@ local function drawCEI()
                 im.PopItemWidth()
                 im.EndChild()
                 im.BeginChild1("Database2")
-                im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter[0])
+                im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter)
                 for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
-                    if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter[0], playersDatabaseFiltering.lines[i]) then
+                    if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter, playersDatabaseFiltering.lines[i]) then
                         for k in pairs(playersDatabase) do
                             if type(k) == "number" then
                                 local playerName = playersDatabase[k].playerName
