@@ -999,7 +999,7 @@ function txPlayersDatabase(now)
     for playerID, player in pairs(players) do
         if player.connectStage == "connected" then
             if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
-                local playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
+                playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
                 local playersDatabaseCompare = 0
                 for k,v in pairs(playersDatabase) do
                     playersDatabaseCompare = playersDatabaseCompare + 1
@@ -1046,14 +1046,14 @@ function txPlayersDatabase(now)
 end
 
 local function txEnvironment(player)
-    MP.TriggerClientEventJson(-1, "rxEnvironment", environment)
+    MP.TriggerClientEventJson(player.playerID, "rxEnvironment", environment)
 end
 
 local function txDescriptions(player)
     MP.TriggerClientEventJson(player.playerID, "rxDescriptions", descriptions)
 end
 
-local function txPlayersData()
+local function txPlayersData(target)
     for playerID, player in pairs(players) do
         local identifiers = MP.GetPlayerIdentifiers(playerID)
         if player.connectStage and player.connectStage ~= 0 then
@@ -1115,7 +1115,7 @@ local function txPlayersData()
             end
         end
     end
-    MP.TriggerClientEventJson(-1, "rxPlayersData", playersTable)
+    MP.TriggerClientEventJson(target.playerID, "rxPlayersData", playersTable)
 end
 
 local function theConfigData()
@@ -1209,8 +1209,8 @@ local function theConfigData()
     end
 end
 
-local function txConfigData()
-    MP.TriggerClientEventJson(-1, "rxConfigData", config)
+local function txConfigData(player)
+    MP.TriggerClientEventJson(player.playerID, "rxConfigData", config)
 end
 
 function txNametagWhitelisted(player)
@@ -1246,13 +1246,12 @@ function txNametagBlockerTimeout(senderID, data)
 end
 
 local function txData()
-    txPlayersData()
-    txEnvironment()
-    txConfigData()
-    for player_id, player_name in pairs(MP.GetPlayers()) do
+    for _, player_name in pairs(MP.GetPlayers()) do
         local player = players.getPlayerByName(player_name)
         if player then
             if player.connectStage == "connected" then
+                txPlayersData(player)
+                txEnvironment(player)
                 txPlayersGroup(player)
                 txPlayersUIPerm(player)
             end
@@ -1293,6 +1292,13 @@ function CEISetNewVehiclePerm(senderID, data)
         else
             CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1303,6 +1309,13 @@ function CEISetVehiclePermLevel(senderID, data)
         local vehicleName = data[1]
         local vehiclePermLevel = tonumber(data[2])
         CobaltDB.set("vehicles", vehicleName, "level", vehiclePermLevel)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1324,6 +1337,13 @@ function CEIRemoveVehiclePerm(senderID, data)
         updateCobaltDatabase("vehicles")
         vehicles = CobaltDB.new("vehicles")
         config.cobalt.permissions.vehiclePerm = {}
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1339,6 +1359,13 @@ function CEISetNewVehiclePart(senderID, data)
             local partName = "partlevel:" .. data[2]
             local partLevel = 1
             CobaltDB.set("vehicles", vehicleName, partName, partLevel)
+        end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
         end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
@@ -1364,6 +1391,13 @@ function CEIRemoveVehiclePart(senderID, data)
         else
             return
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1375,6 +1409,13 @@ function CEISetVehiclePartLevel(senderID, data)
         local vehiclePartName = "partlevel:" .. data[2]
         local vehiclePartLevel = tonumber(data[3])
         CobaltDB.set("vehicles", vehicleName, vehiclePartName, vehiclePartLevel)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1408,7 +1449,20 @@ function CEISetInterface(senderID, data)
             config.cobalt.interface[key] = value
             CobaltDB.set("interface", key, "value", value)
         end
-        txConfigData()
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1451,14 +1505,17 @@ function CEISetRestrictions(senderID, data)
                 CobaltDB.set("restrictions", key, "value", value)
             end
         end
-
         if tag == "voteKick" then
             config.restrictions.voteKick["voteKick_enabled"] = value
             CobaltDB.set("restrictions", key, "value", value)
         end
-
-        txConfigData()
-
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1587,6 +1644,13 @@ function CEIToggleSpawn(senderID, data)
                 end
             end
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1597,6 +1661,13 @@ function CEISetSpawnPerm(senderID, data)
         local key = tempData[1]
         local value = tempData[2]
         CobaltDB.set("permissions", "spawnVehicles", key, value)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1607,6 +1678,13 @@ function CEIRemoveSpawnPerm(senderID, data)
         local targetLevel = tostring(tempData[1])
         CobaltDB.set("permissions", "spawnVehicles", targetLevel, nil)
         config.cobalt.permissions.tempSpawnPerms[targetLevel] = nil
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1624,6 +1702,13 @@ function CEISetNewSpawnPerm(senderID, data)
                 CobaltDB.set("permissions", "spawnVehicles", targetLevel, true)
             end
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1634,6 +1719,13 @@ function CEISetSendMessagePerm(senderID, data)
         local key = tempData[1]
         local value = tempData[2]
         CobaltDB.set("permissions", "sendMessage", key, value)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1643,6 +1735,13 @@ function CEIRemoveSendMessagePerm(senderID, data)
         local tempData = Util.JsonDecode(data)
         local targetLevel = tostring(tempData[1])
         CobaltDB.set("permissions", "sendMessage", targetLevel, nil)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1658,6 +1757,13 @@ function CEISetNewSendMessagePerm(senderID, data)
                 return
             else
                 CobaltDB.set("permissions", "sendMessage", targetLevel, true)
+            end
+        end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
             end
         end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
@@ -1687,6 +1793,13 @@ function CEISetNewGroup(senderID, data)
             local applyGroup = { [newGroup] = { level = 1 } }
             applyStuff(players.database, applyGroup)
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1705,6 +1818,13 @@ function CEIRemoveGroup(senderID, data)
         updateCobaltDatabase("playerPermissions")
         playerPermissions = CobaltDB.new("playerPermissions")
         config.cobalt.groups = {}
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1722,6 +1842,13 @@ function CEISetNewVehiclePermsLevel(senderID, data)
                 CobaltDB.set("permissions", "vehicleCap", targetLevel, 1)
             end
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1735,6 +1862,13 @@ function CEIRemoveVehiclePermsLevel(senderID, data)
         else
             return
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1745,6 +1879,13 @@ function CEISetVehiclePerms(senderID, data)
         local targetLevel = data[1]
         local targetVehicles = tonumber(data[2])
         CobaltDB.set("permissions", "vehicleCap", targetLevel, targetVehicles)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -1787,6 +1928,13 @@ function CEISetGroup(senderID, data)
                     CobaltDB.set("playersDB/" .. name, "group", "value", string.gsub(group, "group:", ""))
                 else
                     MP.SendChatMessage(senderID, "Cannot set " .. name .. "'s group to " .. string.gsub(group, "group:", "") .. " because it exceeds your own!")
+                end
+            end
+        end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
                 end
             end
         end
@@ -1839,6 +1987,13 @@ function CEISetGroupPerms(senderID, data)
             players.database[group][permission] = nil
         else
             players.database[group][permission] = value
+        end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
         end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
@@ -1997,6 +2152,13 @@ function CEISetCfg(senderID, data)
         else
             return nil
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -2006,6 +2168,13 @@ function CEISetMaxActivePlayers(senderID, data)
         data = Util.JsonDecode(data)
         data = tonumber(data[1])
         CobaltDB.set("config", "maxActivePlayers", "value", data)
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
     end
 end
@@ -2406,7 +2575,6 @@ end
 function logEnvironment()
     logTimer = logTimer + 1
     if logTimer >= logInterval then
-        CobaltDB.set("environment", "ToD", "value", environment.ToD)
         local environmentTables = CobaltDB.getTables("environment")
         for k,v in pairs(environmentTables) do
             local currentEnvironmentTable = CobaltDB.getTable("environment",v)
@@ -2604,6 +2772,13 @@ local function onPlayerJoin(player)
         if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
             playersDatabaseCount[player.name] = 0
         end
+        for playerID, player in pairs(players) do
+            if type(playerID) == "number" then
+                if player.connectStage == "connected" then
+                    txConfigData(player)
+                end
+            end
+        end
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
@@ -2614,6 +2789,7 @@ function requestCEISync(player_id)
     local name = MP.GetPlayerName(player_id)
     local player = players.getPlayerByName(name)
     if player then
+        txConfigData(player)
         txDescriptions(player)
         txPlayersGroup(player)
         txPlayersResetExempt(player)
@@ -2633,11 +2809,11 @@ function requestCEISync(player_id)
     end
 end
 
-local function onPlayerDisconnect(player)
-    if player then
-        local checkName = player.name
+local function onPlayerDisconnect(target)
+    if target then
+        local checkName = target.name
         if tempPlayers[checkName] then
-            for playerID, player in pairs(players) do
+            for _, player in pairs(players) do
                 if tempPlayers[checkName].votedFor then
                     if tempPlayers[checkName].votedFor[player.name] then
                         tempPlayers[player.name].kickVotes = tempPlayers[player.name].kickVotes - 1
@@ -2645,13 +2821,13 @@ local function onPlayerDisconnect(player)
                 end
             end
         end
-        playersTable[player.playerID] = nil
-        tempPlayers[player.name] = nil
-        tempPCV[player.name] = nil
-        showCEI[player.name] = nil
-        teleport[player.name] = nil
-        resetExempt[player.name] = nil
-        playersDatabaseCount[player.name] = nil
+        playersTable[target.playerID] = nil
+        tempPlayers[target.name] = nil
+        tempPCV[target.name] = nil
+        showCEI[target.name] = nil
+        teleport[target.name] = nil
+        resetExempt[target.name] = nil
+        playersDatabaseCount[target.name] = nil
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
