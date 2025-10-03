@@ -258,7 +258,7 @@ local function rxConfigData(data)
         for k in pairs(config.cobalt.permissions.vehiclePerm) do
             tempFilterTable[k] = config.cobalt.permissions.vehiclePerm[k].name
         end
-        vehiclePermsFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
+        vehiclePermsFiltering.lines = tempFilterTable
         configVals.nametags.whitelistNameInput = im.ArrayChar(128)
         configVals.nametags.settings.blockingTimeoutInt = im.IntPtr(tonumber(config.nametags.settings.blockingTimeout))
         for k in pairs(config.cobalt.groups) do
@@ -335,10 +335,9 @@ local function rxPlayersDatabase(data)
     end
     local tempFilterTable = {}
     for k in pairs(playersDatabase) do
-        local i = playersDatabase[k].playerName
-        tempFilterTable[k] = i
+        tempFilterTable[k] = playersDatabase[k].playerName
     end
-    playersDatabaseFiltering.lines = im.ArrayCharPtrByTbl(tempFilterTable)
+    playersDatabaseFiltering.lines = tempFilterTable
 end
 
 local function rxPlayersData(data)
@@ -1436,10 +1435,16 @@ local function drawCEI()
                                 im.ImGuiTextFilter_Draw(vehiclePermsFiltering.filter)
                                 for k in pairs(vehiclePerms) do
                                     local vehiclePermsPartLevels = config.cobalt.permissions.vehiclePerm[k].partLevel
-                                    for i = 0, im.GetLengthArrayCharPtr(vehiclePermsFiltering.lines) - 1 do
+                                    local linesCount = 0
+                                    if vehiclePermsFiltering.lines then
+                                        for _ in pairs(vehiclePermsFiltering.lines) do
+                                            linesCount = linesCount + 1
+                                        end
+                                    end
+                                    for i = 1, linesCount do
                                         if im.ImGuiTextFilter_PassFilter(vehiclePermsFiltering.filter, vehiclePermsFiltering.lines[i]) then
-                                            if config.cobalt.permissions.vehiclePerm[k].name == ffi.string(vehiclePermsFiltering.lines[i]) then
-                                                if im.TreeNode1(ffi.string(vehiclePermsFiltering.lines[i]) .. ":") then
+                                            if config.cobalt.permissions.vehiclePerm[k].name == vehiclePermsFiltering.lines[i] then
+                                                if im.TreeNode1(vehiclePermsFiltering.lines[i] .. ":") then
                                                     im.SameLine()
                                                     im.Text("level: " .. config.cobalt.permissions.vehiclePerm[k].level)
                                                     im.Text("    ")
@@ -4572,14 +4577,20 @@ local function drawCEI()
                 im.EndChild()
                 im.BeginChild1("Database2")
                 im.ImGuiTextFilter_Draw(playersDatabaseFiltering.filter)
-                for i = 0, im.GetLengthArrayCharPtr(playersDatabaseFiltering.lines) - 1 do
+                local linesCount = 0
+                if playersDatabaseFiltering.lines then
+                    for _ in pairs(playersDatabaseFiltering.lines) do
+                        linesCount = linesCount + 1
+                    end
+                end
+                for i = 1, linesCount do
                     if im.ImGuiTextFilter_PassFilter(playersDatabaseFiltering.filter, playersDatabaseFiltering.lines[i]) then
                         for k in pairs(playersDatabase) do
                             if type(k) == "number" then
                                 local playerName = playersDatabase[k].playerName
                                 local playerBeammp = playersDatabase[k].beammp
                                 if playerName ~= playerBeammp then
-                                    if playerName == ffi.string(playersDatabaseFiltering.lines[i]) then
+                                    if playerName == playersDatabaseFiltering.lines[i] then
                                         if im.TreeNode1("##"..playerName) then
                                             im.SameLine()
                                             if playerBeammp then
@@ -4984,7 +4995,13 @@ local function resetsNotify(vehicleID)
                 guihooks.trigger('toastrMsg', {type="error", title = config.restrictions.reset.title, msg = config.restrictions.reset.disabledMessage, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
                 return
             else
-                if #resetsBlockedInputActions > 0 then
+                local counter = 0
+                if resetsBlockedInputActions then
+                    for _ in pairs(resetsBlockedInputActions) do
+                        counter = counter + 1
+                    end
+                end
+                if counter > 0 then
                     resetsPlayerNotified = false
                     resetsTimerElapsedReset = 0
                     local message = config.restrictions.reset.message:gsub("{secondsLeft}", math.floor(config.restrictions.reset.timeout - resetsTimerElapsedReset))
