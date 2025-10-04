@@ -41,7 +41,7 @@ local configValsSet = false
 local configVals = {}
 local config = {}
 local resetsPlayerNotified = true
-local resetsTimerElapsedReset = 0
+local resetsTimerElapsedReset = 600
 local vehiclePermsFiltering = {}
       vehiclePermsFiltering.filter = im.ImGuiTextFilter()
 local physics = {}
@@ -58,7 +58,7 @@ local defaultSunSet = false
 local envReportRate = 1
 local lastEnvReport = 0
 local firstReport = false
-local lastTeleport = 0
+local lastTeleport = 60
 local worldReadyState = 0
 local envObjectIdCache = {}
 local syncRequested = false
@@ -426,32 +426,32 @@ local function drawCEI()
     im.SetWindowFontScale(CEIScale[0])
     im.BeginChild1("QuickInfo", im.ImVec2(0, (70*CEIScale[0])), true )
     im.Text("Spawn")
-    if config.cobalt.permissions.tempSpawnToggle then
-        im.SameLine()
-        im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
-    else
+    if not config.cobalt.permissions.tempSpawnToggle then
         im.SameLine()
         im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
+    else
+        im.SameLine()
+        im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
     end
     if config.restrictions then
         if config.restrictions.reset.control then
-            if not config.restrictions.reset.enabled then
-                im.SameLine()
-                im.Text("| Reset")
-                im.SameLine()
-                im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
-            elseif config.restrictions.reset.timeout - resetsTimerElapsedReset > 0 then
+            if config.restrictions.reset.enabled and (config.restrictions.reset.timeout - resetsTimerElapsedReset > 0) then
                 im.SameLine()
                 im.Text("| Reset")
                 im.SameLine()
                 im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
                 im.SameLine()
                 im.Text(string.format("%.2f",config.restrictions.reset.timeout - resetsTimerElapsedReset) .. "s")
-            else
+            elseif config.restrictions.reset.enabled then
                 im.SameLine()
                 im.Text("| Reset")
                 im.SameLine()
                 im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
+            else
+                im.SameLine()
+                im.Text("| Reset")
+                im.SameLine()
+                im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
             end
         else
             im.SameLine()
@@ -461,23 +461,23 @@ local function drawCEI()
         end
     end
     if environment.teleportTimeout then
-        if not canTeleport then
-            im.SameLine()
-            im.Text("| Teleport")
-            im.SameLine()
-            im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
-        elseif tonumber(environment.teleportTimeout) - lastTeleport > 0 then
+        if canTeleport and (tonumber(environment.teleportTimeout) - lastTeleport > 0) then
             im.SameLine()
             im.Text("| Teleport")
             im.SameLine()
             im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
             im.SameLine()
             im.Text(string.format("%.2f",tonumber(environment.teleportTimeout) - lastTeleport) .. "s")
-        else
+        elseif canTeleport then
             im.SameLine()
             im.Text("| Teleport")
             im.SameLine()
             im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
+        else
+            im.SameLine()
+            im.Text("| Teleport")
+            im.SameLine()
+            im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
         end
     end
     im.SameLine()
