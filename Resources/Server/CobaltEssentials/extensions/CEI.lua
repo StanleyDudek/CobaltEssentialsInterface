@@ -1539,7 +1539,7 @@ function CEISetEnv(senderID, data)
             environment.precipType =          environmentDefaults.precipType
         elseif key == "allSun" then
             if players[senderID].permissions.UI >= config.cobalt.interface.environmentAdmin then
-                environment.controlSun = environmentDefaults.controlSun
+                environment.controlSun =      environmentDefaults.controlSun
             end
             environment.ToD =                 environmentDefaults.ToD
             environment.timePlay =            environmentDefaults.timePlay
