@@ -20,8 +20,6 @@ local nametagBlockerActive = false
 local nametagBlockerTimeout
 local ignitionEnabled = {}
 local isFrozen = {}
-local firstReset = false
-local firstTeleport = false
 local resetsBlockedInputActions = {}
 local allResetsBlockedInputActions = {}
 local editorBlocked = {}
@@ -64,7 +62,7 @@ local lastTeleport = 0
 local worldReadyState = 0
 local envObjectIdCache = {}
 local syncRequested = false
-local defaults = {}
+local environmentDefaults = {}
 
 local function getObject(className, preferredObjName)
     if envObjectIdCache[className] then
@@ -426,14 +424,9 @@ local function drawCEI()
 ----------------------------------------------------------------------------------STYLE
     im.Begin("Cobalt Essentials Interface v" .. CEI_VERSION)
     im.SetWindowFontScale(CEIScale[0])
-    im.BeginChild1("QuickInfo", im.ImVec2(0, (60*CEIScale[0])), true )
-    im.Text("Nametags")
-    if nametagBlockerTimeout ~= nil then
-        im.SameLine()
-        im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
-        im.SameLine()
-        im.Text(string.format("%.2f", nametagBlockerTimeout) .. "s")
-    elseif nametagBlockerActive == true then
+    im.BeginChild1("QuickInfo", im.ImVec2(0, (70*CEIScale[0])), true )
+    im.Text("Spawn")
+    if config.cobalt.permissions.tempSpawnToggle then
         im.SameLine()
         im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
     else
@@ -441,65 +434,65 @@ local function drawCEI()
         im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
     end
     if config.restrictions then
-        if firstReset then
+        if config.restrictions.reset.control then
             if not config.restrictions.reset.enabled then
-                if config.restrictions.reset.control then
-                    im.SameLine()
-                    im.Text("| Vehicle resetting")
-                    im.SameLine()
-                    im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
-                else
-                    im.SameLine()
-                    im.Text("| Vehicle reset")
-                    im.SameLine()
-                    im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
-                end
+                im.SameLine()
+                im.Text("| Reset")
+                im.SameLine()
+                im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
             elseif config.restrictions.reset.timeout - resetsTimerElapsedReset > 0 then
                 im.SameLine()
-                im.Text("| Vehicle reset")
+                im.Text("| Reset")
                 im.SameLine()
                 im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
                 im.SameLine()
                 im.Text(string.format("%.2f",config.restrictions.reset.timeout - resetsTimerElapsedReset) .. "s")
             else
                 im.SameLine()
-                im.Text("| Vehicle reset")
+                im.Text("| Reset")
                 im.SameLine()
                 im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
             end
         else
             im.SameLine()
-            im.Text("| Vehicle reset")
+            im.Text("| Reset")
             im.SameLine()
             im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
         end
     end
     if environment.teleportTimeout then
-        if firstTeleport then
-            if not canTeleport then
-                im.SameLine()
-                im.Text("| Teleport")
-                im.SameLine()
-                im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
-            elseif tonumber(environment.teleportTimeout) - lastTeleport > 0 then
-                im.SameLine()
-                im.Text("| Teleport")
-                im.SameLine()
-                im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
-                im.SameLine()
-                im.Text(string.format("%.2f",tonumber(environment.teleportTimeout) - lastTeleport) .. "s")
-            else
-                im.SameLine()
-                im.Text("| Teleport")
-                im.SameLine()
-                im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
-            end
+        if not canTeleport then
+            im.SameLine()
+            im.Text("| Teleport")
+            im.SameLine()
+            im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
+        elseif tonumber(environment.teleportTimeout) - lastTeleport > 0 then
+            im.SameLine()
+            im.Text("| Teleport")
+            im.SameLine()
+            im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
+            im.SameLine()
+            im.Text(string.format("%.2f",tonumber(environment.teleportTimeout) - lastTeleport) .. "s")
         else
             im.SameLine()
             im.Text("| Teleport")
             im.SameLine()
             im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
         end
+    end
+    im.SameLine()
+    im.Text("| Nametag")
+    if nametagBlockerActive then
+        im.SameLine()
+        im.TextColored(im.ImVec4(1.0, 0.0, 0.0, 1.0), "X")
+    elseif nametagBlockerTimeout ~= nil then
+        im.SameLine()
+        im.TextColored(im.ImVec4(1.0, 0.9, 0.0, 1.0), "//")
+        im.SameLine()
+        im.Text(string.format("%.2f", nametagBlockerTimeout) .. "s")
+    else
+        im.SameLine()
+        im.TextColored(im.ImVec4(0.0, 1.0, 0.0, 1.0), ">>")
     end
     local tempToD = core_environment.getTimeOfDay()
     local curSecs
@@ -524,7 +517,7 @@ local function drawCEI()
     end
     im.EndChild()
     im.PushItemWidth(120*CEIScale[0])
-    if im.InputFloat("##CEIScale", CEIScale, 0.01, 1) then
+    if im.InputFloat("##CEIScale", CEIScale, 0.01, 0.1) then
         if CEIScale[0] < 0.75 then
             CEIScale = im.FloatPtr(0.75)
         elseif CEIScale[0] > 1.5 then
@@ -931,8 +924,8 @@ local function drawCEI()
                                             end
                                         end
                                     end
-                                    local map = MPVehicleGE.getVehicleMap()
-                                    local vehiclePresent = false
+                                    map = MPVehicleGE.getVehicleMap()
+                                    vehiclePresent = false
                                     for aa, bb in pairs(map) do
                                         if aa == tostring(players[k].playerID) .. "-" .. tostring(players[k].vehicles[x].vehicleID) then
                                             vehiclePresent = true
@@ -4223,7 +4216,7 @@ local function drawCEI()
                                 TriggerServerEvent("CEISetEnv", data)
                                 log('W', logTag, "CEISetEnv Called: " .. data)
                                 if currentGroup == "owner" or currentGroup == "admin" or currentUIPerm >= config.cobalt.interface.environmentAdmin then
-                                    data = jsonEncode( { "gravityControl", "default" } )
+                                    data = jsonEncode( { "controlGravity", "default" } )
                                     TriggerServerEvent("CEISetEnv", data)
                                     log('W', logTag, "CEISetEnv Called: " .. data)
                                 end
@@ -4991,21 +4984,23 @@ end
 local function resetsNotify(vehicleID)
     if not resetExempt then
         if MPVehicleGE.isOwn(vehicleID) then
-            if not config.restrictions.reset.enabled then
-                guihooks.trigger('toastrMsg', {type="error", title = config.restrictions.reset.title, msg = config.restrictions.reset.disabledMessage, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
-                return
-            else
-                local counter = 0
-                if resetsBlockedInputActions then
-                    for _ in pairs(resetsBlockedInputActions) do
-                        counter = counter + 1
+            if config.restrictions.reset.control then
+                if not config.restrictions.reset.enabled then
+                    guihooks.trigger('toastrMsg', {type="error", title = config.restrictions.reset.title, msg = config.restrictions.reset.disabledMessage, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
+                    return
+                else
+                    local counter = 0
+                    if resetsBlockedInputActions then
+                        for _ in pairs(resetsBlockedInputActions) do
+                            counter = counter + 1
+                        end
                     end
-                end
-                if counter > 0 then
-                    resetsPlayerNotified = false
-                    resetsTimerElapsedReset = 0
-                    local message = config.restrictions.reset.message:gsub("{secondsLeft}", math.floor(config.restrictions.reset.timeout - resetsTimerElapsedReset))
-                    guihooks.trigger('toastrMsg', {type="warning", title = config.restrictions.reset.title, msg = message, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
+                    if counter > 0 then
+                        resetsPlayerNotified = false
+                        resetsTimerElapsedReset = 0
+                        local message = config.restrictions.reset.message:gsub("{secondsLeft}", math.floor(config.restrictions.reset.timeout - resetsTimerElapsedReset))
+                        guihooks.trigger('toastrMsg', {type="warning", title = config.restrictions.reset.title, msg = message, config = {timeOut = config.restrictions.reset.messageDuration * 1000}})
+                    end
                 end
             end
         end
@@ -5050,7 +5045,12 @@ end
 local function onTimePlayDefault()
     local timeOfDay = core_environment.getTimeOfDay()
     if timeOfDay then
-        return timeOfDay.play
+        if timeOfDay.play then
+            return timeOfDay.play
+        else
+            timeOfDay.play = false
+            return timeOfDay.play
+        end
     end
 end
 
@@ -5659,43 +5659,43 @@ end
 local function onWorldReadyState(state)
     worldReadyState = state
     if worldReadyState == 2 then
-        defaults.timePlay = onTimePlayDefault()
-        defaults.time = onTimeDefault()
-        defaults.dayLength = onDayLengthDefault()
-        defaults.dayScale = onDayScaleDefault()
-        defaults.nightScale = onNightScaleDefault()
-        defaults.sunAzimuthOverride = onSunAzimuthOverrideDefault()
-        defaults.sunSize = onSunSizeDefault()
-        defaults.skyBrightness = onSkyBrightnessDefault()
-        defaults.rayleighScattering = onRayleighScatteringDefault()
-        defaults.sunLightBrightness = onSunLightBrightnessDefault()
-        defaults.flareScale = onFlareScaleDefault()
-        defaults.occlusionScale = onOcclusionScaleDefault()
-        defaults.exposure = onExposureDefault()
-        defaults.shadowDistance = onShadowDistanceDefault()
-        defaults.shadowSoftness = onShadowSoftnessDefault()
-        defaults.shadowSplits = onShadowSplitsDefault()
-        defaults.shadowTexSize = onShadowTexSizeDefault()
-        defaults.shadowLogWeight = onShadowLogWeightDefault()
-        defaults.visibleDistance = onVisibleDistanceDefault()
-        defaults.moonAzimuth = onMoonAzimuthDefault()
-        defaults.moonElevation = onMoonElevationDefault()
-        defaults.moonScale = onMoonScaleDefault()
-        defaults.fogDensity = onFogDensityDefault()
-        defaults.fogDensityOffset = onFogDensityOffsetDefault()
-        defaults.fogAtmosphereHeight = onFogAtmosphereHeightDefault()
-        defaults.cloudHeight = onCloudHeightDefault()
-        defaults.cloudHeightOne = onCloudHeightOneDefault()
-        defaults.cloudCover = onCloudCoverDefault()
-        defaults.cloudCoverOne = onCloudCoverOneDefault()
-        defaults.cloudSpeed = onCloudSpeedDefault()
-        defaults.cloudSpeedOne = onCloudSpeedOneDefault()
-        defaults.cloudExposure = onCloudExposureDefault()
-        defaults.cloudExposureOne = onCloudExposureOneDefault()
-        defaults.rainDrops = onRainDropsDefault()
-        defaults.dropSize = onDropSizeDefault()
-        defaults.dropMinSpeed = onDropMinSpeedDefault()
-        defaults.dropMaxSpeed = onDropMaxSpeedDefault()
+        environmentDefaults.timePlay = onTimePlayDefault()
+        environmentDefaults.time = onTimeDefault()
+        environmentDefaults.dayLength = onDayLengthDefault()
+        environmentDefaults.dayScale = onDayScaleDefault()
+        environmentDefaults.nightScale = onNightScaleDefault()
+        environmentDefaults.sunAzimuthOverride = onSunAzimuthOverrideDefault()
+        environmentDefaults.sunSize = onSunSizeDefault()
+        environmentDefaults.skyBrightness = onSkyBrightnessDefault()
+        environmentDefaults.rayleighScattering = onRayleighScatteringDefault()
+        environmentDefaults.sunLightBrightness = onSunLightBrightnessDefault()
+        environmentDefaults.flareScale = onFlareScaleDefault()
+        environmentDefaults.occlusionScale = onOcclusionScaleDefault()
+        environmentDefaults.exposure = onExposureDefault()
+        environmentDefaults.shadowDistance = onShadowDistanceDefault()
+        environmentDefaults.shadowSoftness = onShadowSoftnessDefault()
+        environmentDefaults.shadowSplits = onShadowSplitsDefault()
+        environmentDefaults.shadowTexSize = onShadowTexSizeDefault()
+        environmentDefaults.shadowLogWeight = onShadowLogWeightDefault()
+        environmentDefaults.visibleDistance = onVisibleDistanceDefault()
+        environmentDefaults.moonAzimuth = onMoonAzimuthDefault()
+        environmentDefaults.moonElevation = onMoonElevationDefault()
+        environmentDefaults.moonScale = onMoonScaleDefault()
+        environmentDefaults.fogDensity = onFogDensityDefault()
+        environmentDefaults.fogDensityOffset = onFogDensityOffsetDefault()
+        environmentDefaults.fogAtmosphereHeight = onFogAtmosphereHeightDefault()
+        environmentDefaults.cloudHeight = onCloudHeightDefault()
+        environmentDefaults.cloudHeightOne = onCloudHeightOneDefault()
+        environmentDefaults.cloudCover = onCloudCoverDefault()
+        environmentDefaults.cloudCoverOne = onCloudCoverOneDefault()
+        environmentDefaults.cloudSpeed = onCloudSpeedDefault()
+        environmentDefaults.cloudSpeedOne = onCloudSpeedOneDefault()
+        environmentDefaults.cloudExposure = onCloudExposureDefault()
+        environmentDefaults.cloudExposureOne = onCloudExposureOneDefault()
+        environmentDefaults.rainDrops = onRainDropsDefault()
+        environmentDefaults.dropSize = onDropSizeDefault()
+        environmentDefaults.dropMinSpeed = onDropMinSpeedDefault()
+        environmentDefaults.dropMaxSpeed = onDropMaxSpeedDefault()
         if not syncRequested then
             if MPConfig then
                 TriggerServerEvent("requestCEISync", "")
@@ -5784,14 +5784,104 @@ local function runEnvironment(dt)
                 defaultWeatherSet = true
             end
             onSimSpeed(environment.simSpeed)
-            onTempCurve()
             onGravity(environment.gravityRate)
+            onTempCurve()
             core_environment.reset()
             lastEnvReport = 0
         else
             lastEnvReport = lastEnvReport + dt
         end
     end
+end
+
+local function rxEnvironmentReset()
+    onTime(environmentDefaults.time, environmentDefaults.dayLength)
+    onTimePlay(environmentDefaults.timePlay)
+    onDayLength(environmentDefaults.dayLength)
+    onDayScale(environmentDefaults.dayScale)
+    onNightScale(environmentDefaults.nightScale)
+    onSunAzimuthOverride(environmentDefaults.sunAzimuthOverride)
+    onSunSize(environmentDefaults.sunSize)
+    onSkyBrightness(environmentDefaults.skyBrightness)
+    onRayleighScattering(environmentDefaults.rayleighScattering)
+    onSunLightBrightness(environmentDefaults.sunLightBrightness)
+    onFlareScale(environmentDefaults.flareScale)
+    onOcclusionScale(environmentDefaults.occlusionScale)
+    onExposure(environmentDefaults.exposure)
+    onShadowDistance(environmentDefaults.shadowDistance)
+    onShadowSoftness(environmentDefaults.shadowSoftness)
+    onShadowSplits(environmentDefaults.shadowSplits)
+    onShadowTexSize(environmentDefaults.shadowTexSize)
+    onShadowLogWeight(environmentDefaults.shadowLogWeight)
+    onVisibleDistance(environmentDefaults.visibleDistance)
+    onMoonAzimuth(environmentDefaults.moonAzimuth)
+    onMoonElevation(environmentDefaults.moonElevation)
+    onMoonScale(environmentDefaults.moonScale)
+    onFogDensity(environmentDefaults.fogDensity)
+    onFogDensityOffset(environmentDefaults.fogDensityOffset)
+    onFogAtmosphereHeight(environmentDefaults.fogAtmosphereHeight)
+    onCloudHeight(environmentDefaults.cloudHeight)
+    onCloudHeightOne(environmentDefaults.cloudHeightOne)
+    onCloudCover(environmentDefaults.cloudCover)
+    onCloudCoverOne(environmentDefaults.cloudCoverOne)
+    onCloudSpeed(environmentDefaults.cloudSpeed)
+    onCloudSpeedOne(environmentDefaults.cloudSpeedOne)
+    onCloudExposure(environmentDefaults.cloudExposure)
+    onCloudExposureOne(environmentDefaults.cloudExposureOne)
+    onRainDrops(environmentDefaults.rainDrops)
+    onDropSize(environmentDefaults.dropSize)
+    onDropMinSpeed(environmentDefaults.dropMinSpeed)
+    onDropMaxSpeed(environmentDefaults.dropMaxSpeed)
+    onGravity(environmentDefaults.gravityRate)
+    onTempCurve()
+    core_environment.reset()
+end
+
+local function rxSunReset()
+    onTime(environmentDefaults.time, environmentDefaults.dayLength)
+    onTimePlay(environmentDefaults.timePlay)
+    onDayLength(environmentDefaults.dayLength)
+    onDayScale(environmentDefaults.dayScale)
+    onNightScale(environmentDefaults.nightScale)
+    onSunAzimuthOverride(environmentDefaults.sunAzimuthOverride)
+    onSunSize(environmentDefaults.sunSize)
+    onSkyBrightness(environmentDefaults.skyBrightness)
+    onRayleighScattering(environmentDefaults.rayleighScattering)
+    onSunLightBrightness(environmentDefaults.sunLightBrightness)
+    onFlareScale(environmentDefaults.flareScale)
+    onOcclusionScale(environmentDefaults.occlusionScale)
+    onExposure(environmentDefaults.exposure)
+    onShadowDistance(environmentDefaults.shadowDistance)
+    onShadowSoftness(environmentDefaults.shadowSoftness)
+    onShadowSplits(environmentDefaults.shadowSplits)
+    onShadowTexSize(environmentDefaults.shadowTexSize)
+    onShadowLogWeight(environmentDefaults.shadowLogWeight)
+    onVisibleDistance(environmentDefaults.visibleDistance)
+    onMoonAzimuth(environmentDefaults.moonAzimuth)
+    onMoonElevation(environmentDefaults.moonElevation)
+    onMoonScale(environmentDefaults.moonScale)
+    core_environment.reset()
+end
+
+local function rxWeatherReset()
+    onFogDensity(environmentDefaults.fogDensity)
+    onFogDensityOffset(environmentDefaults.fogDensityOffset)
+    onFogAtmosphereHeight(environmentDefaults.fogAtmosphereHeight)
+    onCloudHeight(environmentDefaults.cloudHeight)
+    onCloudHeightOne(environmentDefaults.cloudHeightOne)
+    onCloudCover(environmentDefaults.cloudCover)
+    onCloudCoverOne(environmentDefaults.cloudCoverOne)
+    onCloudSpeed(environmentDefaults.cloudSpeed)
+    onCloudSpeedOne(environmentDefaults.cloudSpeedOne)
+    onCloudExposure(environmentDefaults.cloudExposure)
+    onCloudExposureOne(environmentDefaults.cloudExposureOne)
+    onRainDrops(environmentDefaults.rainDrops)
+    onDropSize(environmentDefaults.dropSize)
+    onDropMinSpeed(environmentDefaults.dropMinSpeed)
+    onDropMaxSpeed(environmentDefaults.dropMaxSpeed)
+    onGravity(environmentDefaults.gravityRate)
+    onTempCurve()
+    core_environment.reset()
 end
 
 local function checkResetState(dt)
@@ -5852,14 +5942,6 @@ local function dropPlayerAtCamera()
     end
     core_camera.resetCamera(0)
     local gameVehicleID = be:getPlayerVehicleID(0)
-    if MPVehicleGE.isOwn(gameVehicleID) then
-        if not firstReset then
-            firstReset = true
-        end
-        if not firstTeleport then
-            firstTeleport = true
-        end
-    end
     if config.restrictions then
         if config.restrictions.reset.control then
             resetsNotify(gameVehicleID)
@@ -5886,19 +5968,11 @@ local function dropPlayerAtCameraNoReset()
     core_camera.resetCamera(0)
     playerVehicle:setOriginalTransform(pos.x, pos.y, pos.z, camRot.x, camRot.y, camRot.z, camRot.w)
     local gameVehicleID = be:getPlayerVehicleID(0)
-    if MPVehicleGE.isOwn(gameVehicleID) then
-        if not firstReset then
-            firstReset = true
-        end
-        if not firstTeleport then
-            firstTeleport = true
-        end
-    end
-    if config.restrictions then
-        if config.restrictions.reset.control then
-            resetsNotify(gameVehicleID)
-        end
-    end
+    resetsNotify(gameVehicleID)
+end
+
+local function onVehicleReady(gameVehicleID)
+    resetsNotify(gameVehicleID)
 end
 
 local function onVehicleSpawned(gameVehicleID)
@@ -5920,7 +5994,9 @@ local function onVehicleSpawned(gameVehicleID)
         else
             ignitionEnabled[gameVehicleID] = true
         end
+        veh:queueLuaCommand('extensions.CEI_CEIPhysics.onVehicleReady()')
     end
+    resetsNotify(gameVehicleID)
 end
 
 local function onVehicleDestroyed(gameVehicleID)
@@ -5929,90 +6005,74 @@ local function onVehicleDestroyed(gameVehicleID)
 end
 
 local function onVehicleResetted(gameVehicleID)
-    if MPVehicleGE then
-        if MPVehicleGE.isOwn(gameVehicleID) then
-            if not firstReset then
-                firstReset = true
-            end
-            if not firstTeleport then
-                firstTeleport = true
-            end
+    local veh = be:getObjectByID(gameVehicleID)
+    if veh then
+        if isFrozen[gameVehicleID] == false then
+            veh:queueLuaCommand('controller.setFreeze(0)')
+        elseif isFrozen[gameVehicleID] == true then
+            veh:queueLuaCommand('controller.setFreeze(1)')
         end
-        if config.restrictions then
-            if config.restrictions.reset.control then
-                resetsNotify(gameVehicleID)
-            end
-        end
-        local veh = be:getObjectByID(gameVehicleID)
-        if veh then
-            if isFrozen[gameVehicleID] == false then
-                veh:queueLuaCommand('controller.setFreeze(0)')
-            elseif isFrozen[gameVehicleID] == true then
-                veh:queueLuaCommand('controller.setFreeze(1)')
-            end
-            if ignitionEnabled[gameVehicleID] == true then
-                veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
-            elseif ignitionEnabled[gameVehicleID] == false then
-                veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
-            end
+        if ignitionEnabled[gameVehicleID] == true then
+            veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
+        elseif ignitionEnabled[gameVehicleID] == false then
+            veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
         end
     end
+    resetsNotify(gameVehicleID)
 end
 
 local function onVehicleSwitched(oldGameVehicleID, newGameVehicleID)
-    if MPVehicleGE then
-        local veh = be:getObjectByID(newGameVehicleID)
-        if veh then
-            if isFrozen[newGameVehicleID] == false then
-                veh:queueLuaCommand('controller.setFreeze(0)')
-            elseif isFrozen[newGameVehicleID] == true then
-                veh:queueLuaCommand('controller.setFreeze(1)')
-            end
-            if ignitionEnabled[newGameVehicleID] == true then
-                veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
-            elseif ignitionEnabled[newGameVehicleID] == false then
-                veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
-            end
+    local veh = be:getObjectByID(newGameVehicleID)
+    if veh then
+        if isFrozen[newGameVehicleID] == false then
+            veh:queueLuaCommand('controller.setFreeze(0)')
+        elseif isFrozen[newGameVehicleID] == true then
+            veh:queueLuaCommand('controller.setFreeze(1)')
         end
-        if newGameVehicleID and newGameVehicleID > -1 then
-            local newVehObj = MPVehicleGE.getVehicleByGameID(newGameVehicleID) or {}
-            local newServerVehicleID = newVehObj.serverVehicleString
-            if newServerVehicleID then
-                local data = jsonEncode( { newServerVehicleID } )
-                TriggerServerEvent("CEISetCurVeh", data)
-                log('W', logTag, "CEISetCurVeh Called: " .. data)
-            end
+        if ignitionEnabled[newGameVehicleID] == true then
+            veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(true) end')
+        elseif ignitionEnabled[newGameVehicleID] == false then
+            veh:queueLuaCommand('if controller.mainController.setEngineIgnition then controller.mainController.setEngineIgnition(false) end')
+        end
+    end
+    if newGameVehicleID and newGameVehicleID > -1 then
+        local newVehObj = MPVehicleGE.getVehicleByGameID(newGameVehicleID) or {}
+        local newServerVehicleID = newVehObj.serverVehicleString
+        if newServerVehicleID then
+            local data = jsonEncode( { newServerVehicleID } )
+            TriggerServerEvent("CEISetCurVeh", data)
+            log('W', logTag, "CEISetCurVeh Called: " .. data)
         end
     end
 end
 
 local function onPreRender(dt)
-    if MPVehicleGE then
-        if nametagBlockerActive then
-            if nametagBlockerTimeout ~= nil then
-                nametagBlockerTimeout = nametagBlockerTimeout - dt
-                if nametagBlockerTimeout > 0 then
-                    if not nametagWhitelisted then
-                        MPVehicleGE.hideNicknames(true)
-                    else
-                        MPVehicleGE.hideNicknames(false)
-                    end
-                else
-                    nametagBlockerTimeout = nil
-                    local data = jsonEncode( { false } )
-                    TriggerServerEvent("CEINametagSetting", data)
-                    log('W', logTag, "CEINametagSetting: " .. data)
-                end
-            else
+    if nametagBlockerActive then
+        if nametagBlockerTimeout ~= nil then
+            nametagBlockerTimeout = nametagBlockerTimeout - dt
+            if nametagBlockerTimeout > 0 then
                 if not nametagWhitelisted then
                     MPVehicleGE.hideNicknames(true)
                 else
                     MPVehicleGE.hideNicknames(false)
                 end
+            else
+                nametagBlockerTimeout = nil
+                local data = jsonEncode( { false } )
+                TriggerServerEvent("CEINametagSetting", data)
+                log('W', logTag, "CEINametagSetting: " .. data)
+            end
+        else
+            if not nametagWhitelisted then
+                MPVehicleGE.hideNicknames(true)
+            else
+                MPVehicleGE.hideNicknames(false)
             end
         end
     end
 end
+
+local originalMpLayout = jsonReadFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json")
 
 local function onExtensionLoaded()
     if MPConfig then
@@ -6023,6 +6083,9 @@ local function onExtensionLoaded()
         AddEventHandler("rxConfigData", rxConfigData)
         AddEventHandler("rxInputUpdate", rxInputUpdate)
         AddEventHandler("rxEnvironment", rxEnvironment)
+        AddEventHandler("rxEnvironmentReset", rxEnvironmentReset)
+        AddEventHandler("rxSunReset", rxSunReset)
+        AddEventHandler("rxWeatherReset", rxWeatherReset)
         AddEventHandler("rxDescriptions", rxDescriptions)
         AddEventHandler("rxPlayersUIPerm", rxPlayersUIPerm)
         AddEventHandler("rxCEIstate", rxCEIstate)
@@ -6040,10 +6103,37 @@ local function onExtensionLoaded()
     gui_module.initialize(gui)
     gui.registerWindow("CEI", im.ImVec2(512, 256))
     gui.showWindow("CEI")
+    local currentMpLayout = originalMpLayout
+    local found
+    if currentMpLayout then
+        for _, app in pairs(currentMpLayout.apps) do
+            if app.appName == "raceCountdown" then
+                found = true
+            end
+        end
+        if not found then
+            local raceCountdown = {
+            appName = "raceCountdown",
+                placement = {
+                    bottom = "",
+                    height = "160px",
+                    left = 0,
+                    margin = "auto",
+                    position = "absolute",
+                    right = 0,
+                    top = "40px",
+                    width = "690px"
+                }
+            }
+            table.insert(currentMpLayout.apps, raceCountdown)
+            jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", currentMpLayout, 1)
+        end
+    end
     log('W', logTag, "-=$=- CEI LOADED -=$=-")
 end
 
 local function onExtensionUnloaded()
+    jsonWriteFile("settings/ui_apps/layouts/default/multiplayer.uilayout.json", originalMpLayout, 1)
     log('W', logTag, "-=$=- CEI UNLOADED -=$=-")
 end
 
@@ -6059,6 +6149,7 @@ M.onExtensionUnloaded = onExtensionUnloaded
 commands.dropPlayerAtCamera = dropPlayerAtCamera
 commands.dropPlayerAtCameraNoReset = dropPlayerAtCameraNoReset
 
+M.onVehicleReady = onVehicleReady
 M.onVehicleSpawned = onVehicleSpawned
 M.onVehicleDestroyed = onVehicleDestroyed
 M.onVehicleSwitched = onVehicleSwitched
