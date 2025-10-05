@@ -2,7 +2,7 @@
 
 local M = {}
 
-local CEI_VERSION = "0.8.1"
+local CEI_VERSION = "0.8.2"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -6103,7 +6103,7 @@ local function onExtensionLoaded()
     gui_module.initialize(gui)
     gui.registerWindow("CEI", im.ImVec2(512, 256))
     gui.showWindow("CEI")
-    local currentMpLayout = originalMpLayout
+    local currentMpLayout = deepcopy(originalMpLayout)
     local found
     if currentMpLayout then
         for _, app in pairs(currentMpLayout.apps) do
@@ -6158,3 +6158,4 @@ M.onVehicleResetted = onVehicleResetted
 M.setPhysicsSpeed = setPhysicsSpeed
 
 return M
+
