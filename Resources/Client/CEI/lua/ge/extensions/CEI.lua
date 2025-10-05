@@ -6103,7 +6103,7 @@ local function onExtensionLoaded()
     gui_module.initialize(gui)
     gui.registerWindow("CEI", im.ImVec2(512, 256))
     gui.showWindow("CEI")
-    local currentMpLayout = originalMpLayout
+    local currentMpLayout = deepcopy(originalMpLayout)
     local found
     if currentMpLayout then
         for _, app in pairs(currentMpLayout.apps) do
