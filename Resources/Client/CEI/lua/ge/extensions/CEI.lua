@@ -63,6 +63,7 @@ local worldReadyState = 0
 local envObjectIdCache = {}
 local syncRequested = false
 local environmentDefaults = {}
+local environmentPause = false
 
 local function getObject(className, preferredObjName)
     if envObjectIdCache[className] then
@@ -5709,91 +5710,6 @@ local function rxTeleportFrom(data)
     MPVehicleGE.teleportVehToPlayer(data)
 end
 
-local function runEnvironment(dt)
-    local levelInfo = getObject("LevelInfo")
-    if not levelInfo then
-        return
-    end
-    if environment then
-        if lastEnvReport + dt > envReportRate then
-            if environment.controlSun == true and defaultSunSet == true then
-                defaultSunSet = false
-            elseif environment.controlSun == true and defaultSunSet == false then
-                onTimePlay(environment.timePlay, dt)
-                if environment.ToD then
-                    if firstReport == true then
-                        if environment.timePlay == false or environment.timePlay == nil then
-                            onTime(environment.ToD, environment.dayLength)
-                        elseif timeUpdateQueued == true then
-                            if timeUpdateTimer + dt > timeUpdateTimeout then
-                                onTime(environment.ToD, environment.dayLength)
-                                timeUpdateQueued = false
-                                timeUpdateTimer = 0
-                                core_environment.reset()
-                            else
-                                timeUpdateTimer = timeUpdateTimer + dt
-                            end
-                        end
-                    else
-                        onTime(environment.ToD, environment.dayLength)
-                        firstReport = true
-                    end
-                end
-                onDayLength(environment.dayLength)
-                onDayScale(environment.dayScale)
-                onNightScale(environment.nightScale)
-                onSunAzimuthOverride(environment.sunAzimuthOverride)
-                onSunSize(environment.sunSize)
-                onSkyBrightness(environment.skyBrightness)
-                onRayleighScattering(environment.rayleighScattering)
-                onSunLightBrightness(environment.sunLightBrightness)
-                onFlareScale(environment.flareScale)
-                onOcclusionScale(environment.occlusionScale)
-                onExposure(environment.exposure)
-                onShadowDistance(environment.shadowDistance)
-                onShadowSoftness(environment.shadowSoftness)
-                onShadowSplits(environment.shadowSplits)
-                onShadowTexSize(environment.shadowTexSize)
-                onShadowLogWeight(environment.shadowLogWeight)
-                onVisibleDistance(environment.visibleDistance)
-                onMoonAzimuth(environment.moonAzimuth)
-                onMoonElevation(environment.moonElevation)
-                onMoonScale(environment.moonScale)
-            elseif environment.controlSun == false and defaultSunSet == false then
-                defaultSunSet = true
-            end
-            if environment.controlWeather == true and defaultWeatherSet == true then
-                defaultWeatherSet = false
-            elseif environment.controlWeather == true and defaultWeatherSet == false then
-                onFogDensity(environment.fogDensity)
-                onFogDensityOffset(environment.fogDensityOffset)
-                onFogAtmosphereHeight(environment.fogAtmosphereHeight)
-                onCloudHeight(environment.cloudHeight)
-                onCloudHeightOne(environment.cloudHeightOne)
-                onCloudCover(environment.cloudCover)
-                onCloudCoverOne(environment.cloudCoverOne)
-                onCloudSpeed(environment.cloudSpeed)
-                onCloudSpeedOne(environment.cloudSpeedOne)
-                onCloudExposure(environment.cloudExposure)
-                onCloudExposureOne(environment.cloudExposureOne)
-                onRainDrops(environment.rainDrops)
-                onDropSize(environment.dropSize)
-                onDropMinSpeed(environment.dropMinSpeed)
-                onDropMaxSpeed(environment.dropMaxSpeed)
-            elseif environment.controlWeather == false and defaultWeatherSet == false then
-                defaultWeatherSet = true
-            end
-            onSimSpeed(environment.simSpeed)
-            onGravity(environment.gravityRate)
-            onTempCurve()
-            core_environment.reset()
-            lastEnvReport = 0
-        else
-            lastEnvReport = lastEnvReport + dt
-        end
-    end
-end
-
 local function rxEnvironmentReset()
     onTime(environmentDefaults.time, environmentDefaults.dayLength)
     onTimePlay(environmentDefaults.timePlay)
@@ -5882,6 +5798,107 @@ local function rxWeatherReset()
     onGravity(environmentDefaults.gravityRate)
     onTempCurve()
     core_environment.reset()
+end
+
+
+local function runEnvironment(dt)
+    local levelInfo = getObject("LevelInfo")
+    if not levelInfo then
+        return
+    end
+    if environment then
+        if not environmentPause then
+            if freeroam_bigMapMode.bigMapActive() then
+                rxWeatherReset()
+                environmentPause = true
+                return
+            elseif environmentPause and not freeroam_bigMapMode.bigMapActive() then
+                environmentPause = false
+            end
+        elseif environmentPause and freeroam_bigMapMode.bigMapActive() then
+            if environment.controlSun == true then
+                onTime(environment.ToD, environment.dayLength)
+            end
+            return
+        end
+        if lastEnvReport + dt > envReportRate then
+            if environment.controlSun == true and defaultSunSet == true then
+                defaultSunSet = false
+            elseif environment.controlSun == true and defaultSunSet == false then
+                onTimePlay(environment.timePlay, dt)
+                if environment.ToD then
+                    if firstReport == true then
+                        if environment.timePlay == false or environment.timePlay == nil then
+                            onTime(environment.ToD, environment.dayLength)
+                        elseif timeUpdateQueued == true then
+                            if timeUpdateTimer + dt > timeUpdateTimeout then
+                                onTime(environment.ToD, environment.dayLength)
+                                timeUpdateQueued = false
+                                timeUpdateTimer = 0
+                                core_environment.reset()
+                            else
+                                timeUpdateTimer = timeUpdateTimer + dt
+                            end
+                        end
+                    else
+                        onTime(environment.ToD, environment.dayLength)
+                        firstReport = true
+                    end
+                end
+                onDayLength(environment.dayLength)
+                onDayScale(environment.dayScale)
+                onNightScale(environment.nightScale)
+                onSunAzimuthOverride(environment.sunAzimuthOverride)
+                onSunSize(environment.sunSize)
+                onSkyBrightness(environment.skyBrightness)
+                onRayleighScattering(environment.rayleighScattering)
+                onSunLightBrightness(environment.sunLightBrightness)
+                onFlareScale(environment.flareScale)
+                onOcclusionScale(environment.occlusionScale)
+                onExposure(environment.exposure)
+                onShadowDistance(environment.shadowDistance)
+                onShadowSoftness(environment.shadowSoftness)
+                onShadowSplits(environment.shadowSplits)
+                onShadowTexSize(environment.shadowTexSize)
+                onShadowLogWeight(environment.shadowLogWeight)
+                onVisibleDistance(environment.visibleDistance)
+                onMoonAzimuth(environment.moonAzimuth)
+                onMoonElevation(environment.moonElevation)
+                onMoonScale(environment.moonScale)
+            elseif environment.controlSun == false and defaultSunSet == false then
+                defaultSunSet = true
+            end
+            if environment.controlWeather == true and defaultWeatherSet == true then
+                defaultWeatherSet = false
+            elseif environment.controlWeather == true and defaultWeatherSet == false then
+                onFogDensity(environment.fogDensity)
+                onFogDensityOffset(environment.fogDensityOffset)
+                onFogAtmosphereHeight(environment.fogAtmosphereHeight)
+                onCloudHeight(environment.cloudHeight)
+                onCloudHeightOne(environment.cloudHeightOne)
+                onCloudCover(environment.cloudCover)
+                onCloudCoverOne(environment.cloudCoverOne)
+                onCloudSpeed(environment.cloudSpeed)
+                onCloudSpeedOne(environment.cloudSpeedOne)
+                onCloudExposure(environment.cloudExposure)
+                onCloudExposureOne(environment.cloudExposureOne)
+                onRainDrops(environment.rainDrops)
+                onDropSize(environment.dropSize)
+                onDropMinSpeed(environment.dropMinSpeed)
+                onDropMaxSpeed(environment.dropMaxSpeed)
+            elseif environment.controlWeather == false and defaultWeatherSet == false then
+                defaultWeatherSet = true
+            end
+            onSimSpeed(environment.simSpeed)
+            onGravity(environment.gravityRate)
+            onTempCurve()
+            core_environment.reset()
+            lastEnvReport = 0
+        else
+            lastEnvReport = lastEnvReport + dt
+        end
+    end
+
 end
 
 local function checkResetState(dt)
