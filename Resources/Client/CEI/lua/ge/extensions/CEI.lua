@@ -731,10 +731,10 @@ local function drawCEI()
                                 TriggerServerEvent("CEIVoteKick", data)
                                 log('W', logTag, "CEIVoteKick Called: " .. data)
                             end
+                            im.SameLine()
                         end
                     end
                     if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
-                        im.SameLine()
                         if im.SmallButton("Kick##"..tostring(k)) then
                         local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
                             TriggerServerEvent("CEIKick", data)
@@ -805,7 +805,7 @@ local function drawCEI()
                             end
                             im.SameLine()
                             im.ShowHelpMarker("Teleport to this player's current vehicle.")
-                            if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+                            if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
                                 im.SameLine()
                                 if im.SmallButton("Teleport From##" .. tostring(k)) then
                                     if lastTeleport >= tonumber(environment.teleportTimeout) then
@@ -1124,10 +1124,10 @@ local function drawCEI()
                                 TriggerServerEvent("CEIVoteKick", data)
                                 log('W', logTag, "CEIVoteKick Called: " .. data)
                             end
+                            im.SameLine()
                         end
                     end
                     if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
-                        im.SameLine()
                         if im.SmallButton("Kick##"..tostring(k)) then
                         local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
                             TriggerServerEvent("CEIKick", data)
@@ -6158,4 +6158,3 @@ M.onVehicleResetted = onVehicleResetted
 M.setPhysicsSpeed = setPhysicsSpeed
 
 return M
-
