@@ -2,7 +2,7 @@
 
 local M = {}
 
-local CEI_VERSION = "0.8.2"
+local CEI_VERSION = "0.8.3"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -63,6 +63,7 @@ local worldReadyState = 0
 local envObjectIdCache = {}
 local syncRequested = false
 local environmentDefaults = {}
+local environmentPause = false
 
 local function getObject(className, preferredObjName)
     if envObjectIdCache[className] then
@@ -731,10 +732,10 @@ local function drawCEI()
                                 TriggerServerEvent("CEIVoteKick", data)
                                 log('W', logTag, "CEIVoteKick Called: " .. data)
                             end
+                            im.SameLine()
                         end
                     end
                     if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
-                        im.SameLine()
                         if im.SmallButton("Kick##"..tostring(k)) then
                         local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
                             TriggerServerEvent("CEIKick", data)
@@ -805,7 +806,7 @@ local function drawCEI()
                             end
                             im.SameLine()
                             im.ShowHelpMarker("Teleport to this player's current vehicle.")
-                            if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= 1 then
+                            if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
                                 im.SameLine()
                                 if im.SmallButton("Teleport From##" .. tostring(k)) then
                                     if lastTeleport >= tonumber(environment.teleportTimeout) then
@@ -1124,10 +1125,10 @@ local function drawCEI()
                                 TriggerServerEvent("CEIVoteKick", data)
                                 log('W', logTag, "CEIVoteKick Called: " .. data)
                             end
+                            im.SameLine()
                         end
                     end
                     if currentGroup == "owner" or currentGroup == "admin" or currentGroup == "mod" or currentUIPerm >= config.cobalt.interface.playerPermissions then
-                        im.SameLine()
                         if im.SmallButton("Kick##"..tostring(k)) then
                         local data = jsonEncode( { players[k].playerName, ffi.string(playersVals[k].kickBanMuteReason) } )
                             TriggerServerEvent("CEIKick", data)
@@ -3103,8 +3104,8 @@ local function drawCEI()
                         im.SetWindowFontScale(CEIScale[0])
                         if im.TreeNode1("voteKick") then
                             im.SameLine()
-                            if im.SmallButton("Reset##VK") then
-                                local data = jsonEncode( { "voteKick", "default" } )
+                            if im.SmallButton("Reset##VKE1") then
+                                local data = jsonEncode( { "voteKick", "default_all" } )
                                 TriggerServerEvent("CEISetCfg", data)
                                 log('W', logTag, "CEISetCfg Called: " .. data)
                             end
@@ -3125,7 +3126,7 @@ local function drawCEI()
                             im.SameLine()
                             im.Text(string.format("%.2f", config.cobalt.voteKick.kickPercent))
                             im.SameLine()
-                            if im.SmallButton("Reset##VK") then
+                            if im.SmallButton("Reset##VKP") then
                                 local data = jsonEncode( { "voteKick", "default" } )
                                 TriggerServerEvent("CEISetCfg", data)
                                 log('W', logTag, "CEISetCfg Called: " .. data)
@@ -3147,8 +3148,8 @@ local function drawCEI()
                             im.TreePop()
                         else
                             im.SameLine()
-                            if im.SmallButton("Reset##VK") then
-                                local data = jsonEncode( { "voteKick", "default" } )
+                            if im.SmallButton("Reset##VKE2") then
+                                local data = jsonEncode( { "voteKick", "default_all" } )
                                 TriggerServerEvent("CEISetCfg", data)
                                 log('W', logTag, "CEISetCfg Called: " .. data)
                             end
@@ -5709,91 +5710,6 @@ local function rxTeleportFrom(data)
     MPVehicleGE.teleportVehToPlayer(data)
 end
 
-local function runEnvironment(dt)
-    local levelInfo = getObject("LevelInfo")
-    if not levelInfo then
-        return
-    end
-    if environment then
-        if lastEnvReport + dt > envReportRate then
-            if environment.controlSun == true and defaultSunSet == true then
-                defaultSunSet = false
-            elseif environment.controlSun == true and defaultSunSet == false then
-                onTimePlay(environment.timePlay, dt)
-                if environment.ToD then
-                    if firstReport == true then
-                        if environment.timePlay == false or environment.timePlay == nil then
-                            onTime(environment.ToD, environment.dayLength)
-                        elseif timeUpdateQueued == true then
-                            if timeUpdateTimer + dt > timeUpdateTimeout then
-                                onTime(environment.ToD, environment.dayLength)
-                                timeUpdateQueued = false
-                                timeUpdateTimer = 0
-                                core_environment.reset()
-                            else
-                                timeUpdateTimer = timeUpdateTimer + dt
-                            end
-                        end
-                    else
-                        onTime(environment.ToD, environment.dayLength)
-                        firstReport = true
-                    end
-                end
-                onDayLength(environment.dayLength)
-                onDayScale(environment.dayScale)
-                onNightScale(environment.nightScale)
-                onSunAzimuthOverride(environment.sunAzimuthOverride)
-                onSunSize(environment.sunSize)
-                onSkyBrightness(environment.skyBrightness)
-                onRayleighScattering(environment.rayleighScattering)
-                onSunLightBrightness(environment.sunLightBrightness)
-                onFlareScale(environment.flareScale)
-                onOcclusionScale(environment.occlusionScale)
-                onExposure(environment.exposure)
-                onShadowDistance(environment.shadowDistance)
-                onShadowSoftness(environment.shadowSoftness)
-                onShadowSplits(environment.shadowSplits)
-                onShadowTexSize(environment.shadowTexSize)
-                onShadowLogWeight(environment.shadowLogWeight)
-                onVisibleDistance(environment.visibleDistance)
-                onMoonAzimuth(environment.moonAzimuth)
-                onMoonElevation(environment.moonElevation)
-                onMoonScale(environment.moonScale)
-            elseif environment.controlSun == false and defaultSunSet == false then
-                defaultSunSet = true
-            end
-            if environment.controlWeather == true and defaultWeatherSet == true then
-                defaultWeatherSet = false
-            elseif environment.controlWeather == true and defaultWeatherSet == false then
-                onFogDensity(environment.fogDensity)
-                onFogDensityOffset(environment.fogDensityOffset)
-                onFogAtmosphereHeight(environment.fogAtmosphereHeight)
-                onCloudHeight(environment.cloudHeight)
-                onCloudHeightOne(environment.cloudHeightOne)
-                onCloudCover(environment.cloudCover)
-                onCloudCoverOne(environment.cloudCoverOne)
-                onCloudSpeed(environment.cloudSpeed)
-                onCloudSpeedOne(environment.cloudSpeedOne)
-                onCloudExposure(environment.cloudExposure)
-                onCloudExposureOne(environment.cloudExposureOne)
-                onRainDrops(environment.rainDrops)
-                onDropSize(environment.dropSize)
-                onDropMinSpeed(environment.dropMinSpeed)
-                onDropMaxSpeed(environment.dropMaxSpeed)
-            elseif environment.controlWeather == false and defaultWeatherSet == false then
-                defaultWeatherSet = true
-            end
-            onSimSpeed(environment.simSpeed)
-            onGravity(environment.gravityRate)
-            onTempCurve()
-            core_environment.reset()
-            lastEnvReport = 0
-        else
-            lastEnvReport = lastEnvReport + dt
-        end
-    end
-end
-
 local function rxEnvironmentReset()
     onTime(environmentDefaults.time, environmentDefaults.dayLength)
     onTimePlay(environmentDefaults.timePlay)
@@ -5882,6 +5798,107 @@ local function rxWeatherReset()
     onGravity(environmentDefaults.gravityRate)
     onTempCurve()
     core_environment.reset()
+end
+
+
+local function runEnvironment(dt)
+    local levelInfo = getObject("LevelInfo")
+    if not levelInfo then
+        return
+    end
+    if environment then
+        if not environmentPause then
+            if freeroam_bigMapMode.bigMapActive() then
+                rxWeatherReset()
+                environmentPause = true
+                return
+            elseif environmentPause and not freeroam_bigMapMode.bigMapActive() then
+                environmentPause = false
+            end
+        elseif environmentPause and freeroam_bigMapMode.bigMapActive() then
+            if environment.controlSun == true then
+                onTime(environment.ToD, environment.dayLength)
+            end
+            return
+        end
+        if lastEnvReport + dt > envReportRate then
+            if environment.controlSun == true and defaultSunSet == true then
+                defaultSunSet = false
+            elseif environment.controlSun == true and defaultSunSet == false then
+                onTimePlay(environment.timePlay, dt)
+                if environment.ToD then
+                    if firstReport == true then
+                        if environment.timePlay == false or environment.timePlay == nil then
+                            onTime(environment.ToD, environment.dayLength)
+                        elseif timeUpdateQueued == true then
+                            if timeUpdateTimer + dt > timeUpdateTimeout then
+                                onTime(environment.ToD, environment.dayLength)
+                                timeUpdateQueued = false
+                                timeUpdateTimer = 0
+                                core_environment.reset()
+                            else
+                                timeUpdateTimer = timeUpdateTimer + dt
+                            end
+                        end
+                    else
+                        onTime(environment.ToD, environment.dayLength)
+                        firstReport = true
+                    end
+                end
+                onDayLength(environment.dayLength)
+                onDayScale(environment.dayScale)
+                onNightScale(environment.nightScale)
+                onSunAzimuthOverride(environment.sunAzimuthOverride)
+                onSunSize(environment.sunSize)
+                onSkyBrightness(environment.skyBrightness)
+                onRayleighScattering(environment.rayleighScattering)
+                onSunLightBrightness(environment.sunLightBrightness)
+                onFlareScale(environment.flareScale)
+                onOcclusionScale(environment.occlusionScale)
+                onExposure(environment.exposure)
+                onShadowDistance(environment.shadowDistance)
+                onShadowSoftness(environment.shadowSoftness)
+                onShadowSplits(environment.shadowSplits)
+                onShadowTexSize(environment.shadowTexSize)
+                onShadowLogWeight(environment.shadowLogWeight)
+                onVisibleDistance(environment.visibleDistance)
+                onMoonAzimuth(environment.moonAzimuth)
+                onMoonElevation(environment.moonElevation)
+                onMoonScale(environment.moonScale)
+            elseif environment.controlSun == false and defaultSunSet == false then
+                defaultSunSet = true
+            end
+            if environment.controlWeather == true and defaultWeatherSet == true then
+                defaultWeatherSet = false
+            elseif environment.controlWeather == true and defaultWeatherSet == false then
+                onFogDensity(environment.fogDensity)
+                onFogDensityOffset(environment.fogDensityOffset)
+                onFogAtmosphereHeight(environment.fogAtmosphereHeight)
+                onCloudHeight(environment.cloudHeight)
+                onCloudHeightOne(environment.cloudHeightOne)
+                onCloudCover(environment.cloudCover)
+                onCloudCoverOne(environment.cloudCoverOne)
+                onCloudSpeed(environment.cloudSpeed)
+                onCloudSpeedOne(environment.cloudSpeedOne)
+                onCloudExposure(environment.cloudExposure)
+                onCloudExposureOne(environment.cloudExposureOne)
+                onRainDrops(environment.rainDrops)
+                onDropSize(environment.dropSize)
+                onDropMinSpeed(environment.dropMinSpeed)
+                onDropMaxSpeed(environment.dropMaxSpeed)
+            elseif environment.controlWeather == false and defaultWeatherSet == false then
+                defaultWeatherSet = true
+            end
+            onSimSpeed(environment.simSpeed)
+            onGravity(environment.gravityRate)
+            onTempCurve()
+            core_environment.reset()
+            lastEnvReport = 0
+        else
+            lastEnvReport = lastEnvReport + dt
+        end
+    end
+
 end
 
 local function checkResetState(dt)
@@ -6121,7 +6138,7 @@ local function onExtensionLoaded()
                     margin = "auto",
                     position = "absolute",
                     right = 0,
-                    top = "40px",
+                    top = "40%",
                     width = "690px"
                 }
             }
@@ -6158,4 +6175,3 @@ M.onVehicleResetted = onVehicleResetted
 M.setPhysicsSpeed = setPhysicsSpeed
 
 return M
-
