@@ -3104,8 +3104,8 @@ local function drawCEI()
                         im.SetWindowFontScale(CEIScale[0])
                         if im.TreeNode1("voteKick") then
                             im.SameLine()
-                            if im.SmallButton("Reset##VK") then
-                                local data = jsonEncode( { "voteKick", "default" } )
+                            if im.SmallButton("Reset##VKE1") then
+                                local data = jsonEncode( { "voteKick", "default_all" } )
                                 TriggerServerEvent("CEISetCfg", data)
                                 log('W', logTag, "CEISetCfg Called: " .. data)
                             end
@@ -3126,7 +3126,7 @@ local function drawCEI()
                             im.SameLine()
                             im.Text(string.format("%.2f", config.cobalt.voteKick.kickPercent))
                             im.SameLine()
-                            if im.SmallButton("Reset##VK") then
+                            if im.SmallButton("Reset##VKP") then
                                 local data = jsonEncode( { "voteKick", "default" } )
                                 TriggerServerEvent("CEISetCfg", data)
                                 log('W', logTag, "CEISetCfg Called: " .. data)
@@ -3148,8 +3148,8 @@ local function drawCEI()
                             im.TreePop()
                         else
                             im.SameLine()
-                            if im.SmallButton("Reset##VK") then
-                                local data = jsonEncode( { "voteKick", "default" } )
+                            if im.SmallButton("Reset##VKE2") then
+                                local data = jsonEncode( { "voteKick", "default_all" } )
                                 TriggerServerEvent("CEISetCfg", data)
                                 log('W', logTag, "CEISetCfg Called: " .. data)
                             end
