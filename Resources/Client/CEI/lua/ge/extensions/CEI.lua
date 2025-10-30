@@ -6138,7 +6138,7 @@ local function onExtensionLoaded()
                     margin = "auto",
                     position = "absolute",
                     right = 0,
-                    top = "40px",
+                    top = "40%",
                     width = "690px"
                 }
             }
