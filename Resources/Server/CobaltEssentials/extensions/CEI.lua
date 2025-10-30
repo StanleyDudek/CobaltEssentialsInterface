@@ -1984,6 +1984,11 @@ function CEISetCfg(senderID, data)
             if value == "default" then
                 config.cobalt.voteKick.kickPercent = config.cobalt.voteKick.kickPercent_default
                 CobaltDB.set("voteKick", "kickPercent", "value", config.cobalt.voteKick.kickPercent_default)
+            elseif value == "default_all" then
+                config.cobalt.voteKick.kickPercent = config.cobalt.voteKick.kickPercent_default
+                CobaltDB.set("voteKick", "kickPercent", "value", config.cobalt.voteKick.kickPercent_default)
+                config.restrictions.voteKick.voteKick_enabled = config.restrictions.voteKick.voteKick_enabled_default
+                CobaltDB.set("restrictions", "voteKick_enabled", "value", config.restrictions.voteKick.voteKick_enabled_default)
             else
                 config.cobalt.voteKick.kickPercent = value
                 CobaltDB.set("voteKick", "kickPercent", "value", value)
