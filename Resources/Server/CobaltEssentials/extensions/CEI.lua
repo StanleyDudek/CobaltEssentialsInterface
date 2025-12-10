@@ -4,7 +4,7 @@ local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.8.3"
+local CEI_VERSION = "0.8.4"
 
 utils.setLogType("CEI",93)
 
