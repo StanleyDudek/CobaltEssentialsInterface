@@ -2,7 +2,7 @@
 
 local M = {}
 
-local CEI_VERSION = "0.8.3"
+local CEI_VERSION = "0.8.4"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
@@ -397,7 +397,7 @@ local function drawCEI()
     if tableIsEmpty(players) then
         return
     end
-    gui.setupWindow("CEI")
+    im.SetNextWindowSize(im.ImVec2(512, 256), im.Cond_FirstUseEver)
 ----------------------------------------------------------------------------------STYLE
     im.PushStyleColor2(im.Col_Border, im.ImVec4(0.25, 0.25, 1.0, 0.5))
     im.PushStyleColor2(im.Col_ResizeGrip, im.ImVec4(0.15, 0.15, 0.75, 0.5))

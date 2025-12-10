@@ -4,7 +4,7 @@ local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.8.3"
+local CEI_VERSION = "0.8.4"
 
 utils.setLogType("CEI",93)
 
@@ -509,6 +509,7 @@ local defaultVehicles = {
     default =             { level = 1 },
     dolly =               { level = 1 },
     dryvan =              { level = 1 },
+    dumptruck =           { level = 1 },
     engine_props =        { level = 1 },
     etk800 =              { level = 1 },
     etkc =                { level = 1 },
@@ -537,6 +538,7 @@ local defaultVehicles = {
     legran =              { level = 1 },
     log_trailer =         { level = 1 },
     logs =                { level = 1 },
+    marble_block =        { level = 1 },
     mattress =            { level = 1 },
     md_series =           { level = 1, ["partlevel:md_series_ramplow"] = 1, ["partlevel:md_series_ramplow_small"] = 1,["partlevel:md_series_jato"] = 1, ["partlevel:md_series_bed_jato"] = 1, ["partlevel:schoolbus_jato"] = 1 },
     metal_box =           { level = 1 },
@@ -558,6 +560,7 @@ local defaultVehicles = {
     rallytape =           { level = 1 },
     roadsigns =           { level = 1 },
     roamer =              { level = 1 },
+    rock_pile =           { level = 1 },
     rockbouncer =         { level = 1 },
     rocks =               { level = 1 },
     rollover =            { level = 1 },
@@ -593,6 +596,7 @@ local defaultVehicles = {
     weightpad =           { level = 1 },
     wendover =            { level = 1 },
     wigeon =              { level = 1 },
+    wl40 =                { level = 1 },
     woodcrate =           { level = 1 },
     woodplanks =          { level = 1 }
 }
