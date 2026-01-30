@@ -1,10 +1,10 @@
---CEI (SERVER) by Dudekahedron, 2025
+--CEI (SERVER) by Dudekahedron, 2026
 
 local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.8.4"
+local CEI_VERSION = "0.8.5"
 
 utils.setLogType("CEI",93)
 
@@ -13,6 +13,9 @@ local tomlParser = require("toml")
 local loadedDatabases = {}
 
 local playersDatabase
+
+local lastDB = {}
+local lastDBHash = {}
 
 local raceCountdown
 local raceCountdownStarted
@@ -780,7 +783,6 @@ local function onInit()
     MP.RegisterEvent("txNametagBlockerTimeout","txNametagBlockerTimeout")
 
     MP.RegisterEvent("txPlayersDatabase","txPlayersDatabase")
-    MP.CreateEventTimer("txPlayersDatabase", 2000)
 
     config.server.name = utils.readCfg("ServerConfig.toml").General.Name
 
@@ -1004,37 +1006,78 @@ function txPlayersDatabase()
             if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
                 playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
                 for k,v in pairs(playersDatabase) do
-                    local playerName = string.gsub(v, ".json", "")
-                    playersDatabase[k] = {}
-                    playersDatabase[k].index = k
-                    local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
-                    playersDatabase[k].permissions = {}
-                    for a in pairs(playerPermissions) do
-                        playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
-                    end
-                    if players.database[k].group then
-                        playersDatabase[k].permissions.group = players.database[k].group
-                    elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
-                        playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
-                    end
-                    playersDatabase[k].playerName = playerName
-                    playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
-                    if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
-                        playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
-                    end
-                    playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
-                    if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
-                        playersDatabase[k].banReason = players.database[playerName].banReason
+                    if not lastDB[k] then
+                        local playerName = string.gsub(v, ".json", "")
+                        playersDatabase[k] = {}
+                        playersDatabase[k].index = k
+                        local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+                        playersDatabase[k].permissions = {}
+                        for a in pairs(playerPermissions) do
+                            playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
+                        end
+                        if players.database[k].group then
+                            playersDatabase[k].permissions.group = players.database[k].group
+                        elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+                            playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+                        end
+                        playersDatabase[k].playerName = playerName
+                        playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+                        if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+                            playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
+                        end
+                        playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+                        if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+                            playersDatabase[k].banReason = players.database[playerName].banReason
+                        else
+                            CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
+                        end
+                        if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+                            playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+                            if playersDatabase[k].tempBanRemaining < 0 then
+                                playersDatabase[k].tempBanRemaining = nil
+                            end
+                        end
+                        MP.TriggerClientEventJson(playerID, "rxPlayersDatabase", playersDatabase[k])
+                        lastDB[k] = playersDatabase[k]
+                        lastDBHash[k] = Util.JsonEncode(lastDB[k])
                     else
-                        CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
-                    end
-                    if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
-                        playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
-                        if playersDatabase[k].tempBanRemaining < 0 then
-                            playersDatabase[k].tempBanRemaining = nil
+                        local playerName = string.gsub(v, ".json", "")
+                        playersDatabase[k] = {}
+                        playersDatabase[k].index = k
+                        local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+                        playersDatabase[k].permissions = {}
+                        for a in pairs(playerPermissions) do
+                            playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
+                        end
+                        if players.database[k].group then
+                            playersDatabase[k].permissions.group = players.database[k].group
+                        elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+                            playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+                        end
+                        playersDatabase[k].playerName = playerName
+                        playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+                        if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+                            playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
+                        end
+                        playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+                        if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+                            playersDatabase[k].banReason = players.database[playerName].banReason
+                        else
+                            CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
+                        end
+                        if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+                            playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+                            if playersDatabase[k].tempBanRemaining < 0 then
+                                playersDatabase[k].tempBanRemaining = nil
+                            end
+                        end
+                        local hash = Util.JsonEncode(playersDatabase[k])
+                        if hash ~= lastDBHash[k] then
+                            lastDB[k] = playersDatabase[k]
+                            lastDBHash[k] = Util.JsonEncode(lastDB[k])
+                            MP.TriggerClientEventJson(playerID, "rxPlayersDatabase", lastDB[k])
                         end
                     end
-                    MP.TriggerClientEventJson(playerID, "rxPlayersDatabase", playersDatabase[k])
                 end
             end
         end
@@ -2007,7 +2050,9 @@ end
 function CEISetMaxActivePlayers(senderID, data)
     if players[senderID].permissions.group == "admin" or players[senderID].permissions.group == "owner" or players[senderID].permissions.UI >= config.cobalt.interface.cobaltEssentials then
         data = Util.JsonDecode(data)
-        data = tonumber(data[1])
+        if data then
+            data = tonumber(data[1])
+        end
         CobaltDB.set("config", "maxActivePlayers", "value", data)
         config.cobalt.maxActivePlayers = data
         CEIConfigForceUpdate()
@@ -2624,6 +2669,49 @@ local function onPlayerJoin(player)
     end
 end
 
+function syncDB(player)
+    if player then
+        if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
+            playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
+            for k,v in pairs(playersDatabase) do
+                if not lastDB[k] then
+                    local playerName = string.gsub(v, ".json", "")
+                    playersDatabase[k] = {}
+                    playersDatabase[k].index = k
+                    local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+                    playersDatabase[k].permissions = {}
+                    for a in pairs(playerPermissions) do
+                        playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
+                    end
+                    if players.database[k].group then
+                        playersDatabase[k].permissions.group = players.database[k].group
+                    elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+                        playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+                    end
+                    playersDatabase[k].playerName = playerName
+                    playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+                    if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+                        playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
+                    end
+                    playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+                    if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+                        playersDatabase[k].banReason = players.database[playerName].banReason
+                    else
+                        CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
+                    end
+                    if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+                        playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+                        if playersDatabase[k].tempBanRemaining < 0 then
+                            playersDatabase[k].tempBanRemaining = nil
+                        end
+                    end
+                    MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
+                end
+            end
+        end
+    end
+end
+
 function requestCEISync(player_id)
     local name = MP.GetPlayerName(player_id)
     local player = players.getPlayerByName(name)
@@ -2640,6 +2728,7 @@ function requestCEISync(player_id)
         MP.TriggerClientEvent(-1, "rxInputUpdate", "config")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "players")
         MP.TriggerClientEvent(-1, "rxInputUpdate", "playersDatabase")
+        syncDB(player)
         if config.cobalt.interface.welcome then
             CE.delayExec( 5000 , sendDelayedMessage , { player , "This server uses Cobalt Essentials Interface." } )
             CE.delayExec( 6000 , sendDelayedMessage , { player , "Use " .. commandPrefix .. "CEI or " .. commandPrefix .. "cei in chat to toggle." } )
