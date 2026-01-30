@@ -1,10 +1,10 @@
---CEI (SERVER) by Dudekahedron, 2025
+--CEI (SERVER) by Dudekahedron, 2026
 
 local M = {}
 
 M.COBALT_VERSION = "1.7.6"
 
-local CEI_VERSION = "0.8.4"
+local CEI_VERSION = "0.8.5"
 
 utils.setLogType("CEI",93)
 
