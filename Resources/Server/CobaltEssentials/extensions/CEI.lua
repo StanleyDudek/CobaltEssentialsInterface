@@ -2674,39 +2674,37 @@ function syncDB(player)
         if player.permissions.group == "owner" or player.permissions.group == "admin" or player.permissions.UI >= config.cobalt.interface.database then
             playersDatabase = FS.ListFiles(pluginPath .. "/CobaltDB/playersDB")
             for k,v in pairs(playersDatabase) do
-                if not lastDB[k] then
-                    local playerName = string.gsub(v, ".json", "")
-                    playersDatabase[k] = {}
-                    playersDatabase[k].index = k
-                    local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
-                    playersDatabase[k].permissions = {}
-                    for a in pairs(playerPermissions) do
-                        playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
-                    end
-                    if players.database[k].group then
-                        playersDatabase[k].permissions.group = players.database[k].group
-                    elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
-                        playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
-                    end
-                    playersDatabase[k].playerName = playerName
-                    playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
-                    if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
-                        playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
-                    end
-                    playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
-                    if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
-                        playersDatabase[k].banReason = players.database[playerName].banReason
-                    else
-                        CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
-                    end
-                    if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
-                        playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
-                        if playersDatabase[k].tempBanRemaining < 0 then
-                            playersDatabase[k].tempBanRemaining = nil
-                        end
-                    end
-                    MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
+                local playerName = string.gsub(v, ".json", "")
+                playersDatabase[k] = {}
+                playersDatabase[k].index = k
+                local playerPermissions = CobaltDB.getTables("playersDB/" .. playerName)
+                playersDatabase[k].permissions = {}
+                for a in pairs(playerPermissions) do
+                    playersDatabase[k].permissions[a] = CobaltDB.query("playersDB/" .. playerName, a, "value")
                 end
+                if players.database[k].group then
+                    playersDatabase[k].permissions.group = players.database[k].group
+                elseif CobaltDB.query("playersDB/" .. playerName, "group", "value") then
+                    playersDatabase[k].permissions.group = CobaltDB.query("playersDB/" .. playerName, "group", "value")
+                end
+                playersDatabase[k].playerName = playerName
+                playersDatabase[k].beammp = CobaltDB.query("playersDB/" .. playerName, "beammp", "value")
+                if CobaltDB.query("playersDB/" .. playerName, "UI", "value") then
+                    playersDatabase[k].UI = tonumber(CobaltDB.query("playersDB/" .. playerName, "UI", "value"))
+                end
+                playersDatabase[k].banned = CobaltDB.query("playersDB/" .. playerName, "banned", "value")
+                if CobaltDB.query("playersDB/" .. playerName, "banReason", "value") then
+                    playersDatabase[k].banReason = players.database[playerName].banReason
+                else
+                    CobaltDB.query("playersDB/" .. playerName, "banReason", "value")
+                end
+                if CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") then
+                    playersDatabase[k].tempBanRemaining = CobaltDB.query("playersDB/" .. playerName, "tempBan", "value") - os.time()
+                    if playersDatabase[k].tempBanRemaining < 0 then
+                        playersDatabase[k].tempBanRemaining = nil
+                    end
+                end
+                MP.TriggerClientEventJson(player.playerID, "rxPlayersDatabase", playersDatabase[k])
             end
         end
     end
