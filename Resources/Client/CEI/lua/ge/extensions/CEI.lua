@@ -1,8 +1,8 @@
---CEI (CLIENT) by Dudekahedron, 2025
+--CEI (CLIENT) by Dudekahedron, 2026
 
 local M = {}
 
-local CEI_VERSION = "0.8.4"
+local CEI_VERSION = "0.8.5"
 local logTag = "CEI"
 local gui_module = require("ge/extensions/editor/api/gui")
 local gui = {setupEditorGuiTheme = nop}
