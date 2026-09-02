@@ -5057,8 +5057,8 @@ local function drawCEI()
                 im.EndTabItem()
             end
             im.EndChild()
-            im.EndTabBar()
         end
+        im.EndTabBar()
     end
     im.EndChild()
     im.PopStyleColor(24)
