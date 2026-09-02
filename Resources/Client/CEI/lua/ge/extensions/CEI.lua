@@ -5056,7 +5056,6 @@ local function drawCEI()
                 im.EndChild()
                 im.EndTabItem()
             end
-            im.EndChild()
         end
         im.EndTabBar()
     end
